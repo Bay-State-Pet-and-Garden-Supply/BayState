@@ -133,6 +133,7 @@ export const FACET_PROFILE_APPLICABLE_FIELDS: Record<FacetProfile, readonly Deta
         'claims',
         'size',
         'package_weight',
+        'package_count',
         'packaging_type',
         'product_feature',
         'color',

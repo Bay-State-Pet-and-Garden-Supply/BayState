@@ -260,14 +260,48 @@ def build_nested_product_facts(fields: dict[str, Any], evidence_url: Optional[st
     
     facets = []
     
+    # Legacy-to-canonical field name mapping.
+    # Adapters emit flat field names (e.g. "pet_type", "case_pack") that
+    # must be resolved to canonical definition_slug values before storage.
+    LEGACY_FACET_ALIASES: dict[str, str] = {
+        "pet_type": "animal_type",
+        "pet_size": "breed_size",
+        "protein": "primary_protein",
+        "protein_source": "primary_protein",
+        "case_pack": "package_count",
+        "pack_count": "package_count",
+        "unit_of_measure": "unit_type",
+        "bci_item_number": "item_number",
+        "mfg_number": "manufacturer_number",
+        "mfg_part_number": "manufacturer_number",
+        "weight": "package_weight",
+        "shipping_weight": "package_weight",
+    }
+    
     single_facet_keys = [
-        "pet_type", "life_stage", "pet_size", "food_form", "flavor", 
-        "packaging_type", "size", "color", "ingredients", "npk_ratio",
-        "unit_value", "unit_type", "dimensions", "scent", "material",
-        "indoor_outdoor", "subscription_eligible"
+        # Animal / pet product facets
+        "animal_type", "life_stage", "breed_size",
+        "food_form", "flavor", "primary_protein", "diet_type",
+        # Package / logistics facets
+        "package_count", "package_weight", "packaging_type",
+        "unit_value", "unit_type", "dimensions",
+        # Ingredient / nutrition facets
+        "ingredients", "npk_ratio",
+        # Generic product facets
+        "size", "color", "material", "scent",
+        # Identifiers (stored as facets for evidence/matching)
+        "item_number", "manufacturer_number",
+        # Other
+        "indoor_outdoor", "subscription_eligible",
     ]
     for key in single_facet_keys:
         val = fields.get(key)
+        # Also check legacy aliases
+        if val is None or val == "":
+            for legacy, canonical in LEGACY_FACET_ALIASES.items():
+                if canonical == key and legacy in fields:
+                    val = fields.get(legacy)
+                    break
         if val is not None and val != "":
             if isinstance(val, list):
                 val_str = "|".join(str(v) for v in val)

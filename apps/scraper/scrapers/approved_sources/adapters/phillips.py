@@ -567,14 +567,19 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         pdp_url: str,
         source_policy: Any,
     ) -> ApprovedSourceExtractionResult:
-        """Enrich extracted data from PDP HTML (description, features, images)."""
+        """Enrich extracted data from PDP HTML.
+
+        Extracts: description, features, images, weight, dimensions, UPC,
+        pet facets (animal_type, food_form, flavor, life_stage, breed_size,
+        primary_protein, diet_type), and category breadcrumb.
+        """
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(html, "html.parser")
         
         # Override evidence URL to point to the actual PDP URL
         det_result.evidence_url = pdp_url
 
-        # Extract detailed description
+        # --- Detailed description ---
         desc_node = soup.select_one(".cc_product_detail_description, .product-description, .cc_product_description, #product-description")
         if desc_node:
             desc = desc_node.get_text(" ", strip=True)
@@ -583,7 +588,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 if "description" not in det_result.matched_fields:
                     det_result.matched_fields.append("description")
 
-        # Extract detailed features
+        # --- Detailed features ---
         features = [
             li.get_text(" ", strip=True)
             for li in soup.select(".product-features li, .cc_product_features li, .cc_features li")
@@ -593,6 +598,69 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             det_result.product["features"] = features
             if "features" not in det_result.matched_fields:
                 det_result.matched_fields.append("features")
+
+        # --- Weight from PDP spec labels ---
+        spec_text = soup.get_text(" ", strip=True)
+        weight_labels = [r"Weight:\s*(.+?)(?:\s{2,}|$)", r"Ship Weight:\s*(.+?)(?:\s{2,}|$)"]
+        for pattern in weight_labels:
+            match = re.search(pattern, spec_text, re.IGNORECASE)
+            if match:
+                val = match.group(1).strip()
+                if val and val.lower() not in ("n/a", "none", ""):
+                    det_result.product["weight"] = val
+                    if "weight" not in det_result.matched_fields:
+                        det_result.matched_fields.append("weight")
+                    break
+
+        # --- Dimensions from PDP spec labels ---
+        dim_match = re.search(r"Dimensions?:\s*(.+?)(?:\s{2,}|$)", spec_text, re.IGNORECASE)
+        if dim_match:
+            val = dim_match.group(1).strip()
+            if val:
+                det_result.product["dimensions"] = val
+                if "dimensions" not in det_result.matched_fields:
+                    det_result.matched_fields.append("dimensions")
+
+        # --- UPC from PDP ---
+        upc_match = re.search(r"UPC:\s*(\d{8,14})", spec_text, re.IGNORECASE)
+        if upc_match and "upc" not in det_result.product:
+            det_result.product["upc"] = upc_match.group(1).strip()
+            if "upc" not in det_result.matched_fields:
+                det_result.matched_fields.append("upc")
+
+        # --- Pet facets from labeled specs on PDP ---
+        facet_spec_labels = {
+            "animal_type": r"Animal\s*Type:\s*(.+?)(?:\s{2,}|$)",
+            "life_stage": r"Life\s*Stage:\s*(.+?)(?:\s{2,}|$)",
+            "breed_size": r"Breed\s*Size:\s*(.+?)(?:\s{2,}|$)",
+            "food_form": r"Food\s*Form:\s*(.+?)(?:\s{2,}|$)",
+            "flavor": r"Flavor:\s*(.+?)(?:\s{2,}|$)",
+            "primary_protein": r"(?:Primary\s*)?Protein:\s*(.+?)(?:\s{2,}|$)",
+        }
+        for facet_key, pattern in facet_spec_labels.items():
+            match = re.search(pattern, spec_text, re.IGNORECASE)
+            if match:
+                val = match.group(1).strip()
+                if val and val.lower() not in ("n/a", "none", ""):
+                    det_result.product[facet_key] = val
+                    if facet_key not in det_result.matched_fields:
+                        det_result.matched_fields.append(facet_key)
+
+        # --- Textual facet fallback from product name + description ---
+        name_desc = f"{det_result.product.get('name', '')} {det_result.product.get('description', '')}"
+        text_facets = self._extract_textual_facets(name_desc)
+        for key, value in text_facets.items():
+            if key not in det_result.product:
+                det_result.product[key] = value
+                if key not in det_result.matched_fields:
+                    det_result.matched_fields.append(key)
+
+        # --- Category / Breadcrumb ---
+        breadcrumb = self._extract_breadcrumb(soup)
+        if breadcrumb:
+            det_result.product["category"] = breadcrumb
+            if "category" not in det_result.matched_fields:
+                det_result.matched_fields.append("category")
 
         # Extract high-res images from details page
         images = []

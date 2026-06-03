@@ -18,6 +18,15 @@ export const LEGACY_TO_CANONICAL_FACETS: Record<string, string> = {
     size: 'size',
     color: 'color',
     packaging_type: 'packaging_type',
+    // Scraper adapter field aliases
+    protein: 'primary_protein',
+    protein_source: 'primary_protein',
+    case_pack: 'package_count',
+    pack_count: 'package_count',
+    unit_of_measure: 'unit_type',
+    bci_item_number: 'item_number',
+    mfg_number: 'manufacturer_number',
+    mfg_part_number: 'manufacturer_number',
 };
 
 export interface AssembledFacet {

@@ -11,7 +11,9 @@
       "expected_name_contains": "E-Z HANG SCALE",
       "expected_brand": "KERBL",
       "expected_image_count": 2,
-      "expected_has_bci_item_number": true
+      "expected_has_bci_item_number": true,
+      "expected_fields": ["name", "brand", "image_urls", "bci_item_number", "upc", "weight"],
+      "expected_facets": []
     },
     "bradley_010199_partial": {
       "dataset_entry_ref": "Bradley product 010199 partial",
@@ -21,6 +23,8 @@
       "expected_upc": "010199",
       "expected_name_contains": "Partial Item",
       "expected_brand": "ACME Corp",
+      "expected_fields": ["name", "brand"],
+      "expected_facets": [],
       "expected_missing_fields": [
         "weight",
         "upc",
@@ -45,7 +49,9 @@
       "expected_upc": "38777520",
       "expected_name_contains": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
       "expected_brand": "KONG",
-      "expected_has_features": true
+      "expected_has_features": true,
+      "expected_fields": ["name", "brand", "image_urls", "description", "features"],
+      "expected_facets": []
     },
     "central_pet_43580233": {
       "dataset_entry_ref": "Central Pet product 43580233",
@@ -54,7 +60,9 @@
       "fixture_path": "central_pet/product_43580233.html",
       "expected_upc": "43580233",
       "expected_name_contains": "IAMS Perfect Portions",
-      "expected_brand": "IAMS"
+      "expected_brand": "IAMS",
+      "expected_fields": ["name", "brand", "image_urls", "description"],
+      "expected_facets": []
     },
     "central_pet_no_match_00000000": {
       "dataset_entry_ref": "Central Pet no match for fake SKU",
@@ -72,7 +80,9 @@
       "expected_upc": "037193347322",
       "expected_name_contains": "Premium Chicken Feed",
       "expected_brand": "Purina",
-      "expected_has_upc": true
+      "expected_has_upc": true,
+      "expected_fields": ["name", "brand", "upc", "model_number", "image_urls", "weight", "description", "category"],
+      "expected_facets": []
     },
     "orgill_032700006105_partial": {
       "dataset_entry_ref": "Orgill product 032700006105 partial",
@@ -81,7 +91,9 @@
       "fixture_path": "orgill/product_032700006105_partial.html",
       "expected_upc": "032700006105",
       "expected_name_contains": "Garden Trowel",
-      "expected_brand": "Fiskars"
+      "expected_brand": "Fiskars",
+      "expected_fields": ["name", "brand"],
+      "expected_facets": []
     },
     "orgill_no_match_000000000000": {
       "dataset_entry_ref": "Orgill no match for fake SKU",
@@ -99,7 +111,9 @@
       "expected_upc": "072705115310",
       "expected_name_contains": "Fromm Gold Large Breed Dog 30 lb",
       "expected_brand": "FROMM FAMILY FOODS LLC",
-      "expected_image_count": 2
+      "expected_image_count": 2,
+      "expected_fields": ["name", "brand", "image_urls", "item_number", "description"],
+      "expected_facets": []
     },
     "phillips_072705104321_partial": {
       "dataset_entry_ref": "Phillips product 072705104321 partial",
@@ -108,7 +122,9 @@
       "fixture_path": "phillips/product_072705104321_partial.html",
       "expected_upc": "072705104321",
       "expected_name_contains": "Fromm Salmon ALA",
-      "expected_brand": "FROMM FAMILY FOODS LLC"
+      "expected_brand": "FROMM FAMILY FOODS LLC",
+      "expected_fields": ["name", "brand"],
+      "expected_facets": []
     },
     "phillips_no_match_000000000000": {
       "dataset_entry_ref": "Phillips no match for fake SKU",
@@ -126,7 +142,9 @@
       "expected_upc": "33011808",
       "expected_name_contains": "Wellness CORE Grain Free",
       "expected_brand": "Wellness",
-      "expected_has_upc": true
+      "expected_has_upc": true,
+      "expected_fields": ["name", "brand", "item_number", "upc", "image_urls", "description"],
+      "expected_facets": []
     },
     "pfe_10158320_partial": {
       "dataset_entry_ref": "Pet Food Experts product 10158320 partial",
@@ -135,7 +153,9 @@
       "fixture_path": "pet_food_experts/product_10158320_partial.html",
       "expected_upc": "10158320",
       "expected_name_contains": "Basic Dog Treat",
-      "expected_brand": "Generic Treat Co"
+      "expected_brand": "Generic Treat Co",
+      "expected_fields": ["name", "brand"],
+      "expected_facets": []
     },
     "pfe_no_match_00000000": {
       "dataset_entry_ref": "Pet Food Experts no match for fake SKU",

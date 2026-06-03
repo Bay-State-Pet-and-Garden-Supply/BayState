@@ -373,3 +373,116 @@ describe('Amazon enriched payload extraction', () => {
         expect(result.fields.claims).toContain('Made in USA');
     });
 });
+
+// =============================================================================
+// Regression: Distributor-sourced facets from scraper adapters
+// =============================================================================
+
+describe('distributor-sourced facet extraction', () => {
+    const DISTRIBUTOR_FACETS_SOURCE = {
+        central_pet: {
+            title: 'Premium Dog Food Salmon Recipe 30 lb',
+            extracted: {
+                core: {
+                    name: 'Premium Dog Food Salmon Recipe 30 lb',
+                    brand_name: 'Premium Pet',
+                },
+                facets: [
+                    { definition_slug: 'animal_type', value: 'Dog' },
+                    { definition_slug: 'breed_size', value: 'Large Breed' },
+                    { definition_slug: 'food_form', value: 'Dry' },
+                    { definition_slug: 'primary_protein', value: 'Salmon' },
+                    { definition_slug: 'diet_type', value: 'Grain-Free' },
+                    { definition_slug: 'package_count', value: '1' },
+                    { definition_slug: 'package_weight', value: '30 lb' },
+                ],
+            },
+        },
+    } as unknown as Record<string, unknown>;
+
+    const DISTRIBUTOR_FACETS_SOURCE_NO_CHICKEN_PROTEIN = {
+        central_pet: {
+            title: 'Premium Dog Food Recipe 30 lb',
+            extracted: {
+                core: {
+                    name: 'Premium Dog Food Recipe 30 lb',
+                    brand_name: 'Premium Pet',
+                },
+                facets: [
+                    { definition_slug: 'primary_protein', value: 'Salmon' },
+                    { definition_slug: 'animal_type', value: 'Dog' },
+                ],
+            },
+        },
+    } as unknown as Record<string, unknown>;
+
+    it('prefers structured distributor facet values over regex from product name', () => {
+        // Product name contains 'Chicken' which would match regex primary_protein
+        // But distributor source provides 'Salmon' via extracted.facets
+        const result = enrichProductDetails(
+            makeInput(
+                {
+                    category: 'Dog > Dog Food > Dry Food',
+                    name: 'Premium Dog Food Chicken Recipe 30 lb.',
+                },
+                DISTRIBUTOR_FACETS_SOURCE,
+            ),
+        );
+        // Structured source provides primary_protein=Salmon; regex would match Chicken
+        expect(result.fields.primary_protein).toBe('Salmon');
+        expect(result.populatedFields).toContain('primary_protein');
+
+        // Structured source provides breed_size despite name not mentioning it
+        expect(result.fields.breed_size).toBe('Large Breed');
+        expect(result.populatedFields).toContain('breed_size');
+
+        // Structured source provides food_form
+        expect(result.fields.food_form).toBe('Dry');
+        expect(result.populatedFields).toContain('food_form');
+
+        // Structured source provides diet_type
+        expect(result.fields.diet_type).toBe('Grain-Free');
+        expect(result.populatedFields).toContain('diet_type');
+
+        // animal_type is in both (source + regex), source wins
+        expect(result.fields.animal_type).toContain('Dog');
+        expect(result.populatedFields).toContain('animal_type');
+    });
+
+    it('preserves package_count and package_weight from source facets', () => {
+        const result = enrichProductDetails(
+            makeInput(
+                {
+                    category: 'Dog > Dog Food > Dry Food',
+                    name: 'Premium Dog Food Salmon Recipe 30 lb.',
+                },
+                DISTRIBUTOR_FACETS_SOURCE,
+            ),
+        );
+        // package_count and package_weight have NO regex fallback;
+        // they must come exclusively from source facets
+        expect(result.fields.package_count).toBe('1');
+        expect(result.populatedFields).toContain('package_count');
+
+        expect(result.fields.package_weight).toBe('30 lb');
+        expect(result.populatedFields).toContain('package_weight');
+    });
+
+    it('prefers primary_protein from distributor facets over regex-extracted protein from name/description', () => {
+        // Name and description mention 'Chicken' which regex would match
+        // But distributor source explicitly provides 'Salmon' via extracted.facets
+        const result = enrichProductDetails(
+            makeInput(
+                {
+                    category: 'Dog > Dog Food > Dry Food',
+                    name: 'Premium Dog Food with Real Chicken Recipe for Dogs',
+                    description: 'Made with real deboned chicken and wholesome grains',
+                },
+                DISTRIBUTOR_FACETS_SOURCE_NO_CHICKEN_PROTEIN,
+            ),
+        );
+        // The regex would match 'Chicken', but the structured source value wins
+        expect(result.fields.primary_protein).toBe('Salmon');
+        expect(result.populatedFields).toContain('primary_protein');
+    });
+});

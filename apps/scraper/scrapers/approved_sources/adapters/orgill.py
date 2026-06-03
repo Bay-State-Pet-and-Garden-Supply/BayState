@@ -233,6 +233,64 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
             product["features"] = features
             matched.append("features")
 
+        # --- Case Pack / Package Count ---
+        case_strong = soup.find("strong", string=re.compile(r"Case\s*Pack", re.I))
+        if case_strong:
+            parent_div = case_strong.parent
+            if parent_div:
+                next_div = parent_div.find_next("div")
+                if next_div:
+                    val = next_div.get_text(strip=True)
+                    if val:
+                        product["case_pack"] = val
+                        matched.append("case_pack")
+
+        # --- Unit of Measure ---
+        uom_strong = soup.find("strong", string=re.compile(r"Unit\s*of\s*Measure\s*:?", re.I))
+        if uom_strong:
+            parent_div = uom_strong.parent
+            if parent_div:
+                next_elem = parent_div.find_next(["div", "span"])
+                if next_elem:
+                    val = next_elem.get_text(strip=True)
+                    if val:
+                        product["unit_of_measure"] = val
+                        matched.append("unit_of_measure")
+
+        # --- Material (for hardware/garden products) ---
+        mat_strong = soup.find("strong", string=re.compile(r"Material\s*:?", re.I))
+        if mat_strong:
+            parent_div = mat_strong.parent
+            if parent_div:
+                next_elem = parent_div.find_next(["div", "span"])
+                if next_elem:
+                    val = next_elem.get_text(strip=True)
+                    if val:
+                        product["material"] = val
+                        matched.append("material")
+
+        # --- NPK Ratio (for garden/feed products) ---
+        npk_match = re.search(r"(?:(\d+)[-\s]+)?(\d+)[-\s]+(\d+)\s*(?:npk|ratio)", html, re.IGNORECASE)
+        if npk_match:
+            product["npk_ratio"] = npk_match.group(0).strip()
+            matched.append("npk_ratio")
+
+        # --- Textual facet fallback ---
+        if product.get("name"):
+            name_desc = f"{product.get('name', '')} {product.get('description', '')}"
+            text_facets = self._extract_textual_facets(name_desc)
+            for key, value in text_facets.items():
+                if key not in product:
+                    product[key] = value
+                    matched.append(key)
+
+        # --- Breadcrumb if not already set ---
+        if not product.get("category"):
+            breadcrumb = self._extract_breadcrumb(soup)
+            if breadcrumb:
+                product["category"] = breadcrumb
+                matched.append("category")
+
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH

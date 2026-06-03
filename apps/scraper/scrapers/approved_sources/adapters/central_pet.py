@@ -311,6 +311,21 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
                 product["dimensions"] = span.get_text(strip=True)
                 matched.append("dimensions")
 
+        # --- Category / Breadcrumb ---
+        breadcrumb = self._extract_breadcrumb(soup)
+        if breadcrumb:
+            product["category"] = breadcrumb
+            matched.append("category")
+
+        # --- Textual pet facet fallback ---
+        if product.get("name"):
+            name_desc = f"{product.get('name', '')} {product.get('description', '')}"
+            text_facets = self._extract_textual_facets(name_desc)
+            for key, value in text_facets.items():
+                if key not in product:
+                    product[key] = value
+                    matched.append(key)
+
         # Check if we found enough
         if not product.get("name"):
             result.success = False

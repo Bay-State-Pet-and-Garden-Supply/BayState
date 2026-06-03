@@ -260,6 +260,31 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             product["description"] = desc
             matched.append("description")
 
+        # --- Dimensions (docstring says extracted but was previously missing) ---
+        dim_elem = soup.find(["li", "div", "p"], string=re.compile(r"Dimensions?:?", re.I))
+        if dim_elem:
+            dim_text = dim_elem.get_text(strip=True)
+            # Strip label prefix if present
+            dim_val = re.sub(r"^Dimensions?:?\s*", "", dim_text, flags=re.IGNORECASE).strip()
+            if dim_val:
+                product["dimensions"] = dim_val
+                matched.append("dimensions")
+
+        # --- Ingredients (docstring says extracted but was previously missing) ---
+        ing_elem = soup.find(["li", "div", "p"], string=re.compile(r"Ingredients?:?", re.I))
+        if ing_elem:
+            ing_text = ing_elem.get_text(strip=True)
+            ing_val = re.sub(r"^Ingredients?:?\s*", "", ing_text, flags=re.IGNORECASE).strip()
+            if ing_val and len(ing_val) > 5:
+                product["ingredients"] = ing_val
+                matched.append("ingredients")
+
+        # --- Category / Breadcrumb ---
+        breadcrumb = self._extract_breadcrumb(soup)
+        if breadcrumb:
+            product["category"] = breadcrumb
+            matched.append("category")
+
         # Check if we found enough
         if not product.get("name"):
             # Try BigCommerce headless structure (2025+ site redesign)

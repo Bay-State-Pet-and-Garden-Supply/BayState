@@ -1,86 +1,100 @@
 # Implementation Plan
 
 ## Goal
-Populate Finalizing/Reviewing Product Info and Product Details from source-backed enriched evidence when `consolidated` is empty or incomplete, without filling protected operational fields from marketplace data.
+Improve deterministic distributor adapter extraction of source-backed categories, package details, and product facets that downstream LLM consolidation, detail enrichment, review, and storefront facets can actually consume, while keeping protected operational fields and price out of scope.
 
 ## Tasks
-1. **Create a shared source-backed fallback extractor**: Add a small utility that walks normalized product sources and returns only evidence-backed core, media, facet, and text candidates.
-   - File: `apps/web/lib/product-source-fallbacks.ts`
-   - Changes: Export helpers such as `collectSourceBackedFallbacks(sources, input?)`, `hasTextValue`, `normalizeFallbackWeight`, and trust-aware confidence/evidence helpers. Traverse these shapes: direct source records, `extracted.core`, `extracted.facets`, `product.core`, `product.facets`, `approved_sources.*`, and `source_results[].product`. Extract only `name/title`, `brand/brand_name`, `description`, `weight/weight_lbs`, explicit/derived `search_keywords`, `media/images/image_urls`, `source_urls`, and facets. Do not extract `price`, `stock_status`, `availability`, `is_special_order`, `minimum_quantity`, or `is_taxable`. Cap marketplace confidence at ~0.82 and use evidence strings like `source:amazon:extracted.core.description`.
-   - Acceptance: Unit helper calls can return fallback name, brand, description, weight, images, dimensions/features from the Amazon-shaped payload while returning no protected fields.
+1. **Fix flat-field to facet mapping before adding adapter fields**: Expand scraper result normalization so newly extracted canonical detail fields are not silently dropped.
+   - File: `apps/scraper/scrapers/ai_search/enrichment_models.py`
+   - Changes: Update `build_nested_product_facts()` to map both legacy and canonical flat fields into `FacetData`, including `animal_type`, `breed_size`, `primary_protein`, `diet_type`, `health_focus`, `package_count`, `package_weight`, `case_pack`, `unit_of_measure`, `manufacturer_number`, and existing legacy aliases (`pet_type`, `pet_size`, `special_diet`, `health_feature`, `protein`, `protein_source`). Map `case_pack`/`pack_count` to `package_count`; map `unit_of_measure` to a facet only if a canonical target exists or keep as `unit_type` with clear test coverage. Do not map `price`, `stock_status`, `availability`, `is_special_order`, `minimum_quantity`, or `is_taxable`.
+   - Acceptance: `build_success_result(... product_fields={"animal_type":"Dog","primary_protein":"Chicken","case_pack":"12"})` produces `result.product.facets` entries for those fields and still excludes protected fields.
 
-2. **Use source fallbacks in the reviewing draft**: Populate UI draft fields from source evidence when `consolidated` and `input` are blank.
-   - File: `apps/web/lib/pipeline/reviewing-draft.ts`
-   - Changes: In `buildInitialFinalizationDraft`, call `collectSourceBackedFallbacks(product.sources, input)` before constructing `facets` and the return object. Apply precedence: `consolidated.core` → legacy `consolidated` → `input` → source fallback. Use fallback for `name`, `description`, `brandName`, `weight`, `searchKeywords`, `selectedImages`, and missing facets only. Keep existing/default handling for protected operational fields and never source-fill them. If category is blank, do not invent a category.
-   - Acceptance: A product with empty `consolidated`/`input` and Amazon enriched sources displays name, brand, description, weight, images, search keywords, dimensions/features, and animal-food facets in the draft.
+2. **Add result-builder coverage for enriched facets**: Lock in the schema behavior from Task 1.
+   - File: `apps/scraper/tests/unit/test_approved_sources_result_builder.py`
+   - Changes: Add tests for canonical facet fields, legacy-to-canonical aliases, list facet splitting, media preservation, category-to-`canonical_category_breadcrumb`, and protected-field exclusion.
+   - Acceptance: Focused test command passes: `cd apps/scraper && python -m pytest tests/unit/test_approved_sources_result_builder.py`.
 
-3. **Expand deterministic detail enrichment to nested enriched evidence**: Make facet extraction see text and structured facts buried inside enrichment payloads.
-   - File: `apps/web/lib/consolidation/detail-enrichment.ts`
-   - Changes: Update `buildSearchableText` to include nested `core.name`, `core.description`, `search_keywords`, source `features`, `facets[].value`, `approved_sources.*`, and `source_results[].product` text, with a bounded recursive allowlist to avoid noisy blobs. Update source extraction to use the shared fallback facet candidates in addition to current aliases/specifications. Add safe profile inference when category/profile is missing (for example dog/cat + food/form terms ⇒ `animal_food`) so enrichment can populate animal food details without a taxonomy category. Add missing claim patterns such as `No Artificial Preservatives` and optionally `No Fillers`.
-   - Acceptance: `enrichProductDetails` on the Amazon-shaped source data with no category returns `facetProfile: "animal_food"` and fields including `animal_type=Dog`, `food_form=Freeze-Dried`, `primary_protein=Chicken`, `diet_type` containing `Grain-Free` and `High-Protein`, `claims` containing `Made in USA`/preservative claims, `dimensions`, and `package_weight` where present.
+3. **Create shared deterministic extraction helpers for adapters**: Avoid five separate regex implementations for the same detail labels.
+   - File: `apps/scraper/scrapers/approved_sources/adapters/base.py`
+   - Changes: Add reusable helper methods for BeautifulSoup parsers, such as labeled key/value extraction from `dt/dd`, table rows, `li`, and `data-test-selector` blocks; breadcrumb/category extraction; image URL normalization reuse; and product-text-derived facet hints for common animal fields (`animal_type`, `life_stage`, `breed_size`, `food_form`, `flavor`, `primary_protein`, `diet_type`, `health_focus`, `claims`). Keep helpers deterministic regex/CSS only.
+   - Acceptance: Helpers are unit-testable through adapter fixture tests and do not change existing adapter success/no-match behavior.
 
-4. **Pass richer context into facet assembly and preserve facet provenance**: Ensure consolidation apply gets the same detail quality and non-null evidence/confidence.
-   - File: `apps/web/lib/consolidation/facet-assembler.ts`
-   - Changes: Include `description` and `search_keywords` in `tempConsolidated` when calling `enrichProductDetails`. Before/alongside heuristic enrichment, add exact source-backed fallback facets from `collectSourceBackedFallbacks`, preserving their `evidence_source` and confidence. Keep priority order: VLM/LLM facets first, then source-backed facets, then heuristic pattern facets, then existing facets only when not already set.
-   - Acceptance: Assembled facets have non-null `evidence_source`/`confidence_score`, and source dimensions/features are available even when not produced by the LLM.
+4. **Prioritize Pet Food Experts facet extraction**: PFE appears data-rich and already exposes an attributes block with many directly labeled pet facets.
+   - File: `apps/scraper/scrapers/approved_sources/adapters/pet_food_experts.py`
+   - Changes: Parse `attrs_text` labels for `Flavor`, `Animal`, `Diet`, `Food Form`, `Ingredients`, `Protein`, `Weight`, `Breed Size`, and `Life Stage`; populate flat fields that Task 1 maps to facets (`flavor`, `animal_type`, `diet_type`, `food_form`, `ingredients`, `primary_protein`, `breed_size`, `life_stage`, `package_weight`). Add category/breadcrumb extraction if present in PDP HTML. Keep existing auth/PDP fetch behavior.
+   - Acceptance: PFE fixture for `pfe_33011808` asserts at least 4 pet facets, including one of `animal_type`, `food_form`, `primary_protein`, `life_stage`, or `breed_size` where fixture HTML supports it.
 
-5. **Source-fill missing core fields during consolidation apply**: Prevent valid source evidence from being lost when LLM output is sparse.
-   - File: `apps/web/lib/consolidation/apply-service.ts`
-   - Changes: In `applyConsolidationResults`, compute source fallbacks after loading `existingRecord`/`existingCore` and before validation. Use fallbacks for missing `draftName`, normalized brand, `draftDescription`, `weightValue`, and `draftSearchKeywords`. Do not fill category from marketplace; only preserve existing/trusted category values already present. Store field source attribution under `nextFieldsNested.evidence.field_sources` for any fallback-filled core fields.
-   - Acceptance: A consolidation result missing description/search keywords but with source-backed enriched data passes validation and writes those fields to `consolidated.core`; price/stock/tax/special-order/min-quantity remain untouched.
+5. **Prioritize Phillips PDP enrichment**: Phillips is a login-gated pet distributor and currently enriches description/features/images from PDP but misses many PDP specs.
+   - File: `apps/scraper/scrapers/approved_sources/adapters/phillips.py`
+   - Changes: Extend `_enrich_from_pdp_html()` and search-result candidate parsing to run shared labeled-value/spec parsers. Extract category/breadcrumb, dimensions, case pack/package count, unit of measure, manufacturer number if present, and pet facets inferred from name/description/features/spec labels (`flavor`, `primary_protein`, `life_stage`, `breed_size`, `food_form`, `animal_type`, `diet_type`).
+   - Acceptance: Phillips fixture(s) assert enriched facets for `Fromm Gold Large Breed Dog 30 lb` such as `animal_type=Dog`, `life_stage=Adult` or source-supported equivalent, `breed_size=Large Breed`, and `package_weight`/weight preservation.
 
-6. **Infer Product Details profile in the UI when category is blank**: Show relevant detail fields instead of the `general` profile when populated facets/source evidence indicate a known profile.
-   - File: `apps/web/components/admin/pipeline/reviewing/MerchandisingClassification.tsx`
-   - Changes: Update `resolvedFacetProfile` to use, in order: category facet profile, explicit profile if available in draft sources/consolidated if exposed, populated facet slugs (`food_form`, `primary_protein`, `diet_type`, `animal_type`, etc.), and finally source/text evidence from `formData.sources`. Keep fallback `general` only when no evidence supports a narrower profile.
-   - Acceptance: With blank category but source/draft facets for dog freeze-dried food, Product Details displays `animal_food` facets rather than only general fields.
+6. **Improve Central Pet extraction for categories and missing package/pet fields**: Central Pet already extracts features and dimensions, making it a good next target.
+   - File: `apps/scraper/scrapers/approved_sources/adapters/central_pet.py`
+   - Changes: Extract breadcrumb/category from PDP navigation where available; parse labeled specs for `case_pack`/`package_count`, `unit_of_measure`, ingredients, packaging type, and animal facets. Reuse shared helpers rather than hardcoded one-off selectors.
+   - Acceptance: Central Pet fixtures assert category when present and at least one additional facet beyond existing `features`/`dimensions` for pet product fixtures.
 
-7. **Preserve fallback provenance through finalization saves where possible**: Avoid presenting source/heuristic-filled fields as manual facts unless the admin edits them.
-   - File: `apps/web/lib/pipeline/reviewing-draft.ts`
-   - Changes: If provenance is added to `FinalizationDraft`, include a small optional map (for example `facetEvidence?: Record<string, { evidence_source: string; confidence_score: number }>`). Use it in `buildConsolidatedPayloadFromDraft` for unchanged source-filled facets; continue using `manual` for user-created/edited facets. If this is too invasive, document it as a follow-up and keep current save behavior.
-   - Acceptance: Saved source-backed facets either retain source evidence or the limitation is explicitly covered by tests/follow-up notes; no runtime schema break occurs.
+7. **Improve Orgill extraction for package count and non-pet detail profiles**: Orgill covers hardware/garden/feed categories where dimensions, materials, NPK, and application details matter.
+   - File: `apps/scraper/scrapers/approved_sources/adapters/orgill.py`
+   - Changes: Keep existing category/features/dimensions extraction; add case pack/package count, unit of measure, material, color, size, `npk_ratio`, application method, target pest/weed, grass type, feed type, protein/fat percentages when visible in labeled specs/features. Do not prioritize price/stock.
+   - Acceptance: Orgill fixture assertions cover `category` and at least one profile-specific facet for feed/garden/hardware fixtures when fixture HTML contains it.
 
-8. **Add regression tests for the Amazon blank-field scenario**: Cover the exact failure mode at helper, draft, enrichment, and apply layers.
-   - File: `apps/web/lib/consolidation/__tests__/detail-enrichment.test.ts`
-   - Changes: Add Amazon enriched payload test for nested text/facet/profile extraction.
-   - File: `apps/web/__tests__/lib/pipeline/reviewing-draft.test.ts`
-   - Changes: Add a product with empty `consolidated`/`input` and Amazon-shaped `sources.enriched`/`sources.amazon`; assert draft core fields, images, and facets are populated.
-   - File: `apps/web/__tests__/lib/consolidation/batch-service.test.ts`
-   - Changes: Add an `applyConsolidationResults` test where LLM result omits description/search keywords/weight and source fallback supplies them; assert protected fields are not source-filled.
-   - File: `apps/web/__tests__/lib/consolidation/facet-assembler.test.ts`
-   - Changes: Update/add assertions for source-backed facet evidence and richer consolidated context.
-   - Acceptance: Focused tests pass with `bun run web test -- --testPathPatterns="detail-enrichment|reviewing-draft|batch-service|facet-assembler"`.
+8. **Close Bradley docstring gaps and add categories**: Bradley claims dimensions/ingredients support but currently needs verification and likely selector additions.
+   - File: `apps/scraper/scrapers/approved_sources/adapters/bradley.py`
+   - Changes: Add explicit extraction for dimensions and ingredients from `li`, specs, product detail sections, or labeled rows; add category/breadcrumb extraction; convert BCI/manufacturer/case pack/unit fields into schema-preserved facets or evidence fields via Task 1.
+   - Acceptance: Bradley fixture `bradley_001135` continues passing and asserts category/dimensions/ingredients only when present; partial fixture remains allowed to miss documented fields.
 
-9. **Run focused validation**: Verify no broad pipeline regressions.
-   - File: N/A
-   - Changes: Run focused Jest tests above, then run `bun run web lint` if time permits.
-   - Acceptance: Focused tests pass; lint either passes or any unrelated pre-existing failures are documented.
+9. **Upgrade fixture catalog to assert field/facet coverage quantitatively**: Move tests from “name/brand/image only” toward measurable data completeness.
+   - Files: `apps/scraper/benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json`, `apps/scraper/tests/unit/test_approved_sources_adapter_fixtures.py`
+   - Changes: Add optional fixture keys like `expected_fields`, `expected_facets`, `expected_min_facet_count`, and `expected_absent_fields`. Update tests to validate both raw adapter flat fields and normalized `EnrichedProductFacts` facets through `build_success_result()`.
+   - Acceptance: Each product fixture has an explicit baseline field/facet expectation, and test failures identify the missing adapter/field.
+
+10. **Ensure web-side prompt/fallback code recognizes newly preserved canonical fields**: Scraper facets are only useful if prompt evidence and fallback assembly surface them.
+   - Files: `apps/web/lib/consolidation/prompt-evidence.ts`, `apps/web/lib/consolidation/facet-assembler.ts`, `apps/web/lib/product-source-fallbacks.ts`
+   - Changes: Verify and, if needed, add canonical field names to relevant-field allowlists and legacy-to-canonical mappings: `animal_type`, `breed_size`, `primary_protein`, `diet_type`, `health_focus`, `package_count`, `package_weight`, `packaging_type`, `manufacturer_number`. Keep protected fields excluded.
+   - Acceptance: Existing consolidation tests still pass, and a source fixture containing these fields is included in prompt evidence/fallback facets rather than filtered out.
+
+11. **Add consolidation/detail-enrichment regression tests for source-backed facets**: Prove new scraper fields improve downstream output without extra LLM calls.
+   - Files: `apps/web/lib/consolidation/__tests__/detail-enrichment.test.ts`, optionally `apps/web/lib/consolidation/__tests__/facet-assembler.test.ts`
+   - Changes: Add tests where normalized source data contains facets from distributor adapters and `enrichProductDetails()` prefers structured source values over regex guesses for `animal_type`, `life_stage`, `breed_size`, `food_form`, `primary_protein`, `package_count`, and `dimensions`.
+   - Acceptance: `bun run web test -- --testPathPatterns="detail-enrichment|facet-assembler"` passes.
+
+12. **Run focused validation and record coverage improvement**: Establish before/after metrics for product data completeness.
+   - Files: `apps/scraper/tests/unit/test_approved_sources_adapter_fixtures.py`, optional new `apps/scraper/tests/unit/test_approved_sources_field_coverage.py`
+   - Changes: Add or script a fixture-based coverage summary that reports per-adapter counts for core fields, media, category, and facets. Use it as a non-flaky unit metric, not a live-site dependency.
+   - Acceptance: Focused scraper checks pass: `cd apps/scraper && python -m pytest tests/unit/test_approved_sources_adapter_fixtures.py tests/unit/test_approved_sources_result_builder.py`; report shows increased facet/category coverage for PFE, Phillips, Central Pet, Orgill, and Bradley.
 
 ## Files to Modify
-- `apps/web/lib/pipeline/reviewing-draft.ts` - source fallback usage for initial draft fields/facets/images and optional provenance preservation.
-- `apps/web/lib/consolidation/detail-enrichment.ts` - nested enriched text/facet extraction, profile inference, and expanded claim patterns.
-- `apps/web/lib/consolidation/facet-assembler.ts` - pass description/search keywords and preserve source facet evidence/confidence.
-- `apps/web/lib/consolidation/apply-service.ts` - source-fill missing non-protected core fields before validation/write.
-- `apps/web/components/admin/pipeline/reviewing/MerchandisingClassification.tsx` - infer facet profile when category is blank.
-- `apps/web/lib/consolidation/__tests__/detail-enrichment.test.ts` - nested Amazon regression.
-- `apps/web/__tests__/lib/pipeline/reviewing-draft.test.ts` - draft fallback regression.
-- `apps/web/__tests__/lib/consolidation/batch-service.test.ts` - apply-service fallback regression.
-- `apps/web/__tests__/lib/consolidation/facet-assembler.test.ts` - source facet provenance regression.
+- `apps/scraper/scrapers/ai_search/enrichment_models.py` - preserve canonical and legacy facet fields in `build_nested_product_facts()`.
+- `apps/scraper/scrapers/approved_sources/adapters/base.py` - shared deterministic extraction helpers.
+- `apps/scraper/scrapers/approved_sources/adapters/pet_food_experts.py` - high-priority attribute/facet extraction.
+- `apps/scraper/scrapers/approved_sources/adapters/phillips.py` - high-priority PDP spec/facet extraction.
+- `apps/scraper/scrapers/approved_sources/adapters/central_pet.py` - category/package/ingredient/facet extraction.
+- `apps/scraper/scrapers/approved_sources/adapters/orgill.py` - package and garden/hardware/feed profile facets.
+- `apps/scraper/scrapers/approved_sources/adapters/bradley.py` - category, dimensions, ingredients, and documented spec gaps.
+- `apps/scraper/benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json` - expected field/facet assertions.
+- `apps/scraper/tests/unit/test_approved_sources_adapter_fixtures.py` - fixture coverage assertions and normalized facet assertions.
+- `apps/scraper/tests/unit/test_approved_sources_result_builder.py` - schema mapping and protected-field tests.
+- `apps/web/lib/consolidation/prompt-evidence.ts` - allow newly useful canonical field names in LLM evidence if currently filtered.
+- `apps/web/lib/consolidation/facet-assembler.ts` - ensure legacy/canonical facet mappings are complete.
+- `apps/web/lib/product-source-fallbacks.ts` - ensure source-backed fallback facets traverse new fields.
+- `apps/web/lib/consolidation/__tests__/detail-enrichment.test.ts` - source-backed detail enrichment regression tests.
 
 ## New Files
-- `apps/web/lib/product-source-fallbacks.ts` - shared deterministic source-backed fallback extractor used by review draft, detail enrichment, facet assembly, and apply service.
-- `apps/web/__tests__/lib/product-source-fallbacks.test.ts` - focused unit tests for source traversal, trust/confidence, protected-field exclusion, and Amazon-shaped fallback extraction.
+- `apps/scraper/tests/unit/test_approved_sources_field_coverage.py` - optional coverage/metrics test for per-adapter extracted core/category/facet counts; create only if extending `test_approved_sources_adapter_fixtures.py` becomes too large.
 
 ## Dependencies
-- Task 1 must be completed before Tasks 2, 3, 4, and 5.
-- Task 3 should be completed before Task 6 so the UI can rely on populated/inferred detail facets.
-- Task 4 depends on Tasks 1 and 3 for source-backed facet candidates and richer enrichment.
-- Task 5 depends on Task 1 for core fallback candidates.
-- Tests in Task 8 depend on the implementation tasks they cover.
+- Tasks 1 and 2 must happen before adapter field additions, otherwise new flat fields may be ignored downstream.
+- Task 3 should happen before Tasks 4-8 to avoid duplicated selector/regex logic.
+- Tasks 4-8 can run independently after Tasks 1-3, with PFE and Phillips first for highest pet-facet impact.
+- Task 9 depends on adapter changes and result-builder normalization.
+- Tasks 10-11 depend on knowing the final field names emitted by Tasks 1 and 4-8.
+- Task 12 depends on all implementation and test tasks.
 
 ## Risks
-- Category inference is risky; do not write marketplace-inferred categories to `consolidated.core.canonical_category_breadcrumb`. Only infer `facetProfile`/detail visibility from source evidence.
-- Recursive source traversal can pick up noisy text if too broad; keep an allowlist of keys and a depth/length cap.
-- Search keyword generation can become hallucination-prone; derive only from source-backed name/brand/facet values and skip if no evidence tokens exist.
-- Adding fields to `FinalizationDraft` can affect client state, schema validation, and dirty tracking; keep optional and backward-compatible.
-- Existing reviewing rows will benefit from draft fallback immediately, but rows already saved after manual edits may still need careful merge behavior.
-- `sources.enriched` must not be treated as trusted solely because of the key name; trust should be based on `active_source_slug`, `source_slug`, `source_type`, or source result metadata, with Amazon/marketplace capped.
+- The supplied current-field matrix is partially stale: current code already extracts some fields listed as missing (for example Orgill category/features and PFE ingredients/features). Implementers should verify actual fixture/live HTML before changing selectors.
+- Distributor HTML can differ between PLP/search pages and authenticated PDP pages; fixture coverage must include PDP HTML for auth-gated sites or tests will understate available fields.
+- Some protected fields (`stock_status`, `availability`, `minimum_quantity`, `is_special_order`, `is_taxable`) are intentionally excluded downstream. Do not optimize for them unless the product requirement changes.
+- Adding canonical facet keys without updating result normalization will create false confidence: adapters can emit fields that never reach consolidation.
+- Category breadcrumbs from distributors may not match internal taxonomy. Store raw breadcrumbs as source evidence; let existing consolidation/taxonomy validation resolve canonical categories.
+- Regex-derived pet facets can be wrong for non-pet products. Use profile-neutral extraction only when source labels are explicit; otherwise keep heuristics conservative and backed by tests.

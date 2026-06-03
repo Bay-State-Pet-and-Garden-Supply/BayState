@@ -189,6 +189,233 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         """
         return list(urls)
 
+    # ------------------------------------------------------------------
+    # Shared deterministic extraction helpers
+    # ------------------------------------------------------------------
+
+    def _extract_labeled_value(
+        self,
+        html: str,
+        labels: list[str],
+        *,
+        soup: Any = None,
+        separator: str = r"\s*:?\s*",
+    ) -> str | None:
+        """Extract a value following a label from HTML.
+
+        Supports dt/dd pairs, table rows (th/td), li text, and free-text regex.
+        Labels are tried in order. Returns the first match found.
+
+        Args:
+            html: Raw HTML string (used for regex fallback).
+            labels: Label strings to search for (e.g. ["Flavor", "Flavour"]).
+            soup: Optional BeautifulSoup object (avoids re-parsing).
+            separator: Regex between label and value.
+        """
+        try:
+            from bs4 import BeautifulSoup
+        except ImportError:
+            return None
+
+        if soup is None:
+            soup = BeautifulSoup(html, "html.parser")
+
+        for label in labels:
+            # dt/dd pairs
+            for dt in soup.select("dt"):
+                if label.lower() in dt.get_text(strip=True).lower():
+                    dd = dt.find_next("dd")
+                    if dd:
+                        val = dd.get_text(strip=True)
+                        if val:
+                            return val
+
+            # th/td table rows
+            for row in soup.select("tr"):
+                th = row.select_one("th")
+                if th and label.lower() in th.get_text(strip=True).lower():
+                    td = row.select_one("td")
+                    if td:
+                        val = td.get_text(strip=True)
+                        if val:
+                            return val
+
+            # li elements containing the label
+            for li in soup.select("li"):
+                text = li.get_text(" ", strip=True)
+                if label.lower() in text.lower():
+                    val = re.sub(rf"^.*?{re.escape(label)}{separator}", "", text, flags=re.IGNORECASE).strip()
+                    if val and val != text:
+                        return val
+
+            # data-test-selector containers
+            for elem in soup.select(f"[data-test-selector*='{label.lower().replace(' ', '-')}']"):
+                val = elem.get_text(strip=True)
+                if val:
+                    return val
+
+        # Free-text regex fallback
+        text = soup.get_text(" ", strip=True)
+        for label in labels:
+            pattern = rf"{re.escape(label)}{separator}(.+?)(?:\n|\s{{2,}}|$)"
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                val = match.group(1).strip()
+                if val:
+                    return val
+
+        return None
+
+    def _extract_breadcrumb(self, soup: Any) -> str | None:
+        """Extract category breadcrumb from navigation elements.
+
+        Looks for common breadcrumb patterns:
+        - ol[aria-label='Breadcrumb'] li
+        - nav[aria-label='Breadcrumb'] a
+        - .breadcrumb, .breadcrumbs li/a
+        - Schema.org BreadcrumbList
+
+        Returns a ">" delimited breadcrumb string.
+        """
+        selectors = [
+            "ol[aria-label='Breadcrumb'] li",
+            "nav[aria-label='Breadcrumb'] a",
+            ".breadcrumb li",
+            ".breadcrumbs li",
+            ".breadcrumb a",
+            ".breadcrumbs a",
+            "[itemtype='http://schema.org/BreadcrumbList'] [itemprop='itemListElement'] [itemprop='name']",
+        ]
+
+        for selector in selectors:
+            items = soup.select(selector)
+            if items:
+                crumbs = []
+                for item in items:
+                    text = item.get("content") or item.get_text(strip=True)
+                    if text and text.lower() not in ("home", "products", "catalog"):
+                        crumbs.append(text)
+                if crumbs:
+                    return " > ".join(crumbs)
+
+        return None
+
+    @staticmethod
+    def _normalize_image_url(src: str, base_url: str = "") -> str:
+        """Normalize an image URL: handle protocol-relative and domain-relative."""
+        if not src:
+            return ""
+        if src.startswith("//"):
+            return "https:" + src
+        if src.startswith("/"):
+            from urllib.parse import urljoin
+            return urljoin(base_url, src)
+        return src
+
+    def _extract_textual_facets(
+        self,
+        text: str,
+        *,
+        animal_type_hints: list[str] | None = None,
+        life_stage_hints: list[str] | None = None,
+        breed_size_hints: list[str] | None = None,
+        food_form_hints: list[str] | None = None,
+        flavor_hints: list[str] | None = None,
+        diet_hints: list[str] | None = None,
+        health_hints: list[str] | None = None,
+    ) -> dict[str, str]:
+        """Extract pet product facets from free text using keyword matching.
+
+        Conservative heuristics: only assigns facets when explicit keywords
+        are present. Meant as a fallback when labeled extraction fails.
+
+        Returns a dict of facet_key → value for matched facets.
+        """
+        facets: dict[str, str] = {}
+        text_lower = text.lower()
+
+        animal_patterns = animal_type_hints or [
+            r"\b(dog|cat|horse|cattle|chicken|bird|fish|rabbit|reptile|small animal|guinea pig|hamster)s?\b",
+        ]
+        for pattern in animal_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                animal = match.group(1).strip()
+                if animal == "cat":
+                    animal = "Cat"
+                elif animal == "dog":
+                    animal = "Dog"
+                elif animal in ("bird", "birds"):
+                    animal = "Bird"
+                elif animal in ("fish", "fishes"):
+                    animal = "Fish"
+                else:
+                    animal = animal.title()
+                facets["animal_type"] = animal
+                break
+
+        life_stage_patterns = life_stage_hints or [
+            r"\b(puppy|kitten|adult|senior|all life stages|junior)\b",
+        ]
+        for pattern in life_stage_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                stage = match.group(1).strip().title()
+                facets["life_stage"] = stage
+                break
+
+        breed_size_patterns = breed_size_hints or [
+            r"\b(small breed|medium breed|large breed|giant breed|toy breed)\b",
+        ]
+        for pattern in breed_size_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                size = match.group(1).strip().title()
+                facets["breed_size"] = size
+                break
+
+        food_form_patterns = food_form_hints or [
+            r"\b(dry food|wet food|canned|kibble|raw|freeze.?dried|dehydrated|pellet|pate|stew|gravy|chunks? in gravy|flaked|shredded)\b",
+        ]
+        for pattern in food_form_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                form = match.group(1).strip().title()
+                facets["food_form"] = form
+                break
+
+        flavor_patterns = flavor_hints or [
+            r"\b(chicken|beef|salmon|turkey|lamb|duck|venison|bison|rabbit|pork|whitefish|trout|tuna|ocean fish|herring|sardine|quail)\b",
+        ]
+        for pattern in flavor_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                flavor = match.group(1).strip().title()
+                facets["flavor"] = flavor
+                break
+
+        diet_patterns = diet_hints or [
+            r"\b(grain.?free|gluten.?free|limited ingredient|grain.?inclusive|high.?protein|weight (control|management)|sensitive (stomach|digestion|skin))\b",
+        ]
+        for pattern in diet_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                diet = match.group(1).strip().title()
+                facets["diet_type"] = diet
+                break
+
+        health_patterns = health_hints or [
+            r"\b(hip \&? ?joint|dental|skin \&? ?coat|digestive|immune|urinary|mobility|heart( health)?|brain|cognitive)\b",
+        ]
+        for pattern in health_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                health = match.group(1).strip().title()
+                facets["health_focus"] = health
+                break
+
+        return facets
+
     def check_credentials(
         self, api_client: Any | None
     ) -> tuple[bool, str | None]:

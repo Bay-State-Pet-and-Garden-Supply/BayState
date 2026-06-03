@@ -26,6 +26,7 @@ from scrapers.approved_sources.types import (
     ApprovedSourcePolicy,
     ApprovedSourceBrand,
 )
+from scrapers.approved_sources.result_builder import build_success_result
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "benchmarks" / "approved_sources" / "fixtures"
 HTML_DIR = FIXTURES_DIR / "html"
@@ -152,6 +153,95 @@ def test_product_fixture_extraction(fixture_key: str) -> None:
 
     # Verify confidence is set
     assert result.confidence > 0, "Confidence should be > 0 for successful extraction"
+
+    # Check expected_fields from catalog
+    expected_fields = catalog.get("expected_fields")
+    if expected_fields:
+        for field in expected_fields:
+            assert field in product, \
+                f"Expected field '{field}' in result for {fixture_key}, but not found. Available fields: {list(product.keys())}"
+
+    # Check expected_facets from catalog (via build_success_result normalization)
+    expected_facets = catalog.get("expected_facets")
+    if expected_facets:
+        enrichment_plan = _make_minimal_plan(upc=expected_upc)
+        enrichment_entry = _make_entry(adapter_slug, source_slug)
+        enrichment_adapter = adapter_cls(enrichment_entry, enrichment_plan)
+        enrichment_result = enrichment_adapter.extract_from_html(html, expected_upc, "https://fixture.local/product")
+        assert enrichment_result is not None and enrichment_result.success
+
+        # Normalize through EnrichedProductFacts
+        epf_result = build_success_result(
+            upc=expected_upc,
+            source_slug=source_slug,
+            source_type="distributor",
+            evidence_url="https://fixture.local/product",
+            product_fields=enrichment_result.product,
+            matched_fields=enrichment_result.matched_fields or list(enrichment_result.product.keys()),
+            overall_confidence=1.0,
+        )
+
+        if epf_result.product and epf_result.product.facets:
+            facet_slugs = {f.definition_slug for f in epf_result.product.facets}
+            for facet_slug in expected_facets:
+                assert facet_slug in facet_slugs, \
+                    f"Expected facet '{facet_slug}' for {fixture_key}, but not found. Available facets: {facet_slugs}"
+
+
+@pytest.mark.parametrize(
+    "fixture_key",
+    [k for k, v in FIXTURE_CATALOG["fixtures"].items() if v.get("fixture_type") == "product"],
+    ids=lambda k: k,
+)
+def test_fixture_facet_coverage(fixture_key: str) -> None:
+    """Test that product fixture facets survive build_success_result normalization.
+
+    For each product fixture, extracts via adapter, runs through
+    build_success_result to normalize into EnrichedProductFacts, and
+    verifies that expected_facets from the catalog appear in the
+    result's facets. Skips when catalog has no expected_facets.
+    """
+    catalog = FIXTURE_CATALOG["fixtures"][fixture_key]
+    expected_facets = catalog.get("expected_facets")
+    if not expected_facets:
+        pytest.skip(f"No expected_facets defined for {fixture_key}")
+
+    fixture_path = catalog["fixture_path"]
+    adapter_slug = catalog["adapter_slug"]
+    source_slug = ADAPTER_TO_SOURCE.get(adapter_slug, adapter_slug.split("_crawl4ai")[0])
+
+    html = _read_fixture_html(fixture_path)
+
+    adapter_cls = get_adapter_class(adapter_slug)
+    assert adapter_cls is not None
+
+    expected_upc = catalog.get("expected_upc") or catalog.get("expected_sku")
+    plan = _make_minimal_plan(upc=expected_upc)
+    entry = _make_entry(adapter_slug, source_slug)
+    adapter = adapter_cls(entry, plan)
+
+    result = adapter.extract_from_html(html, expected_upc, "https://fixture.local/product")
+    assert result is not None and result.success, \
+        f"Adapter extraction failed for {fixture_key}: {result.failure_message if result else 'None'}"
+
+    # Normalize through EnrichedProductFacts
+    epf_result = build_success_result(
+        upc=expected_upc,
+        source_slug=source_slug,
+        source_type="distributor",
+        evidence_url="https://fixture.local/product",
+        product_fields=result.product,
+        matched_fields=result.matched_fields or list(result.product.keys()),
+        overall_confidence=1.0,
+    )
+
+    assert epf_result is not None
+    assert epf_result.product is not None, f"build_success_result returned no product for {fixture_key}"
+
+    facet_slugs = {f.definition_slug for f in epf_result.product.facets}
+    for facet_slug in expected_facets:
+        assert facet_slug in facet_slugs, \
+            f"Expected facet '{facet_slug}' for {fixture_key}, but not found in normalized result. Available facets: {facet_slugs}"
 
 
 @pytest.mark.parametrize(

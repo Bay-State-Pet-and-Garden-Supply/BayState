@@ -241,6 +241,40 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
             product["brand"] = brand_match.group(1).strip()
             matched.append("brand")
 
+        # --- Extract pet product facets from Attributes ---
+        # The attributes block contains labeled fields:
+        #   Flavor: <value>\nAnimal: <value>\nDiet: <value>...
+        facet_label_map = {
+            "animal": {r"Animal:\s*(.+?)(?=\s+(?:Flavor|Diet|Food Form|Ingredients|Protein|Weight|Breed Size|Life Stage|Brand):|$)": "animal_type"},
+            "life_stage": {r"Life Stage:\s*(.+?)(?=\s+(?:Flavor|Animal|Diet|Food Form|Ingredients|Protein|Weight|Breed Size|Brand):|$)": "life_stage"},
+            "breed_size": {r"Breed Size:\s*(.+?)(?=\s+(?:Flavor|Animal|Diet|Food Form|Ingredients|Protein|Weight|Life Stage|Brand):|$)": "breed_size"},
+            "food_form": {r"Food Form:\s*(.+?)(?=\s+(?:Flavor|Animal|Diet|Ingredients|Protein|Weight|Breed Size|Life Stage|Brand):|$)": "food_form"},
+            "flavor": {r"Flavor:\s*(.+?)(?=\s+(?:Animal|Diet|Food Form|Ingredients|Protein|Weight|Breed Size|Life Stage|Brand):|$)": "flavor"},
+            "primary_protein": {r"Protein:\s*(.+?)(?=\s+(?:Flavor|Animal|Diet|Food Form|Ingredients|Weight|Breed Size|Life Stage|Brand):|$)": "primary_protein"},
+            "diet_type": {r"Diet:\s*(.+?)(?=\s+(?:Flavor|Animal|Food Form|Ingredients|Protein|Weight|Breed Size|Life Stage|Brand):|$)": "diet_type"},
+        }
+        for facet_key, patterns in facet_label_map.items():
+            for pattern, canonical_name in patterns.items():
+                match = re.search(pattern, attrs_text, re.IGNORECASE)
+                if match:
+                    val = match.group(1).strip()
+                    if val and val.lower() not in ("n/a", "none", ""):
+                        product[canonical_name] = val
+                        matched.append(canonical_name)
+                    break
+
+        # --- Extract Weight from spec or attributes ---
+        if not product.get("weight") or product.get("weight") == product.get("package_weight"):
+            weight_match = re.search(
+                r"Weight:\s*(.+?)(?=\s+(?:Flavor|Animal|Diet|Food Form|Ingredients|Protein|Breed Size|Life Stage|Brand):|$)",
+                attrs_text, re.IGNORECASE
+            )
+            if weight_match:
+                weight_val = weight_match.group(1).strip()
+                product["weight"] = weight_val
+                if "weight" not in matched:
+                    matched.append("weight")
+
         # --- Extract Item Number from Product Meta ---
         item_match = re.search(r"Item #\s*([A-Z0-9-]+)", meta_text)
         if item_match:
@@ -358,6 +392,28 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
                 product["ingredients"] = itext
                 matched.append("ingredients")
 
+        # --- Stock Status ---
+        stock_elem = soup.select_one(
+            "[data-test-selector='productDetails_availability'], "
+            ".product-availability, "
+            ".stock-status"
+        )
+        if stock_elem:
+            stock_text = stock_elem.get_text(strip=True)
+            if stock_text:
+                product["stock_status"] = stock_text
+                matched.append("stock_status")
+        elif soup.select_one("[data-test-selector='addToCartButton']"):
+            # If add-to-cart button is visible, assume in stock
+            product["stock_status"] = "In Stock"
+            matched.append("stock_status")
+
+        # --- Category / Breadcrumb ---
+        breadcrumb = self._extract_breadcrumb(soup)
+        if breadcrumb:
+            product["category"] = breadcrumb
+            matched.append("category")
+
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
@@ -405,6 +461,15 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         confidence = len(found_required) / len(required) if required else 0.5
         bonus = min(len(matched) / 10, 0.3)
         confidence = min(confidence + bonus, 1.0)
+
+        # --- Textual facet fallback for missing attributes ---
+        if product.get("name"):
+            name_desc = f"{product.get('name', '')} {product.get('description', '')}"
+            text_facets = self._extract_textual_facets(name_desc)
+            for key, value in text_facets.items():
+                if key not in product:
+                    product[key] = value
+                    matched.append(key)
 
         result.success = True
         result.product = product
