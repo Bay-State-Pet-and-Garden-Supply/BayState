@@ -1297,3 +1297,292 @@ class ExtractionUtils:
         best = dict(candidates[0])
         best.pop("_score", None)
         return best
+
+    # Microdata tag-name pattern: captures names of HTML elements and closing tags
+    _MICRODATA_TAG_PATTERN = re.compile(r'</?([a-zA-Z][a-zA-Z0-9]*)\b', flags=re.IGNORECASE)
+    _MICRODATA_PRODUCT_TYPE = re.compile(
+        r'<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*itemtype=["\'](?:https?://)?schema\.org/Product["\'][^>]*>',
+        flags=re.IGNORECASE,
+    )
+
+    @classmethod
+    def _extract_microdata_scope(cls, html_text: str, start_pos: int, tag_name: str) -> str:
+        """Extract the full HTML of an itemscope element by tracking tag-nesting depth.
+
+        Starts just after the opening tag at ``start_pos`` and walks forward
+        counting ``<tag_name`` opens vs ``</tag_name>`` closes until the
+        matching close is found.  Self-closing tags (<tag ... />) count as
+        one open + one close.
+        """
+        depth = 1
+        pos = start_pos
+        tag_lower = tag_name.lower()
+        # Avoid matching shorter tag names by accident (e.g. <div> vs <divider>)
+        open_re = re.compile(rf'<{re.escape(tag_name)}\b', flags=re.IGNORECASE)
+        close_re = re.compile(rf'</{re.escape(tag_name)}\b', flags=re.IGNORECASE)
+        self_close_re = re.compile(rf'<{re.escape(tag_name)}\b[^>]*/>', flags=re.IGNORECASE)
+
+        while depth > 0 and pos < len(html_text):
+            next_open = open_re.search(html_text, pos)
+            next_close = close_re.search(html_text, pos)
+            next_self_close = self_close_re.search(html_text, pos)
+
+            # Choose the earliest match
+            candidates: list[tuple[int, int]] = []
+            if next_open:
+                candidates.append((next_open.start(), 1))   # open
+            if next_close:
+                candidates.append((next_close.start(), -1))  # close
+            if next_self_close:
+                candidates.append((next_self_close.start(), 0))  # self-close (net zero)
+
+            if not candidates:
+                break  # No more matches — return what we have
+
+            candidates.sort(key=lambda x: x[0])
+            match_pos, delta = candidates[0]
+
+            if delta == 0:
+                # Self-closing: depth unchanged, advance past it
+                pos = match_pos + len(next_self_close.group(0)) if next_self_close else match_pos + 1
+            elif delta == 1:
+                depth += 1
+                pos = match_pos + len(next_open.group(0)) if next_open else match_pos + 1
+            else:
+                depth -= 1
+                pos = next_close.end() if next_close else match_pos + 1
+
+        return html_text[start_pos:pos]
+
+    def extract_product_from_html_microdata(
+        self,
+        html_text: str,
+        source_url: str,
+        upc: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        matching_utils,
+    ) -> Optional[dict[str, Any]]:
+        """Extract product data from Schema.org microdata (itemscope/itemtype).
+
+        Complements JSON-LD parsing for sites that use microdata instead of
+        JSON-LD.  Handles nested itemscope elements correctly by tracking
+        tag-nesting depth.
+
+        Returns None when no Product microdata is found or extraction fails.
+        """
+        if not isinstance(html_text, str) or not html_text.strip():
+            return None
+
+        # ---- Locate Product itemscope elements ----
+        product_scopes: list[tuple[int, int, str, str]] = []
+        # (start, end, tag_name, full_scope_html)
+
+        for match in self._MICRODATA_PRODUCT_TYPE.finditer(html_text):
+            tag_name = match.group(1)
+            # match.start() is the start of the opening tag;
+            # match.end() is right after the closing > of the opening tag
+            scope_start = match.end()
+            scope_html_body = self._extract_microdata_scope(html_text, scope_start, tag_name)
+            # Reconstruct full element including opening tag for attribute lookups
+            full_scope = html_text[match.start():scope_start] + scope_html_body
+            product_scopes.append((match.start(), scope_start + len(scope_html_body), tag_name, full_scope))
+
+        # Extract the text content of an itemprop element, handling nested tags
+        # by tracking tag-nesting depth so we find the matching close.
+        def _itemprop_text(scope: str, prop: str) -> str:
+            open_m = re.search(
+                rf'<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*itemprop=["\']{re.escape(prop)}["\'][^>]*>',
+                scope, flags=re.IGNORECASE,
+            )
+            if not open_m:
+                return ""
+            tag_name = open_m.group(1)
+            body_start = open_m.end()
+            depth = 1
+            pos = body_start
+            open_re = re.compile(rf'<{re.escape(tag_name)}\b', flags=re.IGNORECASE)
+            close_re = re.compile(rf'</{re.escape(tag_name)}\b', flags=re.IGNORECASE)
+            while depth > 0 and pos < len(scope):
+                no = open_re.search(scope, pos)
+                nc = close_re.search(scope, pos)
+                if nc is None:
+                    break
+                if no and no.start() < nc.start():
+                    depth += 1
+                    pos = no.end()
+                else:
+                    depth -= 1
+                    if depth == 0:
+                        return scope[body_start:nc.start()]
+                    pos = nc.end()
+            return ""
+
+        # Extract the raw HTML subtree of an itemprop element (for nested itemscope
+        # lookups like itemprop="brand" containing itemprop="name").
+        def _itemprop_subtree(scope: str, prop: str) -> str:
+            open_m = re.search(
+                rf'<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*itemprop=["\']{re.escape(prop)}["\'][^>]*>',
+                scope, flags=re.IGNORECASE,
+            )
+            if not open_m:
+                return ""
+            tag_name = open_m.group(1)
+            body_start = open_m.end()
+            depth = 1
+            pos = body_start
+            open_re = re.compile(rf'<{re.escape(tag_name)}\b', flags=re.IGNORECASE)
+            close_re = re.compile(rf'</{re.escape(tag_name)}\b', flags=re.IGNORECASE)
+            while depth > 0 and pos < len(scope):
+                no = open_re.search(scope, pos)
+                nc = close_re.search(scope, pos)
+                if nc is None:
+                    break
+                if no and no.start() < nc.start():
+                    depth += 1
+                    pos = no.end()
+                else:
+                    depth -= 1
+                    if depth == 0:
+                        return scope[open_m.start():nc.end()]
+                    pos = nc.end()
+            return ""
+
+        def _itemprop_attr(scope: str, prop: str, attr: str) -> Optional[str]:
+            m = re.search(
+                rf'<[^>]*itemprop=["\']{re.escape(prop)}["\'][^>]+{re.escape(attr)}=["\']([^"\']+)["\']',
+                scope, flags=re.IGNORECASE,
+            )
+            return m.group(1) if m else None
+
+        def _itemprop_content(scope: str, prop: str) -> Optional[str]:
+            return _itemprop_attr(scope, prop, "content")
+
+        def _itemprop_src(scope: str, prop: str) -> Optional[str]:
+            return _itemprop_attr(scope, prop, "src")
+
+        def _itemprop_href(scope: str, prop: str) -> Optional[str]:
+            return _itemprop_attr(scope, prop, "href")
+
+        candidates: list[dict[str, Any]] = []
+        for _, _, _, scope_html in product_scopes:
+            if not scope_html or not scope_html.strip():
+                continue
+
+            # ---- itemprop="name" ----
+            name_raw = _itemprop_text(scope_html, "name")
+            name_value = self.normalize_product_title(name_raw)
+            if not name_value:
+                continue
+
+            # ---- itemprop="brand" ----
+            brand_value = ""
+            # Check content attribute first (e.g. <meta itemprop="brand" content="Acme">)
+            brand_content = _itemprop_content(scope_html, "brand")
+            if brand_content:
+                brand_value = self.clean_text(brand_content)
+            if not brand_value:
+                # Brand may be inline text or in a nested itemscope:
+                # <div itemprop="brand">Acme</div>
+                # <div itemprop="brand" itemscope><span itemprop="name">Acme</span></div>
+                brand_subtree = _itemprop_subtree(scope_html, "brand")
+                if brand_subtree:
+                    # First try to find itemprop="name" within the brand subtree
+                    inner_name = _itemprop_text(brand_subtree, "name")
+                    if inner_name:
+                        brand_value = self.clean_text(inner_name)
+                    else:
+                        # Fall back to the direct text within the brand element
+                        brand_value = self.clean_text(_itemprop_text(scope_html, "brand"))
+
+            # ---- itemprop="description" ----
+            desc_raw = _itemprop_text(scope_html, "description")
+            description_value = self.clean_description_text(desc_raw) if desc_raw else ""
+
+            # ---- itemprop="image" ----
+            image_value: str | None = None
+            for extractor in (_itemprop_content, _itemprop_src, _itemprop_href):
+                image_value = extractor(scope_html, "image")
+                if image_value:
+                    break
+
+            # ---- Validation: name match against expected product ----
+            if product_name and not matching_utils.is_contextual_product_name_match(
+                product_name, name_value, brand, source_url
+            ):
+                continue
+
+            resolved_brand = self.infer_brand(
+                explicit_brand=brand_value or brand,
+                candidate_name=name_value,
+                description=description_value,
+                source_url=source_url,
+                expected_name=product_name,
+            )
+
+            if brand and not matching_utils.is_brand_match(brand, resolved_brand or name_value, source_url):
+                continue
+
+            images = self.normalize_images([image_value], source_url) if image_value else []
+            if not images:
+                continue
+
+            categories = self.infer_categories(
+                html_text=html_text,
+                source_url=source_url,
+                candidate_name=name_value,
+                expected_name=product_name,
+                explicit_brand=resolved_brand or brand,
+            )
+            size_source = f"{name_value} {self.strip_instructional_copy(description_value)}"
+            size_metrics = self.extract_size_metrics(size_source)
+
+            # ---- Scoring ----
+            score = 0.0
+            combined = f"{name_value} {description_value} {scope_html[:500]}".lower()
+            if upc and upc.lower() in combined:
+                score += 4.0
+            if brand and matching_utils.is_brand_match(brand, resolved_brand, source_url):
+                score += 3.0
+            if product_name and matching_utils.is_name_match(product_name, name_value):
+                score += 3.0
+            if categories:
+                score += 1.0
+
+            filled_fields = sum(
+                1
+                for value in [
+                    name_value,
+                    resolved_brand,
+                    description_value,
+                    size_metrics,
+                    images,
+                    categories,
+                ]
+                if value
+            )
+            confidence = max(0.55, min(0.98, (filled_fields / 6.0) + (score / 12.0)))
+
+            candidates.append(
+                {
+                    "success": True,
+                    "product_name": name_value,
+                    "brand": resolved_brand or "",
+                    "description": description_value,
+                    "size_metrics": size_metrics,
+                    "images": images,
+                    "categories": categories,
+                    "confidence": confidence,
+                    "url": source_url,
+                    "source": "microdata",
+                    "_score": score,
+                }
+            )
+
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda c: float(c.get("_score", 0)), reverse=True)
+        best = dict(candidates[0])
+        best.pop("_score", None)
+        return best

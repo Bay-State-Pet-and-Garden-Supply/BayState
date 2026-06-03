@@ -161,8 +161,12 @@ OUTPUT
 - If a text field cannot be verified, return an empty string.
 - If a list field cannot be verified, return []."""
 
-def build_extraction_instruction(upc: str, brand: Optional[str], product_name: Optional[str], prompt_version: str = "v1") -> str:
-    """Build the LLM extraction instruction."""
+def build_extraction_instruction(upc: str, brand: Optional[str], product_name: Optional[str], prompt_version: str = "v5") -> str:
+    """Build the LLM extraction instruction.
+
+    Defaults to v5 (full schema with optional fields) for new jobs.
+    v1-v4 are available for backward compatibility.
+    """
     prompt_template = load_prompt_from_file(prompt_version)
 
     if prompt_template is None:

@@ -36,26 +36,24 @@ class TestCrawl4AIExtractorOptimization:
         # Mock dependencies
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": "",
-                "fit_markdown": "",
-                "raw_markdown": "",
-                "markdown": "",
-            },
-            {
-                "success": True,
-                "extracted_content": '[{"name": "Test Product"}]',
-            },
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "",
+            "fit_markdown": "",
+            "raw_markdown": "",
+            "markdown": "product markdown content",
+            "media": {},
+        }
         
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True) as mock_strategy_cls,
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
         ):
+            mock_to_thread.return_value = '[{"name": "Test Product", "product_name": "Test Product", "brand": "Test Brand", "description": "Desc", "size_metrics": "12 oz", "images": [], "categories": ["Cat1"]}]'
+            
             # We need to simulate the engine's context manager
             mock_engine.__aenter__.return_value = mock_engine
             
@@ -65,10 +63,15 @@ class TestCrawl4AIExtractorOptimization:
             assert mock_strategy_cls.called
             _, kwargs = mock_strategy_cls.call_args
             
-            # These should fail initially (Red Phase)
+            # Verify optimized parameters
             assert kwargs.get("input_format") == "fit_markdown"
-            assert kwargs.get("chunk_token_threshold") == 4000
-            assert kwargs.get("overlap_rate") == 0.1
+            assert kwargs.get("chunk_token_threshold") == 12000
+            assert kwargs.get("overlap_rate") == 0.15
+            
+            # Verify extra_args
+            extra_args = kwargs.get("extra_args", {})
+            assert extra_args.get("max_tokens") == 4000
+            assert extra_args.get("temperature") == 0.01
 
     @pytest.mark.asyncio
     async def test_extract_relaxes_wait_strategy_after_timeout(self, extractor):
@@ -135,38 +138,22 @@ class TestCrawl4AIExtractorOptimization:
             assert result == {"success": False, "error": "fallback"}
 
     @pytest.mark.asyncio
-    async def test_extract_bypasses_cache_for_second_pass(self, extractor):
-        """Second-pass extraction must bypass the first crawl's cached response."""
+    async def test_extract_runs_llm_directly_on_markdown_no_second_navigation(self, extractor):
+        """Second-pass LLM extraction should run on already-fetched markdown, not re-navigate."""
         url = "https://example.com/p/123"
         upc= "SKU123"
-        observed_cache_modes = []
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
 
         async def fake_crawl(_url):
-            observed_cache_modes.append(mock_engine.config["crawler"]["cache_mode"])
-            if len(observed_cache_modes) == 1:
-                return {
-                    "success": True,
-                    "html": "<html><body>product</body></html>",
-                    "fit_markdown": "product markdown",
-                    "raw_markdown": "product markdown",
-                    "markdown": "product markdown",
-                }
             return {
                 "success": True,
-                "html": "<html></html>",
-                "extracted_content": [
-                    {
-                        "product_name": "Test Product",
-                        "brand": "Test Brand",
-                        "description": "Structured payload",
-                        "size_metrics": "12 oz",
-                        "images": ["https://example.com/image.jpg"],
-                        "categories": ["Garden Supplies"],
-                    }
-                ],
+                "html": "<html><body>product</body></html>",
+                "fit_markdown": "product markdown",
+                "raw_markdown": "product markdown",
+                "markdown": "product markdown",
+                "media": {"images": [{"src": "https://example.com/img.jpg", "width": 800}]},
             }
 
         mock_engine.crawl.side_effect = fake_crawl
@@ -175,11 +162,22 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.config = config
             return mock_engine
 
+        observed_markdown = None
+        observed_fn = None
+        observed_args = None
+
+        async def fake_to_thread(fn, *args):
+            nonlocal observed_fn, observed_args
+            observed_fn = fn
+            observed_args = args
+            return '[{"product_name": "Test", "brand": "Test", "description": "Desc", "size_metrics": "12 oz", "images": [], "categories": ["Cat"]}]'
+
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", side_effect=build_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", side_effect=fake_to_thread),
             patch.object(extractor._extraction, "extract_product_from_html_jsonld", return_value=None),
             patch("scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags", return_value=None),
         ):
@@ -189,71 +187,82 @@ class TestCrawl4AIExtractorOptimization:
 
             assert result is not None
             assert result["success"] is True
-            assert observed_cache_modes == ["ENABLED", "BYPASS"]
+            # Only ONE browser navigation should occur
+            assert mock_engine.crawl.await_count == 1
+            # The LLM extraction function (strategy.extract) should be passed to
+            # asyncio.to_thread with url and markdown as arguments
+            assert observed_fn is not None
+            assert observed_args == (url, 0, "product markdown")
 
     @pytest.mark.asyncio
-    async def test_extract_relaxes_wait_strategy_for_second_pass_after_timeout(self, extractor):
-        """LLM second pass should retry with domcontentloaded after a navigation timeout."""
+    async def test_extract_falls_back_when_no_markdown_for_llm(self, extractor):
+        """When first crawl returns no markdown, LLM should use fallback extractor."""
         url = "https://example.com/p/123"
         upc= "SKU123"
-        observed_wait_modes = []
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-
-        async def fake_crawl(_url):
-            observed_wait_modes.append(mock_engine.config["crawler"]["wait_until"])
-            if len(observed_wait_modes) == 1:
-                return {
-                    "success": True,
-                    "html": "<html><body>product</body></html>",
-                    "fit_markdown": "product markdown",
-                    "raw_markdown": "product markdown",
-                    "markdown": "product markdown",
-                }
-            if len(observed_wait_modes) == 2:
-                return {
-                    "success": False,
-                    "error": 'Page.goto: Timeout 30000ms exceeded while waiting until "networkidle"',
-                    "html": "",
-                    "markdown": "",
-                }
-            return {
-                "success": True,
-                "html": "<html></html>",
-                "extracted_content": [
-                    {
-                        "product_name": "Test Product",
-                        "brand": "Test Brand",
-                        "description": "Structured payload",
-                        "size_metrics": "12 oz",
-                        "images": ["https://example.com/image.jpg"],
-                        "categories": ["Garden Supplies"],
-                    }
-                ],
-            }
-
-        mock_engine.crawl.side_effect = fake_crawl
-
-        def build_engine(config):
-            mock_engine.config = config
-            return mock_engine
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "",
+            "fit_markdown": "",
+            "raw_markdown": "",
+            "markdown": "",
+            "media": {},
+        }
 
         with (
-            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", side_effect=build_engine),
-            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
-            patch("crawl4ai.LLMConfig", create=True),
-            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch.object(extractor._extraction, "extract_product_from_html_jsonld", return_value=None),
             patch("scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags", return_value=None),
         ):
             mock_engine.__aenter__.return_value = mock_engine
+            extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback Product"})
 
             result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
-            assert result is not None
-            assert result["success"] is True
-            assert observed_wait_modes == ["networkidle", "networkidle", "domcontentloaded"]
+            assert result == {"success": True, "product_name": "Fallback Product"}
+
+    @pytest.mark.asyncio
+    async def test_extract_preserves_media_from_first_crawl(self, extractor):
+        """LLM extraction should use first crawl's media for image enrichment."""
+        url = "https://example.com/p/123"
+        upc= "SKU123"
+
+        mock_engine = AsyncMock()
+        mock_engine.config = {}
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "<html><body>product</body></html>",
+            "fit_markdown": "product markdown",
+            "raw_markdown": "product markdown",
+            "markdown": "product markdown",
+            "media": {"images": [{"src": "https://example.com/img.jpg", "score": 5}]},
+        }
+
+        with (
+            patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
+            patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
+            patch("crawl4ai.LLMConfig", create=True),
+            patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
+            patch.object(extractor._extraction, "extract_product_from_html_jsonld", return_value=None),
+            patch("scrapers.ai_search.crawl4ai_extractor.extract_product_from_meta_tags", return_value=None),
+        ):
+            mock_to_thread.return_value = '[{"product_name": "Test", "brand": "Test", "description": "Desc", "size_metrics": "12 oz", "images": [], "categories": ["Cat"]}]'
+            mock_engine.__aenter__.return_value = mock_engine
+
+            # Patch enrich_images to capture crawl_media
+            captured_media = {}
+            async def capture_media(result_data, *, url, html, markdown, crawl_media, expected_name, expected_brand):
+                nonlocal captured_media
+                captured_media = crawl_media
+                return dict(result_data), {}
+            extractor._enrich_images = capture_media
+
+            await extractor.extract(url, upc, "Test Product", "Test Brand")
+
+            assert captured_media == {"images": [{"src": "https://example.com/img.jpg", "score": 5}]}
 
     @pytest.mark.asyncio
     async def test_extract_accepts_structured_extracted_content_payload(self, extractor):
@@ -263,42 +272,38 @@ class TestCrawl4AIExtractorOptimization:
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": None,
-                "fit_markdown": None,
-                "raw_markdown": None,
-                "markdown": None,
-            },
-            {
-                "success": True,
-                "html": """
-                <html>
-                  <head>
-                    <meta property=\"og:image\" content=\"https://example.com/image.jpg\" />
-                  </head>
-                </html>
-                """,
-                "extracted_content": [
-                    {
-                        "product_name": "Test Product",
-                        "brand": "Test Brand",
-                        "description": "Structured payload",
-                        "size_metrics": "12 oz",
-                        "images": ["https://example.com/image.jpg"],
-                        "categories": ["Garden Supplies"],
-                    }
-                ],
-            },
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": """
+            <html>
+              <head>
+                <meta property=\"og:image\" content=\"https://example.com/image.jpg\" />
+              </head>
+            </html>
+            """,
+            "fit_markdown": "product markdown",
+            "raw_markdown": "product markdown",
+            "markdown": "product markdown",
+            "media": {},
+        }
 
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
         ):
+            mock_to_thread.return_value = [
+                {
+                    "product_name": "Test Product",
+                    "brand": "Test Brand",
+                    "description": "Structured payload",
+                    "size_metrics": "12 oz",
+                    "images": ["https://example.com/image.jpg"],
+                    "categories": ["Garden Supplies"],
+                }
+            ]
             mock_engine.__aenter__.return_value = mock_engine
 
             result = await extractor.extract(url, upc, "Test Product", "Test Brand")
@@ -317,42 +322,38 @@ class TestCrawl4AIExtractorOptimization:
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": None,
-                "fit_markdown": None,
-                "raw_markdown": None,
-                "markdown": None,
-            },
-            {
-                "success": True,
-                "html": """
-                <html>
-                  <head>
-                    <meta property=\"og:image\" content=\"/hero.jpg\" />
-                  </head>
-                </html>
-                """,
-                "extracted_content": [
-                    {
-                        "product_name": "Organic Eggplant Black Beauty Heirloom",
-                        "brand": "LV Seed",
-                        "description": "A productive heirloom variety for home gardens.",
-                        "size_metrics": "Not specified",
-                        "images": [],
-                        "categories": ["Garden Center", "Seeds"],
-                    }
-                ],
-            },
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": """
+            <html>
+              <head>
+                <meta property=\"og:image\" content=\"/hero.jpg\" />
+              </head>
+            </html>
+            """,
+            "fit_markdown": "product markdown",
+            "raw_markdown": "product markdown",
+            "markdown": "product markdown",
+            "media": {},
+        }
 
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
         ):
+            mock_to_thread.return_value = [
+                {
+                    "product_name": "Organic Eggplant Black Beauty Heirloom",
+                    "brand": "LV Seed",
+                    "description": "A productive heirloom variety for home gardens.",
+                    "size_metrics": "Not specified",
+                    "images": [],
+                    "categories": ["Garden Center", "Seeds"],
+                }
+            ]
             mock_engine.__aenter__.return_value = mock_engine
 
             result = await extractor.extract(url, upc, "LV SEED ORGANIC EGGP LANT BLACK HEIRLOOM", None)
@@ -373,42 +374,38 @@ class TestCrawl4AIExtractorOptimization:
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": None,
-                "fit_markdown": None,
-                "raw_markdown": None,
-                "markdown": None,
-            },
-            {
-                "success": True,
-                "html": """
-                <html>
-                  <head>
-                    <meta property=\"og:image\" content=\"//bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744\" />
-                  </head>
-                </html>
-                """,
-                "extracted_content": [
-                    {
-                        "product_name": "Turnip Purple White Globe Seed Packets",
-                        "brand": "Bentley Seeds",
-                        "description": "Classic heirloom turnip packet.",
-                        "size_metrics": "Not specified",
-                        "images": ["files/HTG-017_front.jpg"],
-                        "categories": ["Seeds"],
-                    }
-                ],
-            },
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": """
+            <html>
+              <head>
+                <meta property=\"og:image\" content=\"//bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744\" />
+              </head>
+            </html>
+            """,
+            "fit_markdown": "product markdown",
+            "raw_markdown": "product markdown",
+            "markdown": "product markdown",
+            "media": {},
+        }
 
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
         ):
+            mock_to_thread.return_value = [
+                {
+                    "product_name": "Turnip Purple White Globe Seed Packets",
+                    "brand": "Bentley Seeds",
+                    "description": "Classic heirloom turnip packet.",
+                    "size_metrics": "Not specified",
+                    "images": ["files/HTG-017_front.jpg"],
+                    "categories": ["Seeds"],
+                }
+            ]
             mock_engine.__aenter__.return_value = mock_engine
 
             result = await extractor.extract(url, upc, "Turnip Purple White Globe", "Bentley Seeds")
@@ -505,28 +502,24 @@ class TestCrawl4AIExtractorOptimization:
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": "",
-                "fit_markdown": "",
-                "raw_markdown": "",
-                "markdown": "",
-            },
-            {
-                "success": True,
-                "html": "<html>fallback</html>",
-                "markdown": "fallback markdown",
-                "extracted_content": '[{"error":"authentication failed"}]',
-            },
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "",
+            "fit_markdown": "",
+            "raw_markdown": "",
+            "markdown": "product markdown",
+            "media": {},
+        }
 
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
         ):
+            # Simulate auth error payload
+            mock_to_thread.return_value = '[{"error":"authentication failed"}]'
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "fallback"})
 
@@ -537,8 +530,8 @@ class TestCrawl4AIExtractorOptimization:
                 upc,
                 "Test Product",
                 "Test Brand",
-                "<html>fallback</html>",
-                "fallback markdown",
+                "",
+                "product markdown",
             )
             assert result == {"success": False, "error": "fallback"}
 
@@ -550,37 +543,32 @@ class TestCrawl4AIExtractorOptimization:
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": "",
-                "fit_markdown": "",
-                "raw_markdown": "",
-                "markdown": "",
-            },
-            {
-                "success": True,
-                "html": "<html>fallback</html>",
-                "markdown": "fallback markdown",
-                "extracted_content": [
-                    {
-                        "index": 0,
-                        "error": True,
-                        "tags": ["error"],
-                        "content": "openai.APIConnectionError: provider mismatch",
-                        "product_name": "",
-                        "images": [],
-                    }
-                ],
-            },
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "",
+            "fit_markdown": "",
+            "raw_markdown": "",
+            "markdown": "product markdown",
+            "media": {},
+        }
 
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
         ):
+            mock_to_thread.return_value = [
+                {
+                    "index": 0,
+                    "error": True,
+                    "tags": ["error"],
+                    "content": "openai.APIConnectionError: provider mismatch",
+                    "product_name": "",
+                    "images": [],
+                }
+            ]
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "fallback"})
 
@@ -591,14 +579,14 @@ class TestCrawl4AIExtractorOptimization:
                 upc,
                 "Test Product",
                 "Test Brand",
-                "<html>fallback</html>",
-                "fallback markdown",
+                "",
+                "product markdown",
             )
             assert result == {"success": False, "error": "fallback"}
 
     @pytest.mark.asyncio
     async def test_extract_uses_fallback_for_soft_404_first_pass(self, extractor):
-        """Soft-404 pages should skip second-pass extraction and go straight to fallback recovery."""
+        """Soft-404 pages should skip LLM extraction and go straight to fallback recovery."""
         url = "https://example.com/missing-product"
         upc= "SKU123"
         not_found_html = """
@@ -646,28 +634,23 @@ class TestCrawl4AIExtractorOptimization:
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": "",
-                "fit_markdown": "",
-                "raw_markdown": "",
-                "markdown": "",
-            },
-            {
-                "success": True,
-                "html": "<html>fallback</html>",
-                "markdown": "fallback markdown",
-                "extracted_content": 123,
-            },
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "",
+            "fit_markdown": "",
+            "raw_markdown": "",
+            "markdown": "product markdown",
+            "media": {},
+        }
 
         with (
             patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine),
             patch("crawl4ai.extraction_strategy.LLMExtractionStrategy", create=True),
             patch("crawl4ai.LLMConfig", create=True),
             patch("scrapers.ai_search.crawl4ai_extractor.build_extraction_instruction", return_value="instruction"),
+            patch("scrapers.ai_search.crawl4ai_extractor.asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
         ):
+            mock_to_thread.return_value = 123  # Invalid type
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback"})
 
@@ -678,8 +661,8 @@ class TestCrawl4AIExtractorOptimization:
                 upc,
                 "Test Product",
                 "Test Brand",
-                "<html>fallback</html>",
-                "fallback markdown",
+                "",
+                "product markdown",
             )
             assert result == {"success": True, "product_name": "Fallback"}
 
@@ -691,16 +674,13 @@ class TestCrawl4AIExtractorOptimization:
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
-        mock_engine.crawl.side_effect = [
-            {
-                "success": True,
-                "html": "<html>cached</html>",
-                "fit_markdown": "",
-                "raw_markdown": "",
-                "markdown": "cached markdown",
-            },
-            TypeError("expected string or bytes-like object, got 'NoneType'"),
-        ]
+        mock_engine.crawl.return_value = {
+            "success": True,
+            "html": "<html>cached</html>",
+            "fit_markdown": "",
+            "raw_markdown": "",
+            "markdown": "cached markdown",
+        }
         extractor._extraction.extract_product_from_html_jsonld = MagicMock(return_value=None)
 
         with (

@@ -105,7 +105,7 @@ class Crawl4AIExtractor:
         matching: MatchingUtils,
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
-        prompt_version: str = "v1",
+        prompt_version: str = "v5",
         llm_provider: str | None = None,
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
@@ -798,6 +798,11 @@ class Crawl4AIExtractor:
                 # html and markdown may be populated by the first pass before failure
                 return await self._extract_with_fallback(failed_url, upc, product_name, brand, html, markdown)
 
+            # Build product-aware BM25 query for relevance filtering.
+            # This lets Crawl4AI's BM25ContentFilter keep only product-relevant
+            # text blocks and discard nav, footer, related products, reviews.
+            bm25_query = " ".join(filter(None, [upc, brand, product_name]))
+
             # Centralized engine configuration leveraging new features
             engine_config = {
                 "browser": {
@@ -817,6 +822,7 @@ class Crawl4AIExtractor:
                     "scroll_delay": 0.45,
                     "timeout": 30000,
                     "pruning_enabled": True,
+                    "pruning_user_query": bm25_query,
                     "fallback_fetch_function": _fallback_wrapper,
                     "wait_until": "networkidle",
                 },
@@ -955,6 +961,75 @@ class Crawl4AIExtractor:
                                 )
                                 return enriched_jsonld
 
+                        # ---- Microdata/RDFa extraction (between JSON-LD and meta tags) ----
+                        parse_start = time.perf_counter()
+                        microdata_result = self._extraction.extract_product_from_html_microdata(
+                            html_text=crawl4ai_content,
+                            source_url=url,
+                            upc=upc,
+                            product_name=product_name,
+                            brand=brand,
+                            matching_utils=self._matching,
+                        )
+                        parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
+                        if microdata_result:
+                            microdata_result["url"] = url
+                            microdata_result["images"] = await _resolve_grounding_images(
+                                self._grounding_redirect_resolver,
+                                self._extraction.coerce_string_list(microdata_result.get("images")),
+                            )
+                            microdata_result["confidence"] = max(float(microdata_result.get("confidence", 0.0)), 0.8)
+
+                            # Completeness check: if microdata is missing key fields,
+                            # fall through to meta tags / LLM for richer extraction.
+                            check_result = self._check_extraction_completeness(microdata_result, brand)
+
+                            if not check_result["is_complete"]:
+                                logger.info(
+                                    "[AI Search] Microdata extraction incomplete (description=%s, size=%s, categories=%s, generic_desc=%s, brand_only_name=%s), "
+                                    "falling through to meta-tags",
+                                    "present" if check_result["description"] else "missing",
+                                    "present" if check_result["size"] else "missing",
+                                    check_result["categories"],
+                                    check_result["is_generic_description"],
+                                    check_result["is_brand_only_name"],
+                                )
+                                # Store microdata result as fallback in case LLM also fails
+                                jsonld_fallback = dict(microdata_result)
+                            else:
+                                logger.info("[AI Search] Extraction method used: microdata")
+                                enriched_micro, image_diag = await self._enrich_images(
+                                    microdata_result,
+                                    url=url,
+                                    html=html,
+                                    markdown=markdown,
+                                    crawl_media=result.get("media", {}),
+                                    expected_name=product_name,
+                                    expected_brand=brand,
+                                )
+                                self._log_telemetry(
+                                    url,
+                                    upc,
+                                    "microdata",
+                                    True,
+                                    fetch_time_ms,
+                                    parse_time_ms,
+                                    llm_time_ms,
+                                    None,
+                                    float(microdata_result["confidence"]),
+                                    pruning_enabled=True,
+                                    fit_markdown_used=False,
+                                    fallback_triggered=result.get("fallback_triggered", False),
+                                    image_diagnostics=image_diag,
+                                )
+                                enriched_micro = self._apply_context_derivation(
+                                    enriched_micro,
+                                    product_name=product_name,
+                                    url=url,
+                                    brand=brand,
+                                )
+                                return enriched_micro
+
                         parse_start = time.perf_counter()
                         meta_result = extract_product_from_meta_tags(
                             extraction_utils=self._extraction,
@@ -1064,16 +1139,16 @@ class Crawl4AIExtractor:
                                         extraction_type="schema",
                                         instruction=instruction,
                                         input_format="fit_markdown",
-                                        chunk_token_threshold=4000,
-                                        overlap_rate=0.1,
+                                        chunk_token_threshold=12000,
+                                        overlap_rate=0.15,
                                         extra_args={
-                                            "max_tokens": 2000,
+                                            "max_tokens": 4000,
                                             "temperature": 0.01,
                                         },
                                     )
                                     llm_start = time.perf_counter()
-                                    # Truncate markdown to fit context length limits of local models (e.g. 64000 ctx)
-                                    safe_markdown = markdown[:32000] if markdown else ""
+                                    # Use full markdown; Crawl4AI's chunking handles context limits
+                                    safe_markdown = markdown if markdown else ""
                                     extracted_content = await asyncio.to_thread(llm_strategy.extract, url, 0, safe_markdown)
                                     llm_result = {
                                         "success": bool(extracted_content),
@@ -1187,45 +1262,73 @@ class Crawl4AIExtractor:
                         extraction_type="schema",
                         instruction=instruction,
                         input_format="fit_markdown",
-                        chunk_token_threshold=4000,
-                        overlap_rate=0.1,
+                        chunk_token_threshold=12000,
+                        overlap_rate=0.15,
                         extra_args={
-                            "max_tokens": 2000,
+                            "max_tokens": 4000,
                             "temperature": 0.01,
                         },
                     )
                     method = "llm"
 
-                engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
-                # The second pass changes extraction strategy for the same URL. Bypass
-                # Crawl4AI's response cache here so we do not just replay the first crawl
-                # result without running extraction.
-                engine.config.setdefault("crawler", {})["cache_mode"] = "BYPASS"
-                llm_start = time.perf_counter()
-                result = await engine.crawl(url)
-                if not result.get("success") and self._should_retry_with_relaxed_wait(result):
-                    logger.info("[AI Search] Retrying Crawl4AI LLM second pass with domcontentloaded after navigation timeout")
-                    engine.config.setdefault("crawler", {})["wait_until"] = "domcontentloaded"
-                    engine.config.setdefault("crawler", {})["delay_before_return_html"] = 2.0
+                # SECOND PASS: Run LLM directly on already-fetched markdown.
+                # No second browser navigation — we reuse the first crawl's content.
+                # This halves Playwright overhead for URLs that need LLM extraction.
+                # (For json_css, we still need engine.crawl() since CSS strategies
+                # extract from rendered HTML, not plain text.)
+                if method == "llm":
+                    # LLM path: run extraction on already-fetched markdown
+                    llm_start = time.perf_counter()
+
+                    safe_markdown = markdown if markdown else ""
+                    if not safe_markdown:
+                        logger.info("[AI Search] No markdown available for LLM second pass, using fallback extractor")
+                        return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
+
+                    # LLMExtractionStrategy.extract() is synchronous, so wrap in thread pool.
+                    extracted_content = await asyncio.to_thread(strategy.extract, url, 0, safe_markdown)
+
+                    # Preserve media from first crawl for image enrichment
+                    first_crawl_media = result.get("media", {})
+                    llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
+
+                    result = {
+                        "success": bool(extracted_content),
+                        "extracted_content": extracted_content,
+                        "html": html,
+                        "markdown": markdown,
+                        "media": first_crawl_media,
+                    }
+                else:
+                    # json_css path: run engine.crawl() with the strategy embedded
+                    # in the CrawlerRunConfig, so Crawl4AI can apply CSS selectors
+                    # against the rendered DOM.
+                    engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
+                    engine.config.setdefault("crawler", {})["cache_mode"] = "BYPASS"
+                    llm_start = time.perf_counter()
                     result = await engine.crawl(url)
+                    if not result.get("success") and self._should_retry_with_relaxed_wait(result):
+                        logger.info("[AI Search] Retrying Crawl4AI json_css second pass after navigation timeout")
+                        engine.config.setdefault("crawler", {})["wait_until"] = "domcontentloaded"
+                        engine.config.setdefault("crawler", {})["delay_before_return_html"] = 2.0
+                        result = await engine.crawl(url)
 
-                llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
+                    llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
 
-                # Strict validation for second crawl results
-                result_html = result.get("html")
-                result_markdown = result.get("markdown")
-                if isinstance(result_html, str):
-                    html = result_html
-                if isinstance(result_markdown, str):
-                    markdown = result_markdown
+                    result_html = result.get("html")
+                    result_markdown = result.get("markdown")
+                    if isinstance(result_html, str):
+                        html = result_html
+                    if isinstance(result_markdown, str):
+                        markdown = result_markdown
 
-                extracted_content = result.get("extracted_content")
-                result = {
-                    "success": bool(extracted_content),
-                    "extracted_content": extracted_content,
-                    "html": html,
-                    "markdown": markdown,
-                }
+                    extracted_content = result.get("extracted_content")
+                    result = {
+                        "success": bool(extracted_content),
+                        "extracted_content": extracted_content,
+                        "html": html,
+                        "markdown": markdown,
+                    }
 
                 if result.get("success") and result.get("extracted_content"):
                     extracted_content = result["extracted_content"]

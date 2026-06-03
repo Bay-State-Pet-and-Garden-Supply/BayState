@@ -185,8 +185,8 @@ class TestHardcodedPrompt:
 class TestPromptVersionHandling:
     """Tests for prompt version handling."""
 
-    def test_default_prompt_version_is_v1(self, extractor):
-        assert extractor.prompt_version == "v1"
+    def test_default_prompt_version_is_v5(self, extractor):
+        assert extractor.prompt_version == "v5"
 
     def test_custom_prompt_version(self, mock_scoring, mock_matching):
         ext = Crawl4AIExtractor(
@@ -209,3 +209,25 @@ class TestPromptVersionHandling:
         assert "Unknown" in instruction
         assert '{brand or "Unknown"}' not in instruction
         assert '{product_name or "Unknown"}' not in instruction
+
+    def test_v5_prompt_includes_all_schema_fields(self, mock_scoring, mock_matching):
+        """Verify v5 prompt covers all 11 ProductData schema fields."""
+        prompt = build_extraction_instruction("TEST", "Brand", "Product", prompt_version="v5")
+        required_fields = ["product_name", "brand", "description", "size_metrics", "images", "categories"]
+        optional_fields = ["ingredients", "guaranteed_analysis", "npk_ratio", "unit_value", "unit_type"]
+        for field in required_fields:
+            assert field in prompt, f"Required field '{field}' not in v5 prompt"
+        for field in optional_fields:
+            assert field in prompt, f"Optional field '{field}' not in v5 prompt"
+
+    def test_v5_prompt_backward_compat_v4_content(self, mock_scoring, mock_matching):
+        """Verify v5 preserves v4's core extraction rules."""
+        prompt_v5 = build_extraction_instruction("TEST", "Brand", "Product", prompt_version="v5")
+        prompt_v4 = build_extraction_instruction("TEST", "Brand", "Product", prompt_version="v4")
+        # Both should have core policy and required field rules
+        for keyword in ["CORE POLICY", "product_name", "brand", "description", "size_metrics", "images", "categories"]:
+            assert keyword in prompt_v5, f"v5 missing keyword: {keyword}"
+        # v5 adds optional fields not in v4
+        assert "OPTIONAL" in prompt_v5
+        assert "OPTIONAL" not in prompt_v4
+        assert "unit_value" not in prompt_v4

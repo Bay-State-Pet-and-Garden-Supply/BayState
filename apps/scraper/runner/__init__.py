@@ -237,6 +237,7 @@ async def _run_approved_source_extraction(
         or job_payload.get("extraction_mode")
         or job_payload.get("mode", "mixed")
     )
+    prompt_version = job_payload.get("prompt_version", "v5")
 
     source_plan_raw = getattr(attempt, "source_plan", None) or job_payload.get("source_plan")
     if not source_plan_raw:
@@ -311,6 +312,7 @@ async def _run_approved_source_extraction(
             headless=settings.browser_settings["headless"],
             cache_enabled=True,
             extraction_strategy="llm",
+            prompt_version=prompt_version,
             **_llm_kwargs_from_attempt(attempt, model),
         )
 

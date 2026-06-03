@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
 from crawl4ai.async_logger import AsyncLogger, LogLevel
-from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.content_filter_strategy import BM25ContentFilter, PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 from .metrics import ExtractionMode, ErrorType, get_metrics_collector
@@ -169,16 +169,33 @@ class Crawl4AIEngine:
         }
 
     def _build_markdown_generator(self, run_settings: dict[str, Any]) -> Optional[DefaultMarkdownGenerator]:
-        """Build the markdown generator used for Crawl4AI runs."""
+        """Build the markdown generator used for Crawl4AI runs.
+
+        Uses BM25ContentFilter (relevance-based) when a ``pruning_user_query``
+        is provided — this filters markdown to content relevant to the product.
+        Falls back to PruningContentFilter (word-count-based) when no query is
+        available.
+        """
         if not run_settings.get("pruning_enabled", False):
             return None
 
-        content_filter = PruningContentFilter(
-            user_query=run_settings.get("pruning_user_query"),
-            min_word_threshold=run_settings.get("pruning_min_word_threshold"),
-            threshold_type=run_settings.get("pruning_threshold_type", "fixed"),
-            threshold=float(run_settings.get("pruning_threshold", 0.48)),
-        )
+        user_query = run_settings.get("pruning_user_query")
+        if user_query:
+            # BM25 relevance filtering when we have a product query.
+            # This keeps only text blocks relevant to the product (name, brand, specs)
+            # and discards nav, footer, related products, and reviews.
+            content_filter = BM25ContentFilter(
+                user_query=str(user_query),
+                bm25_threshold=float(run_settings.get("bm25_threshold", 1.0)),
+            )
+        else:
+            # Fall back to pruning by word count
+            content_filter = PruningContentFilter(
+                user_query=None,
+                min_word_threshold=run_settings.get("pruning_min_word_threshold"),
+                threshold_type=run_settings.get("pruning_threshold_type", "fixed"),
+                threshold=float(run_settings.get("pruning_threshold", 0.48)),
+            )
         return DefaultMarkdownGenerator(
             content_filter=content_filter,
             options=run_settings.get("markdown_options"),

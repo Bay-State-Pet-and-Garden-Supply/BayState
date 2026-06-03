@@ -1,0 +1,96 @@
+# Prompt Version: v5
+# Created: 2026-06-03
+# Focus: Full schema-aligned product extraction with optional vertical fields
+#
+# Changes from v4:
+# - Added OPTIONAL field rules for ingredients, guaranteed_analysis, npk_ratio, unit_value, unit_type
+# - Added image data-src/srcset extraction guidance
+# - Required fields remain the same 6 as v4
+# - Core policy and field rules for required fields preserved from v4
+# - Per-field confidence is computed heuristically by calling code (not requested from LLM)
+
+Extract structured product data for a single product detail page.
+
+TARGET HINTS
+- UPC: {upc}
+- Expected Brand (soft hint): {brand or "Unknown"}
+- Expected Product Name (soft hint): {product_name or "Unknown"}
+
+CORE POLICY
+- Use only evidence from the current page.
+- The target hints above are weak hints, not facts. Do not copy them unless the page supports them.
+- Extract the exact product or selected variant shown on the page.
+- Ignore cross-sells, related items, bundle suggestions, review snippets, shipping copy, and store-wide marketing text.
+
+FIELD RULES -- REQUIRED (must extract if present on page)
+
+1) product_name
+   - Return the clean PDP title for the exact item.
+   - Remove store suffixes, price suffixes, and slug noise when possible.
+   - Do not return a category name, breadcrumb trail, or retailer name.
+
+2) brand
+   - Return the canonical manufacturer brand, not the retailer or site name.
+   - Infer from title, manufacturer text, breadcrumb, specs, or structured data.
+   - Expand shorthand only when the page clearly supports it.
+
+3) description
+   - Return concise product-specific description or spec text for the exact item.
+   - Prefer the main description, feature bullets, or product specs.
+   - Keep important technical details.
+   - Exclude generic SEO copy, shipping text, and instructions unrelated to the product package.
+   - Length: 2-10 sentences when available.
+
+4) size_metrics
+   - Extract package size, count, weight, volume, or product dimensions only.
+   - Good examples: "20 oz", "8 lb", "4 oz", "250 g", "1.5 cu ft", "10 count".
+   - Ignore planting depth, plant spacing, days to maturity, dosage, and other instructional measurements unless they are the package size.
+
+5) images
+   - Return absolute product image URLs only (https://...).
+   - Put the main hero image first, then additional images for the same product.
+   - Include URLs from src, data-src, srcset, and JSON-LD structured data when visible.
+   - Exclude logos, icons, generic banners, and recommendation images.
+
+6) categories
+   - Return 1-4 useful product categories from breadcrumbs, tags, department text, or structured data.
+   - Keep the most specific product categories.
+   - Exclude generic crumbs like "Home", "Shop", "Products", "Brands", "Departments", and the brand name itself.
+
+FIELD RULES -- OPTIONAL (extract only when clearly present on the page; do not hallucinate)
+
+7) ingredients
+   - Extract ingredient list if visible (common for pet food, treats, supplements, and food products).
+   - Return as a string (comma-separated or natural text).
+   - Look in product specs, description, or a dedicated "Ingredients" section.
+
+8) guaranteed_analysis
+   - Extract guaranteed analysis if visible (common for pet food: crude protein, crude fat, crude fiber, moisture).
+   - Return as a single formatted string, e.g. "Crude Protein 32%, Crude Fat 18%, Crude Fiber 4%, Moisture 10%".
+   - Look in product specs, description, or a "Nutritional Information" section.
+
+9) npk_ratio
+   - Extract N-P-K fertilizer ratio if visible (common for garden/fertilizer products).
+   - Format as a hyphen-separated string, e.g. "10-10-10" or "30-0-0".
+   - Look in product title, specs, or description.
+
+10) unit_value
+    - Extract the numeric quantity/weight value when size_metrics includes a measurement.
+    - Examples: 30.0 (for "30 lb bag"), 12 (for "12-pack"), 1.5 (for "1.5 cu ft").
+    - Extract only when a clear numeric value is visible.
+
+11) unit_type
+    - Extract the unit of measurement from size_metrics.
+    - Use one of: LB, OZ, KG, G, CT, GAL, QUART, ML, L, CU_FT, IN, CM, MM.
+    - Extract only when a clear unit is visible.
+
+OUTPUT
+- Fill all REQUIRED fields. Fill OPTIONAL fields only when evidence is clear on the page.
+- Do not hallucinate missing values.
+- If a text field cannot be verified, return an empty string.
+- If a list field cannot be verified, return [].
+
+PER-FIELD CONFIDENCE
+After the main data fields, the calling code computes confidence heuristically.
+For your output, return accurate data for all fields that have clear evidence.
+Prefer returning empty/null for fields you are unsure about rather than guessing.
