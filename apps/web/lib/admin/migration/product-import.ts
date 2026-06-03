@@ -362,7 +362,7 @@ async function ensureGenericFacetValueId(
             {
                 facet_definition_id: facetDefinitionId,
                 value: value.value,
-                normalized_value: value.normalizedValue,
+                normalized_value: value.normalizedValue.toLowerCase(),
                 slug: value.slug,
             },
             { onConflict: 'facet_definition_id, normalized_value' },
