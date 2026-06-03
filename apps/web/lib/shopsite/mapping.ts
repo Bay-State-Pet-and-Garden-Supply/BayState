@@ -227,8 +227,9 @@ function normalizeFileStem(value: string | null): string | null {
 
 function getNameForSorting(row: ShopSiteExportSourceRow): string {
   const consolidated = asRecord(row.consolidated);
+  const core = asRecord(consolidated.core);
   const input = asRecord(row.input);
-  return coalesceString(consolidated.name, input.name, row.upc) ?? row.upc;
+  return coalesceString(core.name, consolidated.name, input.name, row.upc) ?? row.upc;
 }
 
 function buildUniqueStem(base: string, usedStems: Set<string>, upc: string): string {
@@ -300,12 +301,15 @@ export function preparePipelineRowsForShopSiteExport(
   return sortedRows.map((row) => {
     const input = asRecord(row.input);
     const consolidated = asRecord(row.consolidated);
-    const name = coalesceString(consolidated.name, input.name, row.upc) ?? row.upc;
-    const brandId = coalesceString(consolidated.brand_id);
+    const core = asRecord(consolidated.core);
+    const name = coalesceString(core.name, consolidated.name, input.name, row.upc) ?? row.upc;
+    const brandId = coalesceString(core.brand_id, consolidated.brand_id);
     const brandRow = brandId ? brandsById.get(brandId) : undefined;
     const brandName = normalizeBrandName(
       coalesceString(
         brandRow?.name,
+        core.brand_name,
+        core.brand,
         consolidated.brand_name,
         consolidated.brand,
         input.brand_name,
@@ -316,6 +320,9 @@ export function preparePipelineRowsForShopSiteExport(
       buildFacetSlug(brandRow?.slug ?? brandName ?? "unbranded") || "unbranded";
     const preferredFileStem = normalizeFileStem(
       coalesceString(
+        core.legacy_filename,
+        core.file_name,
+        core.fileName,
         consolidated.legacy_filename,
         consolidated.file_name,
         consolidated.fileName,
@@ -333,8 +340,25 @@ export function preparePipelineRowsForShopSiteExport(
     usedImageStemsByFolder.set(brandFolder, usedImageStems);
     const imageStem = buildUniqueStem(baseStem, usedImageStems, row.upc);
 
-    const consolidatedImages = toImageUrlArray(consolidated.images);
-    const selectedImages = extractSelectedImageUrls(row.selected_images);
+    let consolidatedImages: string[] = [];
+    if (Array.isArray(consolidated.media)) {
+      consolidatedImages = uniqueStrings(
+        consolidated.media
+          .map((m: any) => {
+            if (typeof m === "string") return m;
+            if (m && typeof m === "object" && "url" in m) {
+              return asString(m.url);
+            }
+            return "";
+          })
+          .filter(Boolean)
+      );
+    } else {
+      consolidatedImages = toImageUrlArray(consolidated.images);
+    }
+
+    const rawSelectedImages = row.selected_images ?? (consolidated.evidence && typeof consolidated.evidence === "object" ? (consolidated.evidence as any).selected_images : undefined);
+    const selectedImages = extractSelectedImageUrls(rawSelectedImages);
     const imageSources =
       consolidatedImages.length > 0 ? consolidatedImages : selectedImages;
     const images = imageSources.map(
@@ -343,49 +367,52 @@ export function preparePipelineRowsForShopSiteExport(
     );
 
     const gtin = row.upc;
+    const resolvedCategory = coalesceString(core.canonical_category_breadcrumb, consolidated.category, input.category);
 
     return {
       sku: row.upc, // Use internal upc as external SKU for ShopSite
       name,
-      price: coalescePrice(consolidated.price, input.price),
-      weight: coalesceString(consolidated.weight, input.weight),
+      price: coalescePrice(core.price, consolidated.price, input.price),
+      weight: coalesceString(core.weight_lbs, consolidated.weight, input.weight),
       brand_name: brandName,
-      description: coalesceString(consolidated.description, input.description),
+      description: coalesceString(core.description, consolidated.description, input.description),
       images,
       image_sources: imageSources,
       brand_folder: brandFolder,
-      category: coalesceString(consolidated.category, input.category),
+      category: resolvedCategory,
       product_type: coalesceString(
+        core.product_type,
         consolidated.product_type,
         input.product_type,
       ),
       shopsite_pages: (() => {
         const manualPages = parseShopSitePages(
-          consolidated.shopsite_pages ??
+          core.shopsite_pages ??
+            consolidated.shopsite_pages ??
             input.shopsite_pages,
         );
         if (manualPages.length > 0) return manualPages;
         
-        return inferShopSitePagesFromCategory(
-          coalesceString(consolidated.category, input.category)
-        );
+        return inferShopSitePagesFromCategory(resolvedCategory);
       })(),
       search_keywords: coalesceString(
+        core.search_keywords,
         consolidated.search_keywords,
         input.search_keywords,
       ),
       is_special_order:
-        coalesceBoolean(consolidated.is_special_order, input.is_special_order) ??
+        coalesceBoolean(core.is_special_order, consolidated.is_special_order, input.is_special_order) ??
         false,
       is_taxable:
-        coalesceBoolean(consolidated.is_taxable, input.is_taxable) ?? true,
+        coalesceBoolean(core.is_taxable, consolidated.is_taxable, input.is_taxable) ?? true,
       file_name: `${fileStem}.html`,
       gtin,
       availability:
-        coalesceString(consolidated.availability, input.availability) ??
+        coalesceString(core.availability, consolidated.availability, input.availability) ??
         "in stock",
       minimum_quantity:
         coalesceInteger(
+          core.minimum_quantity,
           consolidated.minimum_quantity,
           input.minimum_quantity,
         ) ?? 0,

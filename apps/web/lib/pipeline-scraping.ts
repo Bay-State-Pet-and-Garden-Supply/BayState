@@ -12,6 +12,7 @@ import {
 } from '@/lib/brand-registry';
 
 import { findDistributorInCatalog } from '@/lib/approved-sources/distributor-catalog';
+import { buildApprovedSourcePlans } from '@/lib/approved-sources/source-plan';
 import type { 
     ScrapeOptions, 
     ScrapeResult 
@@ -608,7 +609,67 @@ export async function scrapeProducts(
     }
 
     const supabase = await createClient();
-    const scrapeContextItems = await loadScrapeContextItems(supabase, upcs, {});
+
+    // 1. Update products_ingestion's enrichment_config.enabled_sources with the selected scrapers
+    if (effectiveScrapers.length > 0) {
+        try {
+            const { data: existingProducts } = await supabase
+                .from('products_ingestion')
+                .select('upc, enrichment_config')
+                .in('upc', upcs);
+
+            if (existingProducts) {
+                await Promise.all(
+                    existingProducts.map(async (p) => {
+                        const existingConfig = (p.enrichment_config || {}) as Record<string, any>;
+                        await supabase
+                            .from('products_ingestion')
+                            .update({
+                                enrichment_config: {
+                                    ...existingConfig,
+                                    enabled_sources: effectiveScrapers,
+                                },
+                            })
+                            .eq('upc', p.upc);
+                    })
+                );
+            }
+        } catch (e) {
+            console.error('[Pipeline Scraping] Failed to update products enabled_sources:', e);
+            // Non-fatal: continue with current DB state
+        }
+    }
+
+    // 2. Build Approved Source Plans (required since direct URL extraction is deprecated)
+    let sourcePlansByUpc: Record<string, any> = {};
+    let skippedUpcs: string[] = [];
+    try {
+        const plans = await buildApprovedSourcePlans(supabase, upcs, {
+            extractionMode: 'distributor_only',
+        });
+
+        for (const [upc, result] of Object.entries(plans)) {
+            if (result.ok) {
+                sourcePlansByUpc[upc] = result.plan;
+            } else {
+                skippedUpcs.push(upc);
+                console.warn(`[Pipeline Scraping] Skipping UPC ${upc} because plan building failed: ${result.error}`);
+            }
+        }
+    } catch (e) {
+        console.error('[Pipeline Scraping] Failed to build approved source plans:', e);
+        return { success: false, error: 'Failed to build approved source plans: ' + (e instanceof Error ? e.message : String(e)) };
+    }
+
+    const brandedUpcs = Object.keys(sourcePlansByUpc);
+    if (brandedUpcs.length === 0) {
+        return { 
+            success: false, 
+            error: 'No valid approved source plans could be built for the selected UPCs. Assign a brand with enabled brand sources in Settings.' 
+        };
+    }
+
+    const scrapeContextItems = await loadScrapeContextItems(supabase, brandedUpcs, {});
     const standardUpcContext = buildStandardUpcContext(scrapeContextItems);
     const nowIso = new Date().toISOString();
 
@@ -620,21 +681,24 @@ export async function scrapeProducts(
         test_mode: testMode,
         source: 'pipeline',
         pipeline_version: 'static_first_v1',
+        source_type: 'approved_source_extraction',
+        source_plans_by_upc: sourcePlansByUpc,
+        extraction_mode: 'distributor_only',
     };
 
     const { data: job, error: insertError } = await supabase
         .from('enrichment_jobs')
         .insert({
             status: 'queued',
-            upcs,
-            total_count: upcs.length,
+            upcs: brandedUpcs,
+            total_count: brandedUpcs.length,
             completed_count: 0,
             failed_count: 0,
             mode: jobMode,
             model: jobModel,
             config: jobConfig,
             items_processed: 0,
-            items_total: upcs.length,
+            items_total: brandedUpcs.length,
             updated_at: nowIso,
         })
         .select('id')
@@ -652,7 +716,7 @@ export async function scrapeProducts(
     const attemptResult = await createEnrichmentAttempts(
         supabase,
         job.id,
-        upcs,
+        brandedUpcs,
         jobMode,
         jobModel
     );
@@ -670,7 +734,7 @@ export async function scrapeProducts(
                 updated_at: new Date().toISOString(),
                 error_message: null,
             })
-            .in('upc', upcs);
+            .in('upc', brandedUpcs);
 
         if (statusError) {
             console.error('[Pipeline Scraping] Failed to move products into extracting:', statusError);
@@ -680,7 +744,7 @@ export async function scrapeProducts(
         }
     }
 
-    console.log(`[Pipeline Scraping] Created enrichment job ${job.id} for ${upcs.length} UPCs`);
+    console.log(`[Pipeline Scraping] Created enrichment job ${job.id} for ${brandedUpcs.length} UPCs`);
 
     return {
         success: true,

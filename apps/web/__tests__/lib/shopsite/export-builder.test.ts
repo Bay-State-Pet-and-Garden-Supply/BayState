@@ -100,6 +100,60 @@ describe('preparePublishedShopSiteExport', () => {
         expect(products[1].images).toEqual(['test-brand/duplicate-product-sku-2.jpg']);
         expect(products[1].image_sources).toEqual(['https://cdn.example.com/source/duplicate-two.png']);
     });
+
+    it('correctly coalesces fields nested under consolidated.core and images in consolidated.media', () => {
+        const rows: ShopSiteExportSourceRow[] = [
+            {
+                upc: '869050000114',
+                input: {
+                    name: 'DIMPLES HORSE TREATS 1.6LB',
+                    price: 13.99,
+                },
+                consolidated: {
+                    core: {
+                        name: 'Dimples Horse Treats 1.6 lb.',
+                        price: 0.99,
+                        brand_id: 'brand-1',
+                        weight_lbs: 0.6,
+                        description: 'Delicious Dimples horse treats.',
+                        canonical_category_breadcrumb: 'Horse > Feed & Treats',
+                        search_keywords: 'horse, treats',
+                        is_special_order: true,
+                        is_taxable: false,
+                        availability: 'out of stock',
+                        minimum_quantity: 2,
+                    },
+                    media: [
+                        { url: 'https://m.media-amazon.com/images/I/81QdgAw3zoL.jpg', role: 'main' }
+                    ],
+                },
+                selected_images: null,
+            },
+        ];
+        const brands = new Map<string, ShopSiteExportBrandRow>([
+            ['brand-1', { id: 'brand-1', name: 'Dimples', slug: 'dimples' }],
+        ]);
+
+        const [product] = preparePublishedShopSiteExport(rows, brands);
+
+        expect(product).toMatchObject({
+            sku: '869050000114',
+            name: 'Dimples Horse Treats 1.6 lb.',
+            price: 0.99,
+            weight: '0.6',
+            brand_name: 'Dimples',
+            description: 'Delicious Dimples horse treats.',
+            category: 'Horse > Feed & Treats',
+            shopsite_pages: expect.arrayContaining(['Horse Feed & Treats Shop All']),
+            search_keywords: 'horse, treats',
+            is_special_order: true,
+            is_taxable: false,
+            availability: 'out of stock',
+            minimum_quantity: 2,
+            image_sources: ['https://m.media-amazon.com/images/I/81QdgAw3zoL.jpg'],
+            images: ['dimples/dimples-horse-treats-16-lb.jpg'],
+        });
+    });
 });
 
 describe('loadPublishedShopSiteExport', () => {
