@@ -13,6 +13,9 @@ describe('resolveFacetProfile', () => {
             'Cat > Food > Wet Food',
             'Pet Bird > Food > Parrot Food',
             'Fish & Aquarium > Fish Food',
+            'Dog|Food|Dry Food',
+            'Dog Food',
+            'Cat Kibble',
         ])('classifies "%s" as animal_food', (category) => {
             expect(resolveFacetProfile(category)).toBe('animal_food');
         });
@@ -22,6 +25,8 @@ describe('resolveFacetProfile', () => {
         it.each([
             'Dog > Treats & Chews > Biscuits',
             'Cat > Treats > Soft Treats',
+            'Dog Treats',
+            'Cat > Chew',
         ])('classifies "%s" as animal_treats_chews', (category) => {
             expect(resolveFacetProfile(category)).toBe('animal_treats_chews');
         });

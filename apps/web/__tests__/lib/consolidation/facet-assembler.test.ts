@@ -95,9 +95,9 @@ describe('FacetAssembler', () => {
             evidence_source: 'vlm_ocr',
         });
 
-        // Check legacy field mapping: special_diet mapped to diet_type
-        expect(facetMap.get('diet_type')).toEqual({
-            definition_slug: 'diet_type',
+        // Check legacy field mapping: special_diet mapped to diet-type
+        expect(facetMap.get('diet-type')).toEqual({
+            definition_slug: 'diet-type',
             value: 'Grain-Free',
             confidence_score: 0.9,
             evidence_source: 'llm',
@@ -163,7 +163,7 @@ describe('FacetAssembler', () => {
         const facetMap = new Map(assembly.facets.map((f) => [f.definition_slug, f]));
 
         // Source-backed facets should keep their evidence_source (not be overwritten)
-        const protein = facetMap.get('primary_protein');
+        const protein = facetMap.get('primary-protein');
         expect(protein).toBeDefined();
         expect(protein!.value).toBe('Chicken');
         expect(protein!.confidence_score).toBe(0.82);

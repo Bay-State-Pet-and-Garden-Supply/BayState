@@ -328,9 +328,9 @@ Output contract — respond with valid JSON matching this structure:
   "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
   "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready. set below 0.80 if images are missing or unreadable",
   "category": "string (required) — best-fit taxonomy category from allowed list",
-  "description": "string (required) — short product description from highest-trust source",
+  "description": "string (required) — product description from highest-trust source, 1-3 sentences covering key product features and benefits, never truncated",
   "search_keywords": "string (required) — comma-separated keywords from source data",
-  "packaging_facets": "object (optional) — key-value pairs extracted from packaging images. You MUST select the appropriate Facet Profile for your chosen category using the matrix above, and ONLY use keys from that profile's allowed fields. Map values as clean, normalized strings."
+  "packaging_facets": "object (optional) — key-value pairs extracted from source data and/or packaging images. You MUST select the appropriate Facet Profile for your chosen category using the matrix above, and ONLY use keys from that profile's allowed fields. Map values as clean, normalized strings."
 }
 
 Allowed category values (use exactly one). Choose the full breadcrumb (e.g. "Dog > Food > Dry Food") from the allowed categories below:

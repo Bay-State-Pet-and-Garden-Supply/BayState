@@ -142,9 +142,9 @@ function getPromptTextLimit(fieldName: string): number {
     case 'brand':
       return 80;
     case 'description':
-      return 360;
+      return 2000;
     case 'specifications':
-      return 360;
+      return 2000;
     case 'dimensions':
       return 140;
     default:

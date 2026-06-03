@@ -409,15 +409,17 @@ export function applySetProductFieldsToDraft(
     const val = input[inputKey as keyof typeof input];
     if (val !== undefined) {
       const valStr = typeof val === "string" ? val.trim() : String(val).trim();
-      next.facets[slug] = valStr;
+      const normalizedSlug = slug.replace(/_/g, "-");
+      next.facets[normalizedSlug] = valStr;
       updatedFields.push(inputKey);
     }
   }
 
   if (input.facets !== undefined) {
     for (const [slug, val] of Object.entries(input.facets)) {
-      next.facets[slug] = (val ?? "").trim();
-      updatedFields.push(`facet:${slug}`);
+      const normalizedSlug = slug.replace(/_/g, "-");
+      next.facets[normalizedSlug] = (val ?? "").trim();
+      updatedFields.push(`facet:${normalizedSlug}`);
     }
   }
 

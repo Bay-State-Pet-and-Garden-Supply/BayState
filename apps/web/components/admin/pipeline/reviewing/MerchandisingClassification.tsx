@@ -128,7 +128,12 @@ export function MerchandisingClassification({
 
     // 2. Infer profile from populated facets when category is blank
     const facets = formData.facets || {};
-    const has = (slug: string) => typeof facets[slug] === "string" && facets[slug].length > 0;
+    const has = (slug: string) => {
+      const uKey = slug.replace(/-/g, "_");
+      const hKey = slug.replace(/_/g, "-");
+      const val = facets[slug] ?? facets[uKey] ?? facets[hKey];
+      return typeof val === "string" && val.length > 0;
+    };
 
     if (has("food_form") || (has("animal_type") && has("diet_type"))) {
       return "animal_food";

@@ -1069,10 +1069,10 @@ describe('consolidation batch service', () => {
                     }),
                     facets: expect.arrayContaining([
                         expect.objectContaining({ definition_slug: 'flavor', value: 'Bacon Flavor' }),
-                        expect.objectContaining({ definition_slug: 'life_stage', value: 'Senior' }),
-                        expect.objectContaining({ definition_slug: 'toy_type', value: 'Ball' }),
-                        expect.objectContaining({ definition_slug: 'animal_type', value: 'Dog' }),
-                        expect.objectContaining({ definition_slug: 'has_squeaker', value: 'Yes' }),
+                        expect.objectContaining({ definition_slug: 'life-stage', value: 'Senior' }),
+                        expect.objectContaining({ definition_slug: 'toy-type', value: 'Ball' }),
+                        expect.objectContaining({ definition_slug: 'animal-type', value: 'Dog' }),
+                        expect.objectContaining({ definition_slug: 'has-squeaker', value: 'Yes' }),
                     ])
                 }),
             })

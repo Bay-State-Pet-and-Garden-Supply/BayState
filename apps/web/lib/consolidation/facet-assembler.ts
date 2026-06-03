@@ -58,7 +58,7 @@ export function assembleProductFacets(
         const strValue = typeof value === 'string' ? value.trim() : String(value).trim();
         if (strValue.length === 0) return;
 
-        const canonicalKey = LEGACY_TO_CANONICAL_FACETS[key] || key;
+        const canonicalKey = (LEGACY_TO_CANONICAL_FACETS[key] || key).replace(/_/g, '-');
         if (!candidateFacetsMap.has(canonicalKey)) {
             candidateFacetsMap.set(canonicalKey, {
                 value: strValue,
@@ -102,7 +102,7 @@ export function assembleProductFacets(
     );
 
     for (const fb of sourceFallbacks.facets) {
-        const canonicalKey = LEGACY_TO_CANONICAL_FACETS[fb.definition_slug] || fb.definition_slug;
+        const canonicalKey = (LEGACY_TO_CANONICAL_FACETS[fb.definition_slug] || fb.definition_slug).replace(/_/g, '-');
         if (!candidateFacetsMap.has(canonicalKey)) {
             candidateFacetsMap.set(canonicalKey, {
                 value: fb.value,

@@ -540,6 +540,28 @@ const PROFILE_RULES: ProfileRule[] = [
         },
     },
 
+    // Dog/Cat/Bird/Small Pet Food shortcut
+    {
+        profile: 'animal_food',
+        test: (breadcrumb, _segments, _department, _l2) => {
+            const bc = breadcrumb.toLowerCase();
+            return (
+                /\b(dog|cat|bird|small pet)\b.*\b(food|kibble|diet|recipe|formula)\b/i.test(bc) &&
+                !/\b(treat|treats|chew|chews|biscuit|biscuits|snack|snacks|rawhide)\b/i.test(bc)
+            );
+        },
+    },
+
+    // Dog/Cat/Bird/Small Pet Treats & Chews shortcut
+    {
+        profile: 'animal_treats_chews',
+        test: (breadcrumb, _segments, _department, _l2) => {
+            const bc = breadcrumb.toLowerCase();
+            return /\b(dog|cat|bird|small pet)\b.*\b(treat|treats|chew|chews|biscuit|biscuits|snack|snacks|rawhide|jerky|bully stick|bully sticks)\b/i.test(bc);
+        },
+    },
+
+
     // Farm & Livestock (by department)
     {
         profile: 'animal_feed_farm',
@@ -629,7 +651,7 @@ export function resolveFacetProfile(
         return 'general';
     }
 
-    const segments = normalized.split(/\s*>\s*/).map((s) => s.trim()).filter(Boolean);
+    const segments = normalized.split(/\s*(?:>|\|)\s*/).map((s) => s.trim()).filter(Boolean);
     const department = segments[0]?.toLowerCase() || '';
     const l2 = segments.length > 1 ? segments[1] : '';
 

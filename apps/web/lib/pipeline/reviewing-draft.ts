@@ -188,24 +188,25 @@ export function buildInitialFinalizationDraft(
   if (Array.isArray(consolidated.facets)) {
     for (const f of consolidated.facets) {
       if (f && typeof f.definition_slug === "string" && typeof f.value === "string") {
-        facets[f.definition_slug] = f.value;
+        const normalizedSlug = f.definition_slug.trim().toLowerCase().replace(/_/g, "-");
+        facets[normalizedSlug] = f.value;
       }
     }
   }
 
   // Legacy mappings from consolidated/input
   const legacyMappings: Record<string, string> = {
-    animal_type: toTrimmedString(consolidated.pet_type ?? input.pet_type),
-    life_stage: toTrimmedString(consolidated.lifestage ?? consolidated.life_stage ?? input.lifestage ?? input.life_stage),
-    breed_size: toTrimmedString(consolidated.pet_size ?? input.pet_size),
-    diet_type: toTrimmedString(consolidated.special_diet ?? input.special_diet),
-    health_focus: toTrimmedString(consolidated.health_feature ?? input.health_feature),
-    food_form: toTrimmedString(consolidated.food_form ?? input.food_form),
+    "animal-type": toTrimmedString(consolidated.pet_type ?? input.pet_type),
+    "life-stage": toTrimmedString(consolidated.lifestage ?? consolidated.life_stage ?? input.lifestage ?? input.life_stage),
+    "breed-size": toTrimmedString(consolidated.pet_size ?? input.pet_size),
+    "diet-type": toTrimmedString(consolidated.special_diet ?? input.special_diet),
+    "health-focus": toTrimmedString(consolidated.health_feature ?? input.health_feature),
+    "food-form": toTrimmedString(consolidated.food_form ?? input.food_form),
     flavor: toTrimmedString(consolidated.flavor ?? input.flavor),
     claims: toTrimmedString(consolidated.product_feature ?? input.product_feature),
     size: toTrimmedString(consolidated.size ?? input.size),
     color: toTrimmedString(consolidated.color ?? input.color),
-    packaging_type: toTrimmedString(consolidated.packaging_type ?? input.packaging_type),
+    "packaging-type": toTrimmedString(consolidated.packaging_type ?? input.packaging_type),
   };
 
   for (const [slug, val] of Object.entries(legacyMappings)) {
@@ -387,7 +388,11 @@ export function buildConsolidatedPayloadFromDraft(
   };
 
   for (const [slug, propName] of Object.entries(legacySlugToProp)) {
-    payload[propName] = normalizeOptionalText(snapshot.facets[slug] ?? "");
+    payload[propName] = normalizeOptionalText(
+      snapshot.facets[slug] ??
+      snapshot.facets[slug.replace(/_/g, "-")] ??
+      ""
+    );
   }
 
   return payload;
