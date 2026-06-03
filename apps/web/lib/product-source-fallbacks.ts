@@ -757,7 +757,7 @@ export function collectSourceBackedFallbacks(
 
   // --- Separate enriched from per-source data ---
   const enrichedEntry = sourceEntries.find(([name]) => name === 'enriched');
-  const perSourceEntries = sourceEntries.filter(([name]) => name !== 'enriched' && name !== '_legacy' && name !== '_input');
+  const perSourceEntries = sourceEntries.filter(([name]) => name !== 'enriched' && name !== '_input');
 
   // --- Walk enriched first ---
   if (enrichedEntry) {
@@ -790,7 +790,6 @@ export function collectSourceBackedFallbacks(
   // --- Walk per-source records ---
   for (const [srcName, srcData] of perSourceEntries) {
     if (srcName === 'enriched') continue;
-    if (srcName === '_legacy') continue;
     if (!isRecord(srcData)) continue;
 
     const extracted = extractFromPerSource(srcName, srcData as Record<string, unknown>);

@@ -118,22 +118,7 @@ describe('normalizeProductSources', () => {
         );
     });
 
-    it('normalizes top-level legacy fields into the _legacy source payload', () => {
-        const result = normalizeProductSources({
-            Name: 'Legacy Product',
-            'Image URLs': ['https://cdn.example.com/legacy.jpg'],
-            scraped_at: '2026-03-19T00:00:00.000Z',
-            _last_scraped: '2026-03-19T00:00:00.000Z',
-        });
 
-        expect(result).toEqual({
-            _legacy: {
-                title: 'Legacy Product',
-                images: ['https://cdn.example.com/legacy.jpg'],
-                scraped_at: '2026-03-19T00:00:00.000Z',
-            },
-        });
-    });
 
     it('dedupes Amazon image variants by underlying image path while preserving the first host', () => {
         const result = normalizeProductSources({

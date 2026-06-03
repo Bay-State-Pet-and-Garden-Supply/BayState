@@ -75,39 +75,7 @@ export interface EvidenceDataV1 {
   extraction_notes?: string | null;
 }
 
-export interface LegacyEnrichedProductFactsV1 {
-  name?: string | null;
-  brand?: string | null;
-  description?: string | null;
-  category?: string | null;
-  upc?: string | null;
-  weight?: string | null;
-  dimensions?: string | null;
-  shipping_weight?: string | null;
-  image_urls?: Array<
-    | string
-    | {
-        status?: "success" | "error";
-        data_url?: string | null;
-        error_type?: string | null;
-        error_message?: string | null;
-        original_url?: string | null;
-        status_code?: number | null;
-      }
-  >;
-  ingredients?: string | null;
-  features?: string[];
-  pet_type?: string | null;
-  life_stage?: string | null;
-  pet_size?: string | null;
-  food_form?: string | null;
-  flavor?: string | null;
-  special_diet?: string[];
-  health_feature?: string[];
-  packaging_type?: string | null;
-  size?: string | null;
-  color?: string | null;
-}
+export interface LegacyEnrichedProductFactsV1 {}
 
 export interface NestedEnrichedProductFactsV1 {
   core?: CoreDataV1 | null;

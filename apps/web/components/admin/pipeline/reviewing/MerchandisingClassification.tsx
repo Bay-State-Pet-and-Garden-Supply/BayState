@@ -14,6 +14,7 @@ import { FINALIZATION_STOCK_STATUS_VALUES } from "@/lib/pipeline/reviewing-draft
 import type { FinalizationDraft } from "@/lib/pipeline/reviewing-draft";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
 import { collectSourceBackedFallbacks } from "@/lib/product-source-fallbacks";
+import { buildProcessedSourceItems } from "../enriched-source-view-model";
 
 interface Brand {
   id: string;
@@ -597,20 +598,25 @@ export function MerchandisingClassification({
             </div>
 
             <div className="space-y-1 max-h-[160px] overflow-y-auto p-1 border border-dashed border-border">
-              {Object.entries(formData.sources).length > 0 ? (
-                Object.entries(formData.sources).map(([key, sourceData]) => {
-                  const typedSourceData = sourceData as { url?: string; _is_custom?: boolean };
+              {buildProcessedSourceItems(formData.sources).length > 0 ? (
+                buildProcessedSourceItems(formData.sources).map((item) => {
+                  const typedSourceData = item.data as { url?: string; _is_custom?: boolean } | null;
                   const url = typedSourceData?.url;
                   const isCustom = typedSourceData?._is_custom;
                   
                   return (
                     <div
-                      key={key}
+                      key={item.key}
                       className="flex items-center justify-between gap-2 border border-border bg-card p-2"
                     >
                       <div className="flex flex-col min-w-0">
                         <span className="text-[10px] font-semibold text-foreground truncate">
-                          {key}
+                          {item.label}
+                          {item.isVirtual && (
+                            <span className="ml-1 text-[8px] text-primary font-bold italic">
+                              Enriched
+                            </span>
+                          )}
                           {isCustom && (
                             <span className="ml-1 text-[8px] text-primary font-bold italic">
                               Custom
@@ -633,7 +639,7 @@ export function MerchandisingClassification({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 rounded-none text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                        onClick={() => removeSource(key)}
+                        onClick={() => removeSource(item.key)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

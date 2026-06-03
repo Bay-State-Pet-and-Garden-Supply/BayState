@@ -57,6 +57,7 @@ import { MerchandisingClassification } from "./reviewing/MerchandisingClassifica
 import type { PipelineFiltersState } from "./PipelineFilters";
 import type { VirtualizedPipelineTableHandle } from "./VirtualizedPipelineTable";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
+import { formatPipelineSourceSlug } from "./enriched-source-view-model";
 import {
   applyProductNameTransform,
   applySetProductFieldsToDraft,
@@ -101,6 +102,7 @@ import { filterPendingCopilotDraftReview, restorePendingCopilotDraftReview, stag
 import type { Brand } from "@/lib/types";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
 import { adminFetch } from '@/lib/admin/api-client';
+import { normalizeProductSourcesForReview } from "@/lib/product-sources";
 
 interface ReviewingResultsViewProps {
   products: PipelineProduct[];
@@ -176,6 +178,50 @@ async function runWithConcurrency<T, R>(
   );
 
   return results;
+}
+
+function deleteSourceFromRecord(
+  sources: Record<string, unknown>,
+  sourceKey: string,
+): Record<string, unknown> {
+  const nextSources = { ...sources };
+  const cleanKey = sourceKey.startsWith("enriched:")
+    ? sourceKey.replace("enriched:", "")
+    : sourceKey;
+
+  if (cleanKey === "enriched") {
+    delete nextSources.enriched;
+    return nextSources;
+  }
+
+  const enriched = nextSources.enriched as Record<string, any> | undefined;
+  if (enriched && enriched.approved_sources && typeof enriched.approved_sources === "object" && (cleanKey in enriched.approved_sources)) {
+    const nextApproved = { ...enriched.approved_sources };
+    delete nextApproved[cleanKey];
+
+    if (Object.keys(nextApproved).length === 0) {
+      delete nextSources.enriched;
+    } else {
+      let nextActive = enriched.active_source_slug;
+      if (nextActive === cleanKey) {
+        nextActive = Object.keys(nextApproved)[0] || null;
+      }
+
+      const activeSnapshot = nextApproved[nextActive];
+      nextSources.enriched = {
+        ...enriched,
+        ...activeSnapshot,
+        active_source_slug: nextActive,
+        source_slug: nextActive,
+        approved_sources: nextApproved,
+      };
+    }
+  } else {
+    delete nextSources[sourceKey];
+    delete nextSources[cleanKey];
+  }
+
+  return nextSources;
 }
 
 export function ReviewingResultsView({
@@ -712,14 +758,15 @@ export function ReviewingResultsView({
     }
 
     updateDraftForUpc(selectedUpc, (prev) => {
-      const nextSources = { ...prev.sources };
-      delete nextSources[sourceKey];
       return {
         ...prev,
-        sources: nextSources,
+        sources: deleteSourceFromRecord(prev.sources, sourceKey),
       };
     });
-    toast.success(`Removed source: ${sourceKey}`);
+    const displayKey = sourceKey.startsWith("enriched:")
+      ? sourceKey.replace("enriched:", "")
+      : sourceKey;
+    toast.success(`Removed source: ${formatPipelineSourceSlug(displayKey)}`);
   };
 
 
@@ -1642,7 +1689,8 @@ export function ReviewingResultsView({
       }
 
       const currentSources = draftsRef.current[currentUpc]?.sources ?? {};
-      if (!(sourceKey in currentSources)) {
+      const normalizedSources = normalizeProductSourcesForReview(currentSources);
+      if (!(sourceKey in normalizedSources)) {
         throw new Error(`Unknown source key: ${sourceKey}`);
       }
 
@@ -1652,11 +1700,9 @@ export function ReviewingResultsView({
       );
 
       updateDraftForUpc(currentUpc, (prev) => {
-        const nextSources = { ...prev.sources };
-        delete nextSources[sourceKey];
         return {
           ...prev,
-          sources: nextSources,
+          sources: deleteSourceFromRecord(prev.sources, sourceKey),
         };
       });
 
@@ -1943,11 +1989,11 @@ export function ReviewingResultsView({
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
                     <div className="space-y-4 border-t border-border bg-muted/10 p-4">
-                      {Object.entries(selectedProduct.sources || {}).map(
+                      {Object.entries(normalizeProductSourcesForReview(selectedProduct.sources || {})).map(
                         ([source, data]) => (
                           <div key={source} className="space-y-2">
                             <div className="text-xs font-semibold text-foreground">
-                              {source}
+                              {formatPipelineSourceSlug(source)}
                             </div>
                             <pre className="overflow-x-auto rounded-none border border-border bg-card p-3 text-[10px] font-bold">
                               {JSON.stringify(data, null, 2)}

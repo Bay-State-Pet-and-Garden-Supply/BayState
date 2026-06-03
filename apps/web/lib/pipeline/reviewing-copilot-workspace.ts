@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import {
   extractImageCandidatesFromSourcePayload,
-  normalizeProductSources,
+  normalizeProductSourcesForReview,
 } from "@/lib/product-sources";
 import {
   FINALIZATION_STOCK_STATUS_VALUES,
@@ -171,7 +171,7 @@ export function buildWorkspaceProductSummary(
   savedDraft: FinalizationDraft | undefined,
   selectedUpc: string | null,
 ): FinalizationWorkspaceProductSummary {
-  const sourceKeys = Object.keys(normalizeProductSources(product.sources || {}));
+  const sourceKeys = Object.keys(normalizeProductSourcesForReview(product.sources || {}));
 
   return {
     upc: product.upc,
@@ -559,7 +559,7 @@ export function buildFinalizationProductSnapshot(
     upc: product.upc,
     originalName: toTrimmedString(toRecord(product.input).name),
     confidenceScore: product.confidence_score ?? null,
-    sourceKeys: Object.keys(normalizeProductSources(product.sources || {})),
+    sourceKeys: Object.keys(normalizeProductSourcesForReview(product.sources || {})),
     draft,
     savedDraft,
   };
@@ -570,7 +570,7 @@ export function inspectFinalizationProductSource(
   sourceKey: string,
   focus: "all" | "pricing" | "content" | "images",
 ) {
-  const normalizedSources = normalizeProductSources(product.sources || {});
+  const normalizedSources = normalizeProductSourcesForReview(product.sources || {});
   const sourcePayload = normalizedSources[sourceKey];
 
   if (!sourcePayload) {
@@ -589,7 +589,7 @@ export function listFinalizationProductImageSources(
   product: PipelineProduct,
   draft: FinalizationDraft,
 ) {
-  const normalizedSources = normalizeProductSources(product.sources || {});
+  const normalizedSources = normalizeProductSourcesForReview(product.sources || {});
   const sourceKeys = Object.keys(normalizedSources);
 
   return {

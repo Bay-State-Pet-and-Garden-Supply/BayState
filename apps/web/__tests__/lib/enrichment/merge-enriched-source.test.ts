@@ -50,12 +50,13 @@ function makeEnrichedSource(options: {
       },
     ],
     extracted: {
-      name,
-      brand: 'Test Brand',
-      description: name ? `${name} description` : null,
-      category: 'Cat Food',
-      weight: '3 oz',
-      image_urls: images,
+      core: {
+        name,
+        brand_name: 'Test Brand',
+        description: name ? `${name} description` : null,
+        canonical_category_breadcrumb: 'Cat Food',
+      },
+      media: images.map((url) => ({ url, role: 'product_image' })),
     },
     confidence: {
       overall: confidence,

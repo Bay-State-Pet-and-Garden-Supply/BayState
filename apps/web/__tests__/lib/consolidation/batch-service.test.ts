@@ -209,45 +209,7 @@ describe('consolidation batch service', () => {
         expect(userContent).not.toContain('search_keywords');
     });
 
-    it('createBatchContent preserves legacy flat payloads as _legacy source and strips image/url keys', () => {
-        const content = createBatchContent(
-            [
-                {
-                    upc: 'UPC-LEGACY',
-                    sources: {
-                        Name: 'Legacy Product Name',
-                        Brand: 'Legacy Brand',
-                        source_url: 'https://example.com/item',
-                        image_url: 'https://example.com/image.jpg',
-                    },
-                },
-            ],
-            'system prompt'
-        );
 
-        const firstLine = content.split('\n')[0];
-        const parsed = JSON.parse(firstLine) as {
-            body: {
-                messages: Array<{ role: string; content: string }>;
-            };
-        };
-        const userContent = parsed.body.messages.find((message) => message.role === 'user')?.content || '';
-        const payload = extractUserPayload(userContent);
-        const source = payload.sources.find((entry) => entry.source === '_legacy');
-
-        expect(source).toEqual(
-            expect.objectContaining({
-                source: '_legacy',
-                trust: 'standard',
-                fields: expect.objectContaining({
-                    title: 'Legacy Product Name',
-                    brand: 'Legacy Brand',
-                }),
-            })
-        );
-        expect(userContent).not.toContain('"source_url"');
-        expect(userContent).not.toContain('"image_url"');
-    });
 
     it('createBatchContent sorts trusted sources ahead of marketplace sources', () => {
         const content = createBatchContent(

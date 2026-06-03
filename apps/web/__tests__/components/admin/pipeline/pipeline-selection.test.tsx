@@ -352,11 +352,11 @@ describe("PipelineClient shift range selection", () => {
     fireEvent.click(row1);
     fireEvent.click(row2);
 
-    const reEnrichButton = await screen.findByRole("button", { name: /Re-enrich/i });
+    const reEnrichButton = await screen.findByRole("button", { name: /Re-run Extraction/i });
     fireEvent.click(reEnrichButton);
 
     await waitFor(() => {
-      expect(lastScraperDialogProps).not.toHaveProperty("brandName");
+      expect(lastScraperDialogProps).not.toHaveProperty("enrichmentMethod");
       expect(lastScraperDialogProps).not.toHaveProperty("officialBrandEligibility");
     });
   });

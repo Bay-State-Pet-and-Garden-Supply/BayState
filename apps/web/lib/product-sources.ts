@@ -33,7 +33,6 @@ export interface CanonicalProductSourceRecord extends SourceRecord {
 
 type ProductSourceMap = Record<string, CanonicalProductSourceRecord>;
 
-const LEGACY_SOURCE_KEY = '_legacy';
 const AI_DIAGNOSTIC_ONLY_KEYS = new Set([
     'error',
     'errors',
@@ -467,7 +466,6 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
     }
 
     const normalized: ProductSourceMap = {};
-    const legacyFields: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(rawSources)) {
         if (isMetadataKey(key)) {
@@ -481,19 +479,38 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
             } else {
                 normalized[key] = normalizeSourcePayload(value);
             }
-        } else {
-            legacyFields[key] = value;
         }
     }
 
-    if (Object.keys(legacyFields).length > 0) {
-        normalized[LEGACY_SOURCE_KEY] = normalizeSourcePayload({
-            ...(normalized[LEGACY_SOURCE_KEY] || {}),
-            ...legacyFields,
-        });
+    return normalized;
+}
+
+export function normalizeProductSourcesForReview(rawSources: unknown): ProductSourceMap {
+    const normalized = normalizeProductSources(rawSources);
+    const enriched = normalized.enriched;
+    if (!enriched) {
+        return normalized;
     }
 
-    return normalized;
+    const result: ProductSourceMap = {};
+    for (const [key, value] of Object.entries(normalized)) {
+        if (key !== 'enriched') {
+            result[key] = value;
+        }
+    }
+
+    const approvedSources = (enriched as any).approved_sources;
+    if (isRecord(approvedSources)) {
+        for (const [slug, snapshot] of Object.entries(approvedSources)) {
+            if (isRecord(snapshot)) {
+                result[slug] = snapshot as CanonicalProductSourceRecord;
+            }
+        }
+    } else {
+        result.enriched = enriched;
+    }
+
+    return result;
 }
 
 /**

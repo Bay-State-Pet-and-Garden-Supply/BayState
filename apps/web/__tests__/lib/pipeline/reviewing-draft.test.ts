@@ -258,18 +258,6 @@ describe("finalization draft helpers", () => {
       minimum_quantity: 7,
       is_special_order: true,
       is_taxable: true,
-
-      pet_type: "Dog",
-      life_stage: "Adult",
-      pet_size: null,
-      special_diet: null,
-      health_feature: null,
-      food_form: null,
-      flavor: null,
-      product_feature: null,
-      size: null,
-      color: null,
-      packaging_type: null,
     });
   });
 });

@@ -30,13 +30,13 @@ describe("StageTabs", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs.length).toBe(7);
 
-    expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Extracting/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Processed/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Merging/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Reviewing/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Publishing/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Failed/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Imported/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Extracting/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Processed/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Merging/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Reviewing/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Publishing/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Failed/i })).toBeInTheDocument();
   });
 
   it("shows live counts for reviewing and publishing", () => {
@@ -48,8 +48,8 @@ describe("StageTabs", () => {
       />,
     );
 
-    const reviewingTab = screen.getByRole("tab", { name: /Reviewing/i });
-    const publishingTab = screen.getByRole("tab", { name: /Publishing/i });
+    const reviewingTab = screen.getByRole("tab", { name: /^Reviewing/i });
+    const publishingTab = screen.getByRole("tab", { name: /^Publishing/i });
 
     expect(within(reviewingTab).getByText("7")).toBeInTheDocument();
     expect(within(publishingTab).getByText("8")).toBeInTheDocument();
@@ -64,8 +64,8 @@ describe("StageTabs", () => {
       />,
     );
 
-    const extractingTab = screen.getByRole("tab", { name: /Extracting/i });
-    const mergingTab = screen.getByRole("tab", { name: /Merging/i });
+    const extractingTab = screen.getByRole("tab", { name: /^Extracting/i });
+    const mergingTab = screen.getByRole("tab", { name: /^Merging/i });
 
     expect(within(extractingTab).getByText("2")).toBeInTheDocument();
     expect(within(mergingTab).getByText("3")).toBeInTheDocument();

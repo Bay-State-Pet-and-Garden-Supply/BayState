@@ -194,26 +194,7 @@ export function buildInitialFinalizationDraft(
     }
   }
 
-  // Legacy mappings from consolidated/input
-  const legacyMappings: Record<string, string> = {
-    "animal-type": toTrimmedString(consolidated.pet_type ?? input.pet_type),
-    "life-stage": toTrimmedString(consolidated.lifestage ?? consolidated.life_stage ?? input.lifestage ?? input.life_stage),
-    "breed-size": toTrimmedString(consolidated.pet_size ?? input.pet_size),
-    "diet-type": toTrimmedString(consolidated.special_diet ?? input.special_diet),
-    "health-focus": toTrimmedString(consolidated.health_feature ?? input.health_feature),
-    "food-form": toTrimmedString(consolidated.food_form ?? input.food_form),
-    flavor: toTrimmedString(consolidated.flavor ?? input.flavor),
-    claims: toTrimmedString(consolidated.product_feature ?? input.product_feature),
-    size: toTrimmedString(consolidated.size ?? input.size),
-    color: toTrimmedString(consolidated.color ?? input.color),
-    "packaging-type": toTrimmedString(consolidated.packaging_type ?? input.packaging_type),
-  };
 
-  for (const [slug, val] of Object.entries(legacyMappings)) {
-    if (val && !facets[slug]) {
-      facets[slug] = val;
-    }
-  }
 
   // Source-backed fallback facets (lowest priority — only fill blanks)
   if (fallbacks.facets.length > 0) {
@@ -350,19 +331,7 @@ export function buildConsolidatedPayloadFromDraft(
     source_urls: snapshot.customSourceUrl ? [snapshot.customSourceUrl] : [],
   };
 
-  const legacySlugToProp: Record<string, string> = {
-    animal_type: "pet_type",
-    life_stage: "life_stage",
-    breed_size: "pet_size",
-    diet_type: "special_diet",
-    health_focus: "health_feature",
-    food_form: "food_form",
-    flavor: "flavor",
-    claims: "product_feature",
-    size: "size",
-    color: "color",
-    packaging_type: "packaging_type",
-  };
+
 
   const payload: Record<string, unknown> = {
     core,
@@ -387,13 +356,7 @@ export function buildConsolidatedPayloadFromDraft(
     is_taxable: true,
   };
 
-  for (const [slug, propName] of Object.entries(legacySlugToProp)) {
-    payload[propName] = normalizeOptionalText(
-      snapshot.facets[slug] ??
-      snapshot.facets[slug.replace(/_/g, "-")] ??
-      ""
-    );
-  }
+
 
   return payload;
 }
