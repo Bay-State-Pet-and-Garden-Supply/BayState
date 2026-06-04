@@ -313,6 +313,14 @@ Product-name rules:
 - Preserve source-supported decimal size, weight, and count values in names. Do not round or truncate 1.06 oz. to 1 oz. or 4.5 lb. to 4 lb.
 - Use uppercase X with spaces for dimensions, for example 3 X 25 ft. or 11 X 17 in.
 
+Description rules:
+- ALWAYS write a custom product description following the exact template pattern below. Never copy description text verbatim from the source data.
+- Template pattern: [Full product name] is a [product type] for [target animal/use]. [1-2 sentences on key features/benefits from source data]. [Size/weight/count].
+- Example: "Blue Buffalo Life Protection Dry Dog Food 30 lb. is a dry dog food for dogs. Formulated with real deboned chicken to support muscle maintenance and healthy digestion. Available in a 30 lb. bag."
+- Keep descriptions professional, concise, factual, and strictly based on the source data (never invent or hallucinate features).
+- Keep descriptions between 2 to 3 sentences maximum.
+- Use only plain ASCII characters (avoid curly quotes, en/em-dashes, or special Unicode characters; use standard single/double quotes and hyphens instead).
+
 Field rules:
 - weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
 - confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain. Set below 0.80 if packaging images are expected but missing or unreadable/illegible.
@@ -328,7 +336,7 @@ Output contract — respond with valid JSON matching this structure:
   "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
   "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready. set below 0.80 if images are missing or unreadable",
   "category": "string (required) — best-fit taxonomy category from allowed list",
-  "description": "string (required) — product description from highest-trust source, 1-3 sentences covering key product features and benefits, never truncated",
+  "description": "string (required) — custom product description written according to the Description rules, using the template pattern: [Full product name] is a [product type] for [target animal/use]. [1-2 sentences on key features/benefits]. [Size/weight/count].",
   "search_keywords": "string (required) — comma-separated keywords from source data",
   "packaging_facets": "object (optional) — key-value pairs extracted from source data and/or packaging images. You MUST select the appropriate Facet Profile for your chosen category using the matrix above, and ONLY use keys from that profile's allowed fields. Map values as clean, normalized strings."
 }

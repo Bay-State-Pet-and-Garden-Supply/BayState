@@ -1084,16 +1084,22 @@ function buildRuntimeCredentialsFromProviderConfig(
 }
 
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const [activeConfig, legacySearchKey] = await Promise.all([
+  const [activeConfig, legacySearchKey, dbOpenaiKey] = await Promise.all([
     getActiveAIProviderConfig(),
     getAIScrapingProviderSecret('serpapi'),
+    getAIScrapingProviderSecret('openai'),
   ]);
 
   if (!activeConfig) {
     throw new Error('No active AI provider profile configured in the database');
   }
 
-  return buildRuntimeCredentialsFromProviderConfig(activeConfig, legacySearchKey);
+  const credentials = buildRuntimeCredentialsFromProviderConfig(activeConfig, legacySearchKey);
+  const openaiKey = dbOpenaiKey || process.env.OPENAI_API_KEY?.trim() || null;
+  if (openaiKey) {
+    credentials.openai_api_key = openaiKey;
+  }
+  return credentials;
 }
 
 export async function getAIScrapingRuntimeCredentialsForConfig(
@@ -1103,9 +1109,10 @@ export async function getAIScrapingRuntimeCredentialsForConfig(
     return getAIScrapingRuntimeCredentials();
   }
 
-  const [config, legacySearchKey] = await Promise.all([
+  const [config, legacySearchKey, dbOpenaiKey] = await Promise.all([
     getAIProviderConfigById(configId),
     getAIScrapingProviderSecret('serpapi'),
+    getAIScrapingProviderSecret('openai'),
   ]);
 
   if (!config) {
@@ -1113,7 +1120,12 @@ export async function getAIScrapingRuntimeCredentialsForConfig(
     return getAIScrapingRuntimeCredentials();
   }
 
-  return buildRuntimeCredentialsFromProviderConfig(config, legacySearchKey);
+  const credentials = buildRuntimeCredentialsFromProviderConfig(config, legacySearchKey);
+  const openaiKey = dbOpenaiKey || process.env.OPENAI_API_KEY?.trim() || null;
+  if (openaiKey) {
+    credentials.openai_api_key = openaiKey;
+  }
+  return credentials;
 }
 
 export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {

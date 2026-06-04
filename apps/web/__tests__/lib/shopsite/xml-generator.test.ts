@@ -1,6 +1,7 @@
 import {
     buildShopSiteNewProductTag,
     generateShopSiteXml,
+    cleanUnicodeForShopSite,
 } from '@/lib/shopsite/xml-generator';
 
 describe('generateShopSiteXml', () => {
@@ -76,6 +77,40 @@ describe('generateShopSiteXml', () => {
         expect(xml).not.toContain('<ProductField25>');
         expect(xml).not.toContain('<ProductField11>');
         expect(xml).toContain('</Products>');
+    });
+
+    it('cleans Unicode characters that cause encoding issues on ShopSite', () => {
+        const xml = generateShopSiteXml(
+            [
+                {
+                    sku: 'SKU-UNICODE',
+                    name: 'Instinct Human\u2011Grade Bone Broth', // non-breaking hyphen
+                    price: 19.99,
+                    images: [],
+                    search_keywords: 'hydration\u00a0boost', // non-breaking space
+                },
+            ],
+            { newProductTag: 'new032626' },
+        );
+
+        expect(xml).toContain('<Name>Instinct Human-Grade Bone Broth</Name>');
+        expect(xml).toContain('<![CDATA[Instinct Human-Grade Bone Broth]]>');
+        expect(xml).toContain('<![CDATA[hydration boost]]>');
+    });
+});
+
+describe('cleanUnicodeForShopSite', () => {
+    it('replaces common problematic Unicode characters with standard equivalents', () => {
+        const input = 'Instinct Bone Broths add a nourishing, flavorful hydration boost to everyday pet food routines. This wholesome dog safe bone broth is made with 100% human\u2011grade ingredients to support digestion, hydration, and overall wellness with every pour. Each dog safe broth delivers moisture and functional benefits while enhancing the taste of meals your dog already\u2026';
+        const expected = 'Instinct Bone Broths add a nourishing, flavorful hydration boost to everyday pet food routines. This wholesome dog safe bone broth is made with 100% human-grade ingredients to support digestion, hydration, and overall wellness with every pour. Each dog safe broth delivers moisture and functional benefits while enhancing the taste of meals your dog already...';
+        expect(cleanUnicodeForShopSite(input)).toBe(expected);
+
+        expect(cleanUnicodeForShopSite('“curly”')).toBe('"curly"');
+        expect(cleanUnicodeForShopSite('‘single’')).toBe("'single'");
+        expect(cleanUnicodeForShopSite('en\u2013dash em\u2014dash')).toBe('en-dash em--dash');
+        expect(cleanUnicodeForShopSite('bullet\u2022point')).toBe('bullet*point');
+        expect(cleanUnicodeForShopSite('Brand\u2122 (R)\u00ae (C)\u00a9')).toBe('BrandTM (R)(R) (C)(C)');
+        expect(cleanUnicodeForShopSite('zero\u200bwidth\ufeffspace')).toBe('zerowidthspace');
     });
 });
 

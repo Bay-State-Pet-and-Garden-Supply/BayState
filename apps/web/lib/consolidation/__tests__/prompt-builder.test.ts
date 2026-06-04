@@ -105,6 +105,16 @@ describe('brand placement in prompt-builder', () => {
             expect(prompt).toMatch(/Allowed category values/i);
         });
 
+        it('includes description rules and template guidance', () => {
+            const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
+
+            expect(prompt).toMatch(/Description rules:/i);
+            expect(prompt).toMatch(/ALWAYS write a custom product description/i);
+            expect(prompt).toMatch(/Template pattern: \[Full product name\] is a \[product type\] for \[target animal\/use\]/i);
+            expect(prompt).toContain('Blue Buffalo Life Protection Dry Dog Food 30 lb.');
+            expect(prompt).toMatch(/plain ASCII characters/i);
+        });
+
         it('adds optional cohort consistency guidance and examples', () => {
             const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
 

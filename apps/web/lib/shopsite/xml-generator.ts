@@ -55,6 +55,24 @@ interface ShopSiteXmlOptions {
     newProductTag?: string;
 }
 
+export function cleanUnicodeForShopSite(text: string): string {
+    if (!text) return '';
+    return text
+        .replace(/[\u2018\u2019\u201a\u201b]/g, "'")
+        .replace(/[\u201c\u201d\u201e\u201f\u00ab\u00bb]/g, '"')
+        .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, (char) => {
+            if (char === '\u2014' || char === '\u2015') return '--';
+            return '-';
+        })
+        .replace(/\u2026/g, '...')
+        .replace(/\u00a0/g, ' ')
+        .replace(/[\u200b\u200c\u200d\ufeff]/g, '')
+        .replace(/\u2022/g, '*')
+        .replace(/\u2122/g, 'TM')
+        .replace(/\u00ae/g, '(R)')
+        .replace(/\u00a9/g, '(C)');
+}
+
 function escapeXml(text: string): string {
     return text
         .replace(/&/g, '&amp;')
@@ -74,7 +92,7 @@ function xmlElement(tag: string, value: string | null | undefined): string {
         return `    <${tag}></${tag}>`;
     }
 
-    return `    <${tag}>${escapeXml(value)}</${tag}>`;
+    return `    <${tag}>${escapeXml(cleanUnicodeForShopSite(value))}</${tag}>`;
 }
 
 function xmlCdataElement(tag: string, value: string | null | undefined): string {
@@ -82,15 +100,15 @@ function xmlCdataElement(tag: string, value: string | null | undefined): string 
         return `    <${tag}></${tag}>`;
     }
 
-    return `    <${tag}>${cdataWrap(value)}</${tag}>`;
+    return `    <${tag}>${cdataWrap(cleanUnicodeForShopSite(value))}</${tag}>`;
 }
 
 function xmlLiteralElement(tag: string, value: string | null | undefined, emptyValue: string): string {
     if (value === null || value === undefined || value === '') {
-        return `    <${tag}>${escapeXml(emptyValue)}</${tag}>`;
+        return `    <${tag}>${escapeXml(cleanUnicodeForShopSite(emptyValue))}</${tag}>`;
     }
 
-    return `    <${tag}>${escapeXml(value)}</${tag}>`;
+    return `    <${tag}>${escapeXml(cleanUnicodeForShopSite(value))}</${tag}>`;
 }
 
 function formatPrice(value: string | number): string {
@@ -186,7 +204,7 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
     if (productOnPages.length > 0) {
         lines.push('    <ProductOnPages>');
         for (const pageName of productOnPages) {
-            lines.push(`      <Name>${escapeXml(pageName)}</Name>`);
+            lines.push(`      <Name>${escapeXml(cleanUnicodeForShopSite(pageName))}</Name>`);
         }
         lines.push('    </ProductOnPages>');
     } else {
