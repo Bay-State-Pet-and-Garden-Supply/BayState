@@ -171,6 +171,7 @@ class ApprovedSourceExecutor:
             )
             
             if ocr_text:
+                # 1. Update the top-level product evidence
                 if result.product.evidence:
                     result.product.evidence.image_text = ocr_text
                 else:
@@ -179,6 +180,40 @@ class ApprovedSourceExecutor:
                         selected_images=[best_image],
                         image_text=ocr_text,
                     )
+
+                # 2. Update the source-specific product inside source_results
+                source_slug = result.source.source_slug
+                updated_source = False
+                for sr in (result.source_results or []):
+                    if not sr.product:
+                        continue
+
+                    # Match by source slug or if the image belongs to this source's media list
+                    is_match = (source_slug and sr.sourceSlug == source_slug) or \
+                               (best_image in [m.url for m in (sr.product.media or [])])
+
+                    if is_match:
+                        if sr.product.evidence:
+                            sr.product.evidence.image_text = ocr_text
+                        else:
+                            from scrapers.ai_search.enrichment_models import EvidenceData
+                            sr.product.evidence = EvidenceData(
+                                selected_images=[best_image],
+                                image_text=ocr_text,
+                            )
+                        logger.info(
+                            "[Executor] Copied OCR text to source result: %s (UPC=%s)",
+                            sr.sourceSlug,
+                            self.plan.upc,
+                        )
+                        updated_source = True
+
+                if not updated_source:
+                    logger.warning(
+                        "[Executor] Could not associate OCR text with any specific source in source_results for UPC=%s",
+                        self.plan.upc,
+                    )
+
                 logger.info(
                     "[Executor] OCR extraction succeeded for UPC=%s (%d characters)",
                     self.plan.upc,
