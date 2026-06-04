@@ -684,6 +684,7 @@ export async function scrapeProducts(
         source_type: 'approved_source_extraction',
         source_plans_by_upc: sourcePlansByUpc,
         extraction_mode: 'distributor_only',
+        ocr: { enabled: true },
     };
 
     const { data: job, error: insertError } = await supabase

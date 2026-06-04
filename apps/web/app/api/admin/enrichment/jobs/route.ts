@@ -267,6 +267,9 @@ export async function POST(request: NextRequest) {
       jobConfig.source_type = "approved_source_extraction";
       jobConfig.extraction_mode = extractionMode;
     }
+    if (!jobConfig.ocr) {
+      jobConfig.ocr = { enabled: true };
+    }
 
     // Resolve the active AI runtime once at enqueue time so the job model
     // and config trace match the profile that will be used by the runner.

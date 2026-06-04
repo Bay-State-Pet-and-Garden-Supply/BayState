@@ -26,6 +26,7 @@ export function ManagementPanel({
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [domains, setDomains] = useState<string[]>([]);
   const [activeScrapers, setActiveScrapers] = useState<string[]>([]);
+  const [ocrEnabled, setOcrEnabled] = useState(true);
   const [credentialStatuses, setCredentialStatuses] = useState<Record<string, { configured: boolean; loading: boolean }>>({
     phillips: { configured: false, loading: true },
     orgill: { configured: false, loading: true },
@@ -164,6 +165,7 @@ export function ManagementPanel({
             extractionMode: inferredExtractionMode,
             config: {
               source_type: 'approved_source_extraction',
+              ocr: { enabled: ocrEnabled },
             },
           }),
         });
@@ -217,6 +219,8 @@ export function ManagementPanel({
           onToggleScraper={toggleScraper}
           credentialStatuses={credentialStatuses}
           isAISerpEnabled={isAISerpEnabled}
+          ocrEnabled={ocrEnabled}
+          onToggleOcr={() => setOcrEnabled(!ocrEnabled)}
         />
       </div>
 

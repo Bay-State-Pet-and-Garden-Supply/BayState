@@ -99,19 +99,20 @@ class ApprovedSourceExecutor:
         job_config = self.job_config or {}
         ocr_config = job_config.get("ocr")
         
-        # Check if OCR is enabled
-        ocr_enabled = False
+        # Check if OCR is enabled (default to True unless explicitly disabled)
+        ocr_enabled = True
         ocr_model = "gpt-4o-mini"
         ocr_prompt = None
         ocr_max_tokens = 500
 
-        if isinstance(ocr_config, bool):
-            ocr_enabled = ocr_config
-        elif isinstance(ocr_config, dict):
-            ocr_enabled = ocr_config.get("enabled", False)
-            ocr_model = ocr_config.get("model", ocr_model)
-            ocr_prompt = ocr_config.get("prompt", ocr_prompt)
-            ocr_max_tokens = ocr_config.get("max_tokens", ocr_max_tokens)
+        if ocr_config is not None:
+            if isinstance(ocr_config, bool):
+                ocr_enabled = ocr_config
+            elif isinstance(ocr_config, dict):
+                ocr_enabled = ocr_config.get("enabled", True)
+                ocr_model = ocr_config.get("model", ocr_model)
+                ocr_prompt = ocr_config.get("prompt", ocr_prompt)
+                ocr_max_tokens = ocr_config.get("max_tokens", ocr_max_tokens)
 
         if not ocr_enabled:
             logger.info("[Executor] OCR is disabled in job configuration.")
@@ -132,10 +133,30 @@ class ApprovedSourceExecutor:
         best_image = best_images[0]
         logger.info("[Executor] Selected image for OCR: %s (UPC=%s)", best_image, self.plan.upc)
 
-        # Resolve credentials (prefer job credentials, fallback to env)
+        # Resolve credentials:
+        import os
         credentials = self.ai_credentials or {}
-        api_key = credentials.get("llm_api_key") or credentials.get("openai_api_key")
-        base_url = credentials.get("llm_base_url")
+        
+        # 1. Prefer explicit openai_api_key from coordinator
+        api_key = credentials.get("openai_api_key")
+        base_url = None
+        
+        # 2. Check for process environment OPENAI_API_KEY
+        if not api_key:
+            api_key = os.getenv("OPENAI_API_KEY")
+            
+        # 3. Fallback to llm_api_key if the provider is openai or openai_compatible
+        if not api_key:
+            llm_provider = credentials.get("llm_provider")
+            if llm_provider in ("openai", "openai_compatible"):
+                api_key = credentials.get("llm_api_key")
+                base_url = credentials.get("llm_base_url")
+                
+        # 4. Fallback to default LLM_API_KEY if model/provider is openai
+        if not api_key:
+            if os.getenv("LLM_MODEL", "").startswith("gpt-"):
+                api_key = os.getenv("LLM_API_KEY")
+                base_url = os.getenv("LLM_BASE_URL")
 
         # Run vision service
         from src.ocr.vision_service import extract_text_from_image_urls

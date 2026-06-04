@@ -19,6 +19,8 @@ interface DistributorSectionProps {
   onToggleScraper: (id: string) => void;
   credentialStatuses: Record<string, { configured: boolean; loading: boolean }>;
   isAISerpEnabled: boolean;
+  ocrEnabled: boolean;
+  onToggleOcr: () => void;
 }
 
 export function DistributorSection({
@@ -26,6 +28,8 @@ export function DistributorSection({
   onToggleScraper,
   credentialStatuses,
   isAISerpEnabled,
+  ocrEnabled,
+  onToggleOcr,
 }: DistributorSectionProps) {
   const isAIActive = activeScrapers.includes('official_brand');
 
@@ -94,6 +98,47 @@ export function DistributorSection({
             </div>
           </div>
         )}
+      </div>
+
+      {/* OCR / Vision Section */}
+      <div className="space-y-3">
+        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <span className="w-1.5 h-1.5 bg-muted-foreground" />
+          OCR & Vision
+        </label>
+        <button
+          type="button"
+          onClick={onToggleOcr}
+          className={cn(
+            "flex items-center justify-between p-3 border text-left transition-all rounded-none w-full",
+            ocrEnabled
+              ? "border-brand-forest-green bg-brand-forest-green/5 text-foreground"
+              : "border-border bg-card text-muted-foreground hover:border-muted-foreground"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "w-2 h-2 rounded-full",
+                ocrEnabled
+                  ? "bg-brand-forest-green shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                  : "bg-muted"
+              )}
+            />
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-foreground">Extract Image Text (OCR)</span>
+              <span className="text-[9px] text-muted-foreground font-semibold flex items-center gap-1 mt-0.5">
+                <Sparkles className="h-3 w-3 text-brand-gold fill-brand-gold" /> Run Vision LLM on packaging
+              </span>
+            </div>
+          </div>
+          <span className={cn(
+            "text-[9px] font-bold uppercase tracking-widest",
+            ocrEnabled ? "text-brand-forest-green" : "text-muted-foreground"
+          )}>
+            {ocrEnabled ? "Enabled" : "Disabled"}
+          </span>
+        </button>
       </div>
 
       {/* Distributor Sources Section */}
