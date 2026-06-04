@@ -220,6 +220,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         detail_map = {
             "BCI Item Number": "bci_item_number",
             "Manufacturer #": "manufacturer_number",
+            "Size": "size",
             "UPC": "upc",
             "Case Pack": "case_pack",
             "Unit of Measure": "unit_of_measure",
@@ -240,6 +241,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                 r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:?\s*(\S+)': 'bci_item_number',
                 r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:?\s*(\S+)': 'manufacturer_number',
                 r'(?:UPC\s*Code|UPC)\s*:?\s*(\S+)': 'upc',
+                r'(?:Size)\s*:?\s*(.+?)(?=\s*(?:BCI#|BCI\s*Number|Item\s*#|Manufacturer\s*#|MFG\s*#|Model\s*#|UPC\s*Code|UPC|Type|Case\s*Pack|Pack)\s*:?|$)': 'size',
                 r'(?:Case\s*Pack|Pack)\s*:?\s*(\S+)': 'case_pack',
             }
             for pattern, field in detail_patterns.items():

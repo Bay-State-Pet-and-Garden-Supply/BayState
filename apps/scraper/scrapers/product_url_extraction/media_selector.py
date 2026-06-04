@@ -31,10 +31,15 @@ Usage::
 from __future__ import annotations
 
 import re
+import json
+import logging
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode, urljoin
+
+from scrapers.ai_search.llm_runtime import LLMRuntimeConfig, create_async_openai_client
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +461,12 @@ def _normalize(text: str) -> str:
     return " ".join(text.strip().split()).lower()
 
 
+def _normalize_flavor(text: str) -> str:
+    """Normalize flavor tokens by removing punctuation (hyphens/underscores become spaces) and extra whitespace."""
+    text = re.sub(r"[-_]", " ", text)
+    return " ".join(text.lower().split())
+
+
 def detect_cross_flavor(
     image_text: str,
     expected_flavor_tokens: list[str],
@@ -472,15 +483,26 @@ def detect_cross_flavor(
     if not expected_flavor_tokens:
         return []
 
-    normalized_text = _normalize(image_text)
-    expected_norm = {_normalize(t) for t in expected_flavor_tokens}
+    # Normalize image text: replace hyphens/underscores with spaces
+    normalized_text = _normalize_flavor(image_text)
+    
+    # Normalize expected flavor tokens
+    expected_norm = {_normalize_flavor(t) for t in expected_flavor_tokens}
+
+    # Deduplicate and normalize common flavor tokens
+    normalized_common = {}
+    for t in COMMON_FLAVOR_TOKENS:
+        norm_t = _normalize_flavor(t)
+        normalized_common[norm_t] = t
 
     foreign_tokens: list[str] = []
-    for token in COMMON_FLAVOR_TOKENS:
-        if token in expected_norm:
-            continue  # Expected — not foreign
-        if token in normalized_text:
-            foreign_tokens.append(token)
+    for norm_token, orig_token in normalized_common.items():
+        if norm_token in expected_norm:
+            continue
+        # Check if the normalized token is a whole-word match in the normalized text
+        pattern = rf"\b{re.escape(norm_token)}\b"
+        if re.search(pattern, normalized_text):
+            foreign_tokens.append(orig_token)
 
     return foreign_tokens
 
@@ -967,8 +989,217 @@ class ProductMediaSelector:
         )
 
 
+class LLMMediaSelector:
+    """LLM-assisted product image selector with heuristic fallback."""
+
+    def __init__(
+        self,
+        llm_runtime: LLMRuntimeConfig,
+        expected_product_name: str | None = None,
+        expected_brand: str | None = None,
+        expected_flavor_tokens: list[str] | None = None,
+        max_images: int = 12,
+        min_score: float = 8.0,
+    ):
+        self._llm_runtime = llm_runtime
+        self._expected_product_name = expected_product_name
+        self._expected_brand = expected_brand
+        self._expected_flavor_tokens = expected_flavor_tokens or []
+        self._max_images = max_images
+        self._min_score = min_score
+
+        # Instantiate heuristic selector for pre-filtering and fallback
+        self._heuristic_selector = ProductMediaSelector(
+            expected_product_name=expected_product_name,
+            expected_brand=expected_brand,
+            expected_flavor_tokens=expected_flavor_tokens,
+            max_images=max_images,
+            min_score=min_score,
+        )
+
+    async def select(
+        self,
+        crawl_media_images: list[dict[str, Any]],
+        jsonld_images: list[str],
+        source_url: str,
+        page_html: str = "",
+    ) -> MediaSelectionResult:
+        # 1. Run heuristic selection first
+        heuristic_result = self._heuristic_selector.select(
+            crawl_media_images=crawl_media_images,
+            jsonld_images=jsonld_images,
+            source_url=source_url,
+            page_html=page_html,
+        )
+
+        # 2. Build candidate pool for LLM
+        # Candidates are all approved images plus rejected images that aren't hard-blocked/tiny
+        candidates: list[SelectedImage] = []
+        if heuristic_result.primary_image:
+            candidates.append(heuristic_result.primary_image)
+        candidates.extend(heuristic_result.gallery_images)
+
+        for img in heuristic_result.rejected_images:
+            # Skip tiny images or hard-blocked domains
+            if any(r == "tiny_dimensions" or r == "blocked_domain" for r in img.reasons):
+                continue
+            candidates.append(img)
+
+        # If no candidates, return heuristic result immediately
+        if not candidates:
+            return heuristic_result
+
+        # Cap candidates to 20 to avoid large context/cost
+        candidates = candidates[:20]
+
+        # 3. Check if LLM is configured
+        if not self._llm_runtime or not self._llm_runtime.api_key:
+            return heuristic_result
+
+        # 4. Formulate prompt
+        try:
+            # Locate prompts directory
+            prompts_dir = Path(__file__).parent.parent.parent / "prompts"
+            prompt_file = prompts_dir / "image_selection_v1.txt"
+            if not prompt_file.exists():
+                return heuristic_result
+            
+            prompt_template = prompt_file.read_text(encoding="utf-8")
+        except Exception:
+            return heuristic_result
+
+        # Format candidates for JSON representation
+        candidates_json_data = []
+        for idx, img in enumerate(candidates):
+            candidates_json_data.append({
+                "index": idx,
+                "url": img.src,
+                "alt_text": img.alt,
+                "heuristic_score": img.score,
+                "heuristic_role": img.role,
+                "heuristic_reasons": img.reasons,
+            })
+
+        candidates_json_str = json.dumps(candidates_json_data, indent=2)
+
+        prompt = prompt_template.format(
+            product_name=self._expected_product_name or "Unknown",
+            brand=self._expected_brand or "Unknown",
+            expected_flavor_tokens=", ".join(self._expected_flavor_tokens),
+            candidates_json=candidates_json_str,
+        )
+
+        # 5. Call LLM
+        try:
+            client = create_async_openai_client(self._llm_runtime)
+            
+            response = await client.chat.completions.create(
+                model=self._llm_runtime.model,
+                messages=[
+                    {"role": "system", "content": "You are a precise data extraction agent. You must output JSON only."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0,
+                response_format={"type": "json_object"}
+            )
+            
+            response_text = response.choices[0].message.content
+            if not response_text:
+                raise ValueError("Received empty response from LLM")
+            
+            result_data = json.loads(response_text)
+            selected_images_list = result_data.get("selected_images", [])
+            
+            # Map LLM decisions back to candidate objects
+            decisions_by_index = {item["index"]: item for item in selected_images_list if "index" in item}
+            
+            primary_image: SelectedImage | None = None
+            gallery_images: list[SelectedImage] = []
+            rejected_images: list[SelectedImage] = []
+
+            # Process the LLM candidates
+            for idx, img in enumerate(candidates):
+                decision = decisions_by_index.get(idx)
+                if not decision:
+                    # Default to rejected if LLM didn't classify it
+                    new_reasons = list(img.reasons) + ["llm_unclassified"]
+                    rejected_images.append(
+                        SelectedImage(
+                            src=img.src,
+                            canonical_src=img.canonical_src,
+                            alt=img.alt,
+                            score=img.score,
+                            role="rejected",
+                            reasons=new_reasons
+                        )
+                    )
+                    continue
+                
+                role = decision.get("role", "rejected")
+                reason = decision.get("reason", "LLM selection")
+                
+                new_img = SelectedImage(
+                    src=img.src,
+                    canonical_src=img.canonical_src,
+                    alt=img.alt,
+                    score=img.score,
+                    role=role,
+                    reasons=list(img.reasons) + [f"llm_role:{role}", f"llm_reason:{reason}"]
+                )
+                
+                if role == "primary":
+                    if primary_image is not None:
+                        # Only allow one primary image, demote extra to gallery
+                        new_img.role = "gallery"
+                        new_img.reasons.append("llm_demoted_extra_primary")
+                        gallery_images.append(new_img)
+                    else:
+                        primary_image = new_img
+                elif role == "gallery":
+                    gallery_images.append(new_img)
+                else:
+                    new_img.role = "rejected"
+                    rejected_images.append(new_img)
+
+            # Re-add any heuristic rejected images that were NOT in the LLM candidate pool
+            llm_candidate_srcs = {img.src for img in candidates}
+            for img in heuristic_result.rejected_images:
+                if img.src not in llm_candidate_srcs:
+                    rejected_images.append(img)
+
+            # Apply max_images cap to gallery if needed
+            if len(gallery_images) > self._max_images:
+                overflow = gallery_images[self._max_images:]
+                gallery_images = gallery_images[:self._max_images]
+                for img in overflow:
+                    img.role = "rejected"
+                    img.reasons.append("over_max_images")
+                    rejected_images.append(img)
+
+            # Re-calculate stats
+            approved_count = (1 if primary_image else 0) + len(gallery_images)
+            rejected_count = len(rejected_images)
+            
+            return MediaSelectionResult(
+                primary_image=primary_image,
+                gallery_images=gallery_images,
+                rejected_images=rejected_images,
+                stats=MediaSelectionStats(
+                    raw_count=heuristic_result.stats.raw_count,
+                    canonical_count=heuristic_result.stats.canonical_count,
+                    approved_count=approved_count,
+                    rejected_count=rejected_count,
+                    duplicate_ratio=heuristic_result.stats.duplicate_ratio,
+                )
+            )
+
+        except Exception:
+            return heuristic_result
+
+
 __all__ = [
     "ProductMediaSelector",
+    "LLMMediaSelector",
     "MediaSelectionResult",
     "MediaSelectionStats",
     "SelectedImage",
@@ -981,3 +1212,4 @@ __all__ = [
     "source_domain_from_url",
     "detect_cross_flavor",
 ]
+

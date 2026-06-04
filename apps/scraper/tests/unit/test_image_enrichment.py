@@ -276,3 +276,149 @@ def test_product_media_selector_blue_buffalo_scenario():
     assert "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/teaser_sizzlers_original.png" in rejected_srcs
     assert "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/bits_beef_teaser.png" in rejected_srcs
 
+
+def test_product_media_selector_cross_flavor_substrings():
+    from scrapers.product_url_extraction.media_selector import ProductMediaSelector
+
+    # Case 1: Pumpkin Cheesecake (cheese should not match cheesecake as a foreign flavor)
+    selector = ProductMediaSelector(
+        expected_product_name="Creamery BITES, Pumpkin Cheesecake Recipe 12oz",
+        expected_brand="K9 Granola Factory",
+        expected_flavor_tokens=["Pumpkin", "Cheesecake"]
+    )
+    res = selector.select(
+        crawl_media_images=[
+            {"src": "https://www.k9granolafactory.com/cdn/shop/files/Pumpkin-Cheesecake-Creamery-Mockup_800x.png", "score": 9.0}
+        ],
+        jsonld_images=[],
+        source_url="https://www.k9granolafactory.com/products/creamery-bites-pumpkin-cheesecake-recipe"
+    )
+    approved = [img.src for img in [res.primary_image] + res.gallery_images if img]
+    assert "https://www.k9granolafactory.com/cdn/shop/files/Pumpkin-Cheesecake-Creamery-Mockup_800x.png" in approved
+
+    # Case 2: Whitefish (fish should not match whitefish as a foreign flavor)
+    selector = ProductMediaSelector(
+        expected_product_name="Whitefish Recipe Dog Food",
+        expected_brand="Open Farm",
+        expected_flavor_tokens=["Whitefish"]
+    )
+    res = selector.select(
+        crawl_media_images=[
+            {"src": "https://openfarmpet.com/cdn/shop/files/whitefish-recipe-packaging.jpg", "score": 9.0}
+        ],
+        jsonld_images=[],
+        source_url="https://openfarmpet.com/products/whitefish-dog-food"
+    )
+    approved = [img.src for img in [res.primary_image] + res.gallery_images if img]
+    assert "https://openfarmpet.com/cdn/shop/files/whitefish-recipe-packaging.jpg" in approved
+
+    # Case 3: Peanut Butter (peanut-butter with hyphen should match peanut butter with space)
+    selector = ProductMediaSelector(
+        expected_product_name="Peanut Butter Bites",
+        expected_brand="Bionic",
+        expected_flavor_tokens=["Peanut Butter"]
+    )
+    res = selector.select(
+        crawl_media_images=[
+            {"src": "https://www.bionicdogtoys.com/wp-content/uploads/peanut-butter-bites.png", "score": 9.0}
+        ],
+        jsonld_images=[],
+        source_url="https://www.bionicdogtoys.com/product/peanut-butter-bites"
+    )
+    approved = [img.src for img in [res.primary_image] + res.gallery_images if img]
+    assert "https://www.bionicdogtoys.com/wp-content/uploads/peanut-butter-bites.png" in approved
+
+
+@pytest.mark.asyncio
+async def test_llm_media_selector_success():
+    from scrapers.product_url_extraction.media_selector import LLMMediaSelector
+    from scrapers.ai_search.llm_runtime import LLMRuntimeConfig
+    from unittest.mock import MagicMock, AsyncMock, patch
+
+    runtime = LLMRuntimeConfig(model="gpt-4o-mini", base_url="https://api.openai.com/v1", api_key="fake-key")
+    selector = LLMMediaSelector(
+        llm_runtime=runtime,
+        expected_product_name="Creamery BITES, Pumpkin Cheesecake Recipe 12oz",
+        expected_brand="K9 Granola Factory",
+        expected_flavor_tokens=["Pumpkin", "Cheesecake"]
+    )
+
+    # Mock the AsyncOpenAI client
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.choices = [
+        MagicMock(message=MagicMock(content='{"selected_images": [{"index": 0, "role": "primary", "reason": "Exact match for Pumpkin Cheesecake product image"}]}'))
+    ]
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+
+    with patch("scrapers.product_url_extraction.media_selector.create_async_openai_client", return_value=mock_client):
+        res = await selector.select(
+            crawl_media_images=[
+                {"src": "https://www.k9granolafactory.com/cdn/shop/files/Pumpkin-Cheesecake-Creamery-Mockup_800x.png", "score": 9.0}
+            ],
+            jsonld_images=[],
+            source_url="https://www.k9granolafactory.com/products/creamery-bites-pumpkin-cheesecake-recipe"
+        )
+        
+        assert res.primary_image is not None
+        assert res.primary_image.src == "https://www.k9granolafactory.com/cdn/shop/files/Pumpkin-Cheesecake-Creamery-Mockup_800x.png"
+        assert res.primary_image.role == "primary"
+        assert any("llm_role:primary" in r for r in res.primary_image.reasons)
+
+
+@pytest.mark.asyncio
+async def test_llm_media_selector_fallback_on_error():
+    from scrapers.product_url_extraction.media_selector import LLMMediaSelector
+    from scrapers.ai_search.llm_runtime import LLMRuntimeConfig
+    from unittest.mock import patch
+
+    runtime = LLMRuntimeConfig(model="gpt-4o-mini", base_url="https://api.openai.com/v1", api_key="fake-key")
+    selector = LLMMediaSelector(
+        llm_runtime=runtime,
+        expected_product_name="Peanut Butter Bites",
+        expected_brand="Bionic",
+        expected_flavor_tokens=["Peanut Butter"]
+    )
+
+    # Patch client to raise an exception
+    with patch("scrapers.product_url_extraction.media_selector.create_async_openai_client", side_effect=Exception("API limit reached")):
+        res = await selector.select(
+            crawl_media_images=[
+                {"src": "https://www.bionicdogtoys.com/wp-content/uploads/peanut-butter-bites.png", "score": 9.0}
+            ],
+            jsonld_images=[],
+            source_url="https://www.bionicdogtoys.com/product/peanut-butter-bites"
+        )
+        
+        # Should gracefully fall back to heuristics and succeed
+        assert res.primary_image is not None
+        assert res.primary_image.src == "https://www.bionicdogtoys.com/wp-content/uploads/peanut-butter-bites.png"
+        assert res.primary_image.role == "primary"
+        # No llm tag in reasons
+        assert not any("llm_role" in r for r in res.primary_image.reasons)
+
+
+@pytest.mark.asyncio
+async def test_llm_media_selector_fallback_no_runtime():
+    from scrapers.product_url_extraction.media_selector import LLMMediaSelector
+
+    selector = LLMMediaSelector(
+        llm_runtime=None,
+        expected_product_name="Peanut Butter Bites",
+        expected_brand="Bionic",
+        expected_flavor_tokens=["Peanut Butter"]
+    )
+
+    res = await selector.select(
+        crawl_media_images=[
+            {"src": "https://www.bionicdogtoys.com/wp-content/uploads/peanut-butter-bites.png", "score": 9.0}
+        ],
+        jsonld_images=[],
+        source_url="https://www.bionicdogtoys.com/product/peanut-butter-bites"
+    )
+    
+    assert res.primary_image is not None
+    assert res.primary_image.src == "https://www.bionicdogtoys.com/wp-content/uploads/peanut-butter-bites.png"
+    assert res.primary_image.role == "primary"
+
+

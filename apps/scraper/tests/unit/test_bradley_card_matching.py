@@ -135,6 +135,11 @@ def test_bradley_pdp_image_filtering() -> None:
         <h1>DOGGINSTIX BULLY STICKS</h1>
         <p>Brand: <a href="/dogginstix">DOGGINSTIX</a></p>
         
+        <dl>
+          <dt>Size</dt><dd>12 IN</dd>
+          <dt>BCI Item Number</dt><dd>028004</dd>
+        </dl>
+        
         <!-- Main Product Gallery -->
         <div class="sticky top-4">
           <div class="flex">
@@ -162,6 +167,7 @@ def test_bradley_pdp_image_filtering() -> None:
     result = adapter.extract_from_html(html_content, "028004", "https://www.bradleycaldwell.com/dogginstix-bully-sticks-028004")
     
     assert result.success
+    assert result.product.get("size") == "12 IN"
     image_urls = result.product.get("image_urls", [])
     
     # Correct main product image should be extracted

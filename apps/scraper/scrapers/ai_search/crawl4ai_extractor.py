@@ -2,6 +2,7 @@
 
 from importlib import metadata as importlib_metadata
 import asyncio
+import os
 import json
 import logging
 import re
@@ -24,6 +25,7 @@ from scrapers.schemas.product import ProductData
 from scrapers.product_url_extraction.media_selector import (
     COMMON_FLAVOR_TOKENS,
     ProductMediaSelector,
+    LLMMediaSelector,
 )
 from scrapers.utils.ai_utils import (
     build_extraction_instruction,
@@ -979,7 +981,7 @@ class Crawl4AIExtractor:
             expected_brand=expected_brand,
         )
 
-        # ---- ProductMediaSelector for production image selection ----
+        # ---- Image Selection (LLM with heuristic fallback) ----
         # Derive flavor tokens from the expected product name
         flavor_tokens = None
         if expected_name:
@@ -988,22 +990,36 @@ class Crawl4AIExtractor:
             if detected:
                 flavor_tokens = detected
 
-        selector = ProductMediaSelector(
-            expected_product_name=expected_name,
-            expected_brand=expected_brand,
-            expected_flavor_tokens=flavor_tokens,
-        )
-
         all_images = self._extraction.coerce_string_list(
             result_data.get("images") if result_data.get("images") else []
         )
 
-        media_result = selector.select(
-            crawl_media_images=crawl_media.get("images", []),
-            jsonld_images=all_images,
-            source_url=url,
-            page_html=html,
-        )
+        selector_mode = os.getenv("IMAGE_SELECTOR_MODE", "llm").lower()
+        if selector_mode == "heuristic" or not self._llm_runtime or not self._llm_runtime.api_key:
+            selector = ProductMediaSelector(
+                expected_product_name=expected_name,
+                expected_brand=expected_brand,
+                expected_flavor_tokens=flavor_tokens,
+            )
+            media_result = selector.select(
+                crawl_media_images=crawl_media.get("images", []),
+                jsonld_images=all_images,
+                source_url=url,
+                page_html=html,
+            )
+        else:
+            selector = LLMMediaSelector(
+                llm_runtime=self._llm_runtime,
+                expected_product_name=expected_name,
+                expected_brand=expected_brand,
+                expected_flavor_tokens=flavor_tokens,
+            )
+            media_result = await selector.select(
+                crawl_media_images=crawl_media.get("images", []),
+                jsonld_images=all_images,
+                source_url=url,
+                page_html=html,
+            )
 
         # Build approved URL list from selector output
         approved_urls: list[str] = []
