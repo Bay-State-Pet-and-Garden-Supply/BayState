@@ -381,6 +381,9 @@ class SourceResultInfo(BaseModel):
     matchedFields: list[str] = Field(default_factory=list)
     evidenceUrl: Optional[str] = None
     product: Optional[EnrichedProductFacts] = None
+    extractionMethod: Optional[str] = None
+    platform: Optional[str] = None
+    llmUsed: Optional[bool] = None
 
 
 
@@ -550,6 +553,14 @@ def build_v1_from_extraction_result(
                         "npk_ratio": product_data.get("npk_ratio") or result.get("npk_ratio"),
                         "unit_value": product_data.get("unit_value") if product_data.get("unit_value") is not None else result.get("unit_value"),
                         "unit_type": product_data.get("unit_type") or result.get("unit_type"),
+                        # Canonical facet fields
+                        "animal_type": product_data.get("animal_type"),
+                        "breed_size": product_data.get("breed_size"),
+                        "primary_protein": product_data.get("primary_protein"),
+                        "diet_type": product_data.get("diet_type"),
+                        "package_count": product_data.get("package_count"),
+                        "package_weight": product_data.get("package_weight"),
+                        "material": product_data.get("material"),
                     },
                     evidence_url=sr.get("evidenceUrl") or url
                 )
@@ -562,6 +573,9 @@ def build_v1_from_extraction_result(
                     matchedFields=sr.get("matchedFields", []),
                     evidenceUrl=sr.get("evidenceUrl"),
                     product=prod,
+                    extractionMethod=sr.get("extractionMethod") or sr.get("method"),
+                    platform=sr.get("platform"),
+                    llmUsed=sr.get("llmUsed") if sr.get("llmUsed") is not None else sr.get("llm_used"),
                 )
             )
 

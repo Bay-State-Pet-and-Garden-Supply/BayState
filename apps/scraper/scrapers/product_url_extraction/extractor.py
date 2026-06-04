@@ -178,6 +178,16 @@ class ProductPageExtractor:
                     "npk_ratio": result.get("npk_ratio"),
                     "unit_value": result.get("unit_value"),
                     "unit_type": result.get("unit_type"),
+                    # Canonical facet fields
+                    "animal_type": result.get("animal_type"),
+                    "breed_size": result.get("breed_size"),
+                    "primary_protein": result.get("primary_protein"),
+                    "diet_type": result.get("diet_type"),
+                    "package_count": result.get("package_count"),
+                    "package_weight": result.get("package_weight"),
+                    "material": result.get("material"),
+                    "packaging_type": result.get("packaging_type"),
+                    "color": result.get("color"),
                     "method": method,
                     "confidence": result.get("confidence", 0.0),
                     "model": model,
@@ -207,6 +217,16 @@ class ProductPageExtractor:
                     "npk_ratio": result.get("npk_ratio"),
                     "unit_value": result.get("unit_value"),
                     "unit_type": result.get("unit_type"),
+                    # Canonical facet fields
+                    "animal_type": result.get("animal_type"),
+                    "breed_size": result.get("breed_size"),
+                    "primary_protein": result.get("primary_protein"),
+                    "diet_type": result.get("diet_type"),
+                    "package_count": result.get("package_count"),
+                    "package_weight": result.get("package_weight"),
+                    "material": result.get("material"),
+                    "packaging_type": result.get("packaging_type"),
+                    "color": result.get("color"),
                 }
 
                 source_results.append({
@@ -216,6 +236,9 @@ class ProductPageExtractor:
                     "matchedFields": [k for k, v in product_facts.items() if v],
                     "evidenceUrl": attempt_url,
                     "product": product_facts,
+                    "extractionMethod": method,
+                    "platform": result.get("platform") or result.get("extraction_platform") or None,
+                    "llmUsed": result.get("llm_used", False),
                 })
                 success_results.append(normalized)
             else:
@@ -229,6 +252,9 @@ class ProductPageExtractor:
                     "matchedFields": [],
                     "evidenceUrl": attempt_url,
                     "product": None,
+                    "extractionMethod": result.get("method", "failed") if result else "failed",
+                    "platform": result.get("platform") if result else None,
+                    "llmUsed": result.get("llm_used", False) if result else False,
                 })
 
         if success_results:

@@ -312,6 +312,27 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             return urljoin(base_url, src)
         return src
 
+    @staticmethod
+    def _is_valid_product_image(url: str) -> bool:
+        """Reject images that are likely logos, icons, or placeholders.
+
+        Checks the URL filename and alt text patterns for non-product indicators.
+        """
+        if not url:
+            return False
+        url_lower = url.lower()
+        # Reject filenames with these patterns
+        reject_patterns = [
+            "logo", "icon", "placeholder", "no-image", "no_image",
+            "coming-soon", "coming_soon", "default", "avatar",
+            "swatch", "color-swatch", "color_swatch", "spacer",
+            "pixel", "transparent", "blank",
+        ]
+        for pattern in reject_patterns:
+            if pattern in url_lower:
+                return False
+        return True
+
     def _extract_textual_facets(
         self,
         text: str,

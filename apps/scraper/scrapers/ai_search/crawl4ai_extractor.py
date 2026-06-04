@@ -105,7 +105,7 @@ class Crawl4AIExtractor:
         matching: MatchingUtils,
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
-        prompt_version: str = "v5",
+        prompt_version: str = "v6",
         llm_provider: str | None = None,
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
@@ -138,6 +138,9 @@ class Crawl4AIExtractor:
         self._fallback_extractor = FallbackExtractor(scoring=scoring, matching=matching)
         # Pre-generate schema for performance
         self._product_schema = ProductData.model_json_schema()
+        # LLM markdown state (set per-crawl, consumed by LLM call sites)
+        self._llm_markdown: str = ""
+        self._llm_input_source: str = "fit_markdown"
 
     async def _extract_with_fallback(
         self,
@@ -256,6 +259,8 @@ class Crawl4AIExtractor:
                 expected_name=product_name,
                 expected_brand=brand,
             )
+            enriched_fb["method"] = "fallback_regex"
+            enriched_fb["llm_used"] = False
             return enriched_fb
 
         if status_code is not None and status_code >= 400:
@@ -351,6 +356,14 @@ class Crawl4AIExtractor:
             "flavor": raw_result.get("flavor"),
             "special_diet": raw_result.get("special_diet", []),
             "health_feature": raw_result.get("health_feature", []),
+            # Canonical facet fields
+            "animal_type": raw_result.get("animal_type"),
+            "breed_size": raw_result.get("breed_size"),
+            "primary_protein": raw_result.get("primary_protein"),
+            "diet_type": raw_result.get("diet_type"),
+            "package_count": raw_result.get("package_count"),
+            "package_weight": raw_result.get("package_weight"),
+            "material": raw_result.get("material"),
             "packaging_type": raw_result.get("packaging_type"),
             "size": raw_result.get("size"),
             "color": raw_result.get("color"),
@@ -516,6 +529,219 @@ class Crawl4AIExtractor:
             return True
         return text.startswith("not specified") or text.startswith("not explicitly stated")
 
+    def _select_llm_markdown(
+        self,
+        fit_md: str,
+        raw_md: str,
+        markdown_value: str,
+        html: str,
+        upc: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+    ) -> tuple[str, str]:
+        """Select the best markdown source for LLM extraction.
+
+        Returns (text, source_label) where source_label is one of:
+        'raw_markdown', 'hybrid_markdown', or 'fit_markdown'.
+
+        Strategy:
+        1. Use raw markdown when available and reasonably sized (< 30KB).
+        2. For large raw markdown, extract spec-relevant snippets around
+           keywords (ingredients, dimensions, weight, flavor, etc.) and
+           combine with fit_markdown as a hybrid.
+        3. Fall back to fit_markdown or whatever is available.
+        """
+        # 1. Raw markdown (best quality, small enough)
+        if raw_md and len(raw_md) < 30000:
+            return raw_md, "raw_markdown"
+
+        # 2. Hybrid: spec snippets from raw + fit_md for context
+        if raw_md and fit_md:
+            spec_keywords = [
+                "ingredients", "guaranteed analysis", "analysis", "dimensions",
+                "weight", "size", "life stage", "breed size", "flavor", "protein",
+                "NPK", "material", "color", "package", "diet", "material",
+                "animal", "food form", "primary protein", "substance",
+            ]
+            snippet_lines = []
+            lower_text = raw_md.lower()
+            for keyword in spec_keywords:
+                idx = lower_text.find(keyword)
+                if idx >= 0:
+                    start = max(0, idx - 100)
+                    end = min(len(raw_md), idx + 500)
+                    snippet = raw_md[start:end]
+                    snippet_lines.append(snippet)
+
+            if snippet_lines:
+                hybrid = fit_md + "\n\n--- Spec Details ---\n\n" + "\n\n".join(snippet_lines)
+                if len(hybrid) < 30000:
+                    return hybrid, "hybrid_markdown"
+
+        # 3. Fall back to fit_markdown or first available
+        text = fit_md or raw_md or markdown_value or ""
+        source = "fit_markdown" if fit_md else ("raw_markdown" if raw_md else "markdown_value")
+        return text, source
+
+    async def _try_platform_schema_extraction(
+        self,
+        url: str,
+        html: str,
+        markdown: str,
+        result: dict[str, Any],
+        fetch_time_ms: int,
+        upc: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        jsonld_fallback: Optional[dict[str, Any]] = None,
+    ) -> Optional[dict[str, Any]]:
+        """Attempt deterministic extraction using platform-specific CSS schemas.
+
+        Detects the e-commerce platform from HTML/URL, builds a curated
+        JsonCssExtractionStrategy schema, runs a crawl with it, and normalizes
+        the result. Returns enriched data if complete, or None to continue
+        to LLM fallback.
+        """
+        from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+        from src.crawl4ai_engine.engine import Crawl4AIEngine
+        from scrapers.ai_search.platform_extraction import (
+            detect_platform,
+            build_platform_schema,
+            normalize_platform_payload,
+        )
+
+        safe_html = html if isinstance(html, str) else ""
+        safe_markdown = markdown if isinstance(markdown, str) else ""
+
+        # 1. Detect platform
+        platform = detect_platform(safe_html or safe_markdown, url)
+        if not platform:
+            logger.info("[AI Search] No platform detected for %s, falling through to LLM", url)
+            return None
+
+        # 2. Build schema
+        schema = build_platform_schema(platform)
+        if not schema:
+            logger.info("[AI Search] No schema for platform %s, falling through to LLM", platform)
+            return None
+
+        logger.info("[AI Search] Platform detected: %s — trying schema extraction for %s", platform, url)
+
+        try:
+            import time as _time
+            import json as _json
+            platform_start = _time.perf_counter()
+            strategy = JsonCssExtractionStrategy(schema=schema)
+
+            async with Crawl4AIEngine({
+                "browser": {"headless": self.headless},
+                "crawler": {"extraction_strategy": strategy, "timeout": 30000},
+            }) as engine:
+                platform_result = await engine.crawl(url)
+            platform_time_ms = int((_time.perf_counter() - platform_start) * 1000)
+
+            if platform_result.get("success"):
+                extracted = platform_result.get("extracted_content")
+                if extracted:
+                    if isinstance(extracted, str):
+                        payload = _json.loads(extracted)
+                    elif isinstance(extracted, list):
+                        payload = extracted
+                    elif isinstance(extracted, dict):
+                        payload = [extracted]
+                    else:
+                        payload = None
+
+                    if payload:
+                        normalized = normalize_platform_payload(
+                            payload,
+                            url=url,
+                            upc=upc,
+                            product_name=product_name,
+                            brand=brand,
+                            platform=platform,
+                        )
+
+                        if normalized.get("success") and normalized.get("product_name"):
+                            product_data = {
+                                "product_name": normalized["product_name"],
+                                "brand": normalized["brand"],
+                                "description": normalized["description"],
+                                "images": normalized.get("images", []),
+                                "categories": normalized.get("categories", []),
+                                "size_metrics": normalized.get("specifications", ""),
+                                "sku": normalized.get("sku", ""),
+                                "upc": upc,
+                                "url": url,
+                                "method": f"platform-schema:{platform}",
+                                "platform": platform,
+                            }
+
+                            check_result = self._check_extraction_completeness(
+                                product_data, brand, url=url
+                            )
+
+                            if check_result["is_complete"]:
+                                enriched, image_diag = await self._enrich_images(
+                                    product_data,
+                                    url=url,
+                                    html=safe_html,
+                                    markdown=safe_markdown,
+                                    crawl_media=result.get("media", {}) if isinstance(result, dict) else {},
+                                    expected_name=product_name,
+                                    expected_brand=brand,
+                                )
+                                enriched["method"] = f"platform-schema:{platform}"
+                                enriched["platform"] = platform
+                                enriched["llm_used"] = False
+                                enriched["confidence"] = max(float(enriched.get("confidence", 0.0)), 0.85)
+
+                                self._log_telemetry(
+                                    url, upc, f"platform-schema:{platform}", True,
+                                    fetch_time_ms, platform_time_ms, 0, None,
+                                    enriched["confidence"],
+                                    image_diagnostics=image_diag,
+                                )
+                                logger.info(
+                                    "[AI Search] Platform schema extraction succeeded: %s (method=%s)",
+                                    url, enriched["method"],
+                                )
+                                enriched = self._apply_context_derivation(
+                                    enriched,
+                                    product_name=product_name,
+                                    url=url,
+                                    brand=brand,
+                                )
+                                return enriched
+
+                            logger.info(
+                                "[AI Search] Platform schema extraction incomplete for %s "
+                                "(desc=%s, cats=%s, checks=%s), falling through to LLM",
+                                url,
+                                "present" if check_result.get("description") else "missing",
+                                check_result.get("categories"),
+                                check_result.get("check_notes", []),
+                            )
+                        else:
+                            logger.info(
+                                "[AI Search] Platform schema empty for %s (no product_name), falling through to LLM",
+                                url,
+                            )
+            else:
+                logger.info(
+                    "[AI Search] Platform schema crawl failed for %s: %s, falling through to LLM",
+                    url, platform_result.get("error", "unknown"),
+                )
+        except ImportError as ie:
+            logger.warning("[AI Search] Platform extraction import error: %s", ie)
+        except Exception as pe:
+            logger.warning(
+                "[AI Search] Platform extraction failed for %s: %s, falling through to LLM",
+                url, self._summarize_error(pe),
+            )
+
+        return None
+
     def _normalize_llm_product_data(
         self,
         product_data: dict[str, Any],
@@ -586,12 +812,27 @@ class Crawl4AIExtractor:
         normalized["categories"] = categories
         return normalized
 
-    def _check_extraction_completeness(self, data: dict[str, Any], brand: Optional[str]) -> dict[str, Any]:
-        """Centralized check to determine if an extracted product payload is complete and high-quality."""
+    def _check_extraction_completeness(
+        self,
+        data: dict[str, Any],
+        brand: Optional[str],
+        url: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Centralized check to determine if an extracted product payload is complete and high-quality.
+
+        Args:
+            data: The extracted product data dict.
+            brand: Expected brand for name-vs-brand comparison.
+            url: Optional source URL for weak-evidence checks (search/listing URLs).
+
+        Returns:
+            Dict with is_complete flag and detailed check results.
+        """
         description = str(data.get("description") or "").strip()
         size = str(data.get("size_metrics") or "").strip()
         name = str(data.get("product_name") or data.get("name") or "").strip()
         categories = data.get("categories")
+        images = data.get("images") or []
 
         has_categories = isinstance(categories, list) and len(categories) > 0
         missing_critical = not description and not size
@@ -619,12 +860,54 @@ class Crawl4AIExtractor:
             and name.lower().strip() == brand.lower().strip()
         )
 
+        # Weak evidence URL check: search/listing/category URLs without product-identifier
+        weak_evidence_url = False
+        check_notes: list[str] = []
+        if url:
+            url_lower = url.lower()
+            weak_url_markers = ["/search", "/category/", "/collection/", "/listing/", "/shop/"]
+            product_markers = ["/products/", "/product/", "/p/", "/item/", "/dp/"]
+            has_weak_marker = any(m in url_lower for m in weak_url_markers)
+            has_product_marker = any(m in url_lower for m in product_markers)
+            if has_weak_marker and not has_product_marker:
+                weak_evidence_url = True
+                check_notes.append("url_looks_like_search_listing")
+
+        # Logo-only image check
+        if isinstance(images, list) and len(images) > 0:
+            from scrapers.ai_search.platform_extraction import _is_valid_product_image
+            valid_images = [img for img in images if _is_valid_product_image(str(img))]
+            if len(valid_images) == 0:
+                check_notes.append("logo_only_images")
+
+        # Facet-sparse check
+        facet_keys = {"animal_type", "life_stage", "breed_size", "food_form", "flavor",
+                       "primary_protein", "diet_type", "package_count", "package_weight",
+                       "npk_ratio", "material", "color"}
+        present_facets = [k for k in facet_keys if data.get(k)]
+        pet_hints = ["dog", "cat", "pet", "animal", "puppy", "kitten", "feed", "chicken"]
+        has_pet_hint = any(h in name.lower() for h in pet_hints) if name else False
+        if has_pet_hint and len(present_facets) < 2:
+            check_notes.append("facet_sparse_for_pet_product")
+
+        logo_only = "logo_only_images" in check_notes
+        facet_sparse = "facet_sparse_for_pet_product" in check_notes
+
+        # Facet-sparse is a warning indicator, not a hard block when other evidence is strong.
+        # Only degrade completeness when already marginal on core identity fields.
         is_complete = not (
             missing_critical
             or (missing_enough and weak_cats)
             or is_generic_description
             or is_brand_only_name
+            or weak_evidence_url
+            or logo_only
         )
+
+        if logo_only:
+            check_notes.append("logo_only_images_rejected")
+        if facet_sparse and has_pet_hint and not is_complete:
+            check_notes.append("facet_sparse_rejected")
 
         return {
             "is_complete": is_complete,
@@ -633,6 +916,8 @@ class Crawl4AIExtractor:
             "weak_categories": weak_cats,
             "is_generic_description": is_generic_description,
             "is_brand_only_name": is_brand_only_name,
+            "weak_evidence_url": weak_evidence_url,
+            "check_notes": check_notes,
             "description": description,
             "size": size,
             "name": name,
@@ -856,6 +1141,12 @@ class Crawl4AIExtractor:
                 markdown_value = markdown_raw if isinstance(markdown_raw, str) else ""
                 markdown = fit_markdown or raw_markdown or markdown_value
 
+                # Pre-select best markdown for LLM extraction (may include spec snippets)
+                self._llm_markdown, self._llm_input_source = self._select_llm_markdown(
+                    fit_md=fit_markdown, raw_md=raw_markdown, markdown_value=markdown_value,
+                    html=html, upc=upc, brand=brand, product_name=product_name,
+                )
+
                 if html_raw is not None and not isinstance(html_raw, str):
                     logger.warning(f"[AI Search] Crawl4AI returned non-string html (type={type(html_raw).__name__}), using empty string")
                 if fit_markdown_raw is not None and not isinstance(fit_markdown_raw, str):
@@ -913,7 +1204,7 @@ class Crawl4AIExtractor:
                             # Completeness check: if JSON-LD is missing key fields
                             # or has generic/placeholder content, fall through to LLM
                             # extraction for richer data.
-                            check_result = self._check_extraction_completeness(jsonld_result, brand)
+                            check_result = self._check_extraction_completeness(jsonld_result, brand, url=url)
 
                             if not check_result["is_complete"]:
                                 logger.info(
@@ -953,6 +1244,8 @@ class Crawl4AIExtractor:
                                     fallback_triggered=result.get("fallback_triggered", False),
                                     image_diagnostics=image_diag,
                                 )
+                                enriched_jsonld["method"] = "json_ld"
+                                enriched_jsonld["llm_used"] = False
                                 enriched_jsonld = self._apply_context_derivation(
                                     enriched_jsonld,
                                     product_name=product_name,
@@ -982,12 +1275,16 @@ class Crawl4AIExtractor:
 
                             # Completeness check: if microdata is missing key fields,
                             # fall through to meta tags / LLM for richer extraction.
-                            check_result = self._check_extraction_completeness(microdata_result, brand)
+                            check_result = self._check_extraction_completeness(microdata_result, brand, url=url)
 
                             if not check_result["is_complete"]:
                                 logger.info(
-                                    "[AI Search] Microdata extraction incomplete (description=%s, size=%s, categories=%s, generic_desc=%s, brand_only_name=%s), "
-                                    "falling through to meta-tags",
+                                    (
+                                    "[AI Search] Microdata extraction incomplete "
+                                    "(description=%s, size=%s, categories=%s, "
+                                    "generic_desc=%s, brand_only_name=%s), "
+                                    "falling through to meta-tags"
+                                ),
                                     "present" if check_result["description"] else "missing",
                                     "present" if check_result["size"] else "missing",
                                     check_result["categories"],
@@ -1022,6 +1319,8 @@ class Crawl4AIExtractor:
                                     fallback_triggered=result.get("fallback_triggered", False),
                                     image_diagnostics=image_diag,
                                 )
+                                enriched_micro["method"] = "microdata"
+                                enriched_micro["llm_used"] = False
                                 enriched_micro = self._apply_context_derivation(
                                     enriched_micro,
                                     product_name=product_name,
@@ -1050,7 +1349,7 @@ class Crawl4AIExtractor:
                                                         # Completeness check: if meta-tags is missing key fields
                             # or has generic/placeholder content, fall through to LLM
                             # extraction for richer data.
-                            check_result = self._check_extraction_completeness(meta_result, brand)
+                            check_result = self._check_extraction_completeness(meta_result, brand, url=url)
 
                             if (not check_result["is_complete"]) and self.extraction_strategy != "json_css":
                                 logger.info(
@@ -1091,6 +1390,8 @@ class Crawl4AIExtractor:
                                     fallback_triggered=result.get("fallback_triggered", False),
                                     image_diagnostics=image_diag,
                                 )
+                                enriched_meta["method"] = "meta_tags"
+                                enriched_meta["llm_used"] = False
                                 enriched_meta = self._apply_context_derivation(
                                     enriched_meta,
                                     product_name=product_name,
@@ -1108,7 +1409,7 @@ class Crawl4AIExtractor:
                                         # Completeness check on fallback result: if key fields are missing
                     # or the result looks generic, try LLM extraction as a second pass
                     if fallback_result.get("success") and self.extraction_strategy != "json_css":
-                        check_result = self._check_extraction_completeness(fallback_result, brand)
+                        check_result = self._check_extraction_completeness(fallback_result, brand, url=url)
 
                         if not check_result["is_complete"]:
                             logger.info(
@@ -1147,8 +1448,8 @@ class Crawl4AIExtractor:
                                         },
                                     )
                                     llm_start = time.perf_counter()
-                                    # Use full markdown; Crawl4AI's chunking handles context limits
-                                    safe_markdown = markdown if markdown else ""
+                                    # Use rich LLM markdown (raw/hybrid including spec snippets)
+                                    safe_markdown = self._llm_markdown if self._llm_markdown else ""
                                     extracted_content = await asyncio.to_thread(llm_strategy.extract, url, 0, safe_markdown)
                                     llm_result = {
                                         "success": bool(extracted_content),
@@ -1203,6 +1504,8 @@ class Crawl4AIExtractor:
                                                     image_diagnostics=image_diag,
                                                 )
                                                 logger.info("[AI Search] LLM second pass succeeded after incomplete fallback")
+                                                enriched_llm["method"] = "llm"
+                                                enriched_llm["llm_used"] = True
                                                 enriched_llm = self._apply_context_derivation(
                                                     enriched_llm,
                                                     product_name=product_name,
@@ -1225,6 +1528,8 @@ class Crawl4AIExtractor:
                         expected_name=product_name,
                         expected_brand=brand,
                     )
+                    enriched_fb["method"] = "fallback_regex"
+                    enriched_fb["llm_used"] = False
                     enriched_fb = self._apply_context_derivation(
                         enriched_fb,
                         product_name=product_name,
@@ -1232,6 +1537,22 @@ class Crawl4AIExtractor:
                         brand=brand,
                     )
                     return enriched_fb
+
+                # PLATFORM PASS: Try deterministic platform-schema extraction
+                # before falling back to LLM for unknown sites.
+                platform_result = await self._try_platform_schema_extraction(
+                    url=url,
+                    html=html,
+                    markdown=markdown,
+                    result=result,
+                    fetch_time_ms=fetch_time_ms,
+                    upc=upc,
+                    product_name=product_name,
+                    brand=brand,
+                    jsonld_fallback=jsonld_fallback,
+                )
+                if platform_result is not None:
+                    return platform_result
 
                 # SECOND PASS: If lightweight extraction failed, use LLM/CSS strategy
                 if self.extraction_strategy == "json_css":
@@ -1277,10 +1598,10 @@ class Crawl4AIExtractor:
                 # (For json_css, we still need engine.crawl() since CSS strategies
                 # extract from rendered HTML, not plain text.)
                 if method == "llm":
-                    # LLM path: run extraction on already-fetched markdown
+                    # LLM path: run extraction on already-fetched rich markdown
                     llm_start = time.perf_counter()
 
-                    safe_markdown = markdown if markdown else ""
+                    safe_markdown = self._llm_markdown if self._llm_markdown else ""
                     if not safe_markdown:
                         logger.info("[AI Search] No markdown available for LLM second pass, using fallback extractor")
                         return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
@@ -1428,6 +1749,21 @@ class Crawl4AIExtractor:
                         )
                         logger.info(f"[AI Search] Extraction method used: {method}")
 
+                        enriched_llm["method"] = "llm"
+                        enriched_llm["llm_used"] = True
+
+                        # Final quality gate: if LLM result comes from a weak URL or has bad evidence, degrade
+                        llm_complete = self._check_extraction_completeness(enriched_llm, brand, url=url)
+                        if not llm_complete["is_complete"]:
+                            logger.warning(
+                                "[AI Search] LLM output failed final quality gate (weak_url=%s, logo=%s, facet_sparse=%s), degrading to partial",
+                                llm_complete.get("weak_evidence_url"),
+                                "logo_only_images" in llm_complete.get("check_notes", []),
+                                "facet_sparse_for_pet_product" in llm_complete.get("check_notes", []),
+                            )
+                            enriched_llm["status"] = "partial"
+                            enriched_llm["confidence"] = min(float(enriched_llm.get("confidence", 0.5)), 0.4)
+
                         enriched_llm = self._apply_context_derivation(
                             enriched_llm,
                             product_name=product_name,
@@ -1461,6 +1797,8 @@ class Crawl4AIExtractor:
                         expected_name=product_name,
                         expected_brand=brand,
                     )
+                    enriched_fb["method"] = "fallback_regex"
+                    enriched_fb["llm_used"] = False
                     enriched_fb = self._apply_context_derivation(
                         enriched_fb,
                         product_name=product_name,

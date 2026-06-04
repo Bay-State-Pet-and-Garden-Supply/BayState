@@ -390,6 +390,50 @@ class TestProductPageExtractorBatch:
         assert mock_extract.await_count == 2
 
     @pytest.mark.asyncio
+    async def test_canonical_fields_passthrough(self, extractor: ProductPageExtractor) -> None:
+        """Canonical facet fields from the extractor should appear in the output."""
+        with patch.object(
+            extractor._extractor, "extract", new_callable=AsyncMock
+        ) as mock_extract:
+            mock_extract.return_value = {
+                "success": True,
+                "product_name": "Premium Dog Food",
+                "brand": "Premium Brand",
+                "description": "High quality grain-free dog food",
+                "images": ["https://example.com/img.jpg"],
+                "categories": ["Dog Food"],
+                "url": "https://example.com/product",
+                "confidence": 0.9,
+                "method": "llm",
+                "animal_type": "Dog",
+                "life_stage": "Adult",
+                "breed_size": "Large Breed",
+                "food_form": "Dry Food",
+                "flavor": "Chicken",
+                "primary_protein": "Chicken",
+                "diet_type": "Grain-Free",
+                "package_count": 12,
+                "package_weight": "30 lb",
+                "dimensions": "24x18x6 in",
+            }
+
+            result = await extractor.extract(
+                url="https://example.com/product",
+                upc="UPC-001",
+                product_name="Premium Dog Food",
+                brand="Premium Brand",
+            )
+
+        assert result["success"] is True
+        assert result["animal_type"] == "Dog"
+        assert result["breed_size"] == "Large Breed"
+        assert result["primary_protein"] == "Chicken"
+        assert result["diet_type"] == "Grain-Free"
+        assert result["package_count"] == 12
+        assert result["package_weight"] == "30 lb"
+        assert result["dimensions"] == "24x18x6 in"
+
+    @pytest.mark.asyncio
     async def test_batch_skips_missing_sku(self, extractor: ProductPageExtractor) -> None:
         """Products with missing UPC return an error result immediately."""
         results = await extractor.extract_products_from_urls_batch(

@@ -1,0 +1,183 @@
+# Prompt Version: v6
+# Created: 2026-06-03
+# Focus: Full schema-aligned product extraction with canonical pet/garden/hardware facets
+#
+# Changes from v5:
+# - Added OPTIONAL field rules for animal_type, life_stage, breed_size, food_form,
+#   flavor, primary_protein, diet_type, package_count, package_weight, dimensions,
+#   packaging_type, material, color
+# - Explicitly exclude price, stock, availability, shipping, and protected fields
+# - Core policy and field rules for REQUIRED fields preserved from v5
+
+Extract structured product data for a single product detail page.
+
+TARGET HINTS
+- UPC: {upc}
+- Expected Brand (soft hint): {brand or "Unknown"}
+- Expected Product Name (soft hint): {product_name or "Unknown"}
+
+CORE POLICY
+- Use only evidence from the current page.
+- The target hints above are weak hints, not facts. Do not copy them unless the page supports them.
+- Extract the exact product or selected variant shown on the page.
+- Ignore cross-sells, related items, bundle suggestions, review snippets, shipping copy, and store-wide marketing text.
+- EXCLUDE price, stock status, availability, shipping cost, minimum order quantity, special order flags, and taxable status entirely. Do not extract or return these fields.
+
+FIELD RULES -- REQUIRED (must extract if present on page)
+
+1) product_name
+   - Return the clean PDP title for the exact item.
+   - Remove store suffixes, price suffixes, and slug noise when possible.
+   - Do not return a category name, breadcrumb trail, or retailer name.
+
+2) brand
+   - Return the canonical manufacturer brand, not the retailer or site name.
+   - Infer from title, manufacturer text, breadcrumb, specs, or structured data.
+   - Expand shorthand only when the page clearly supports it.
+
+3) description
+   - Return concise product-specific description or spec text for the exact item.
+   - Prefer the main description, feature bullets, or product specs.
+   - Keep important technical details.
+   - Exclude generic SEO copy, shipping text, and instructions unrelated to the product package.
+   - Length: 2-10 sentences when available.
+
+4) size_metrics
+   - Extract package size, count, weight, volume, or product dimensions only.
+   - Good examples: "20 oz", "8 lb", "4 oz", "250 g", "1.5 cu ft", "10 count".
+   - Ignore planting depth, plant spacing, days to maturity, dosage, and other instructional measurements unless they are the package size.
+
+5) images
+   - Return absolute product image URLs only (https://...).
+   - Put the main hero image first, then additional images for the same product.
+   - Include URLs from src, data-src, srcset, and JSON-LD structured data when visible.
+   - Exclude logos, icons, generic banners, and recommendation images.
+
+6) categories
+   - Return 1-4 useful product categories from breadcrumbs, tags, department text, or structured data.
+   - Keep the most specific product categories.
+   - Exclude generic crumbs like "Home", "Shop", "Products", "Brands", "Departments", and the brand name itself.
+
+FIELD RULES -- OPTIONAL (extract only when clearly present on the page; do not hallucinate)
+
+7) ingredients
+   - Extract ingredient list if visible (common for pet food, treats, supplements, and food products).
+   - Return as a string (comma-separated or natural text).
+   - Look in product specs, description, or a dedicated "Ingredients" section.
+
+8) guaranteed_analysis
+   - Extract guaranteed analysis if visible (common for pet food: crude protein, crude fat, crude fiber, moisture).
+   - Return as a single formatted string, e.g. "Crude Protein 32%, Crude Fat 18%, Crude Fiber 4%, Moisture 10%".
+   - Look in product specs, description, or a "Nutritional Information" section.
+
+9) npk_ratio
+   - Extract N-P-K fertilizer ratio if visible (common for garden/fertilizer products).
+   - Format as a hyphen-separated string, e.g. "10-10-10" or "30-0-0".
+   - Look in product title, specs, or description.
+
+10) unit_value
+    - Extract the numeric quantity/weight value when size_metrics includes a measurement.
+    - Examples: 30.0 (for "30 lb bag"), 12 (for "12-pack"), 1.5 (for "1.5 cu ft").
+    - Extract only when a clear numeric value is visible.
+
+11) unit_type
+    - Extract the unit of measurement from size_metrics.
+    - Use one of: LB, OZ, KG, G, CT, GAL, QUART, ML, L, CU_FT, IN, CM, MM.
+    - Extract only when a clear unit is visible.
+
+FIELD RULES -- CANONICAL FACETS (extract only when clearly present on the page; do not hallucinate)
+
+12) animal_type
+    - Extract the target animal for the product if visible.
+    - Examples: Dog, Cat, Horse, Chicken, Bird, Fish, Rabbit, Reptile, Small Animal.
+    - Look in product title, specs, attributes block, or category breadcrumb.
+    - Return empty string if not clearly present.
+
+13) life_stage
+    - Extract the life stage the product is formulated for if clearly labeled.
+    - Examples: Puppy, Kitten, Adult, Senior, All Life Stages, Junior.
+    - Look in product specs, attributes block, or description.
+    - Return empty string if not clearly present.
+
+14) breed_size
+    - Extract the breed/size category if clearly labeled.
+    - Examples: Small Breed, Medium Breed, Large Breed, Giant Breed, Toy Breed.
+    - Look in product specs, attributes block, or title.
+    - Return empty string if not clearly present.
+
+15) food_form
+    - Extract the physical form of the food product if visible.
+    - Examples: Dry Food, Wet Food, Canned, Raw, Freeze-Dried, Dehydrated, Pellet, Pate, Stew, Gravy.
+    - Look in product specs, attributes block, description, or title.
+    - Return empty string if not clearly present.
+
+16) flavor
+    - Extract the primary flavor or protein description if visible.
+    - Examples: Chicken, Salmon, Beef, Turkey, Lamb, Duck, Venison, Mixed.
+    - Look in product title, attributes, or description.
+    - Do NOT list every ingredient; return the primary flavor only.
+    - Return empty string if not clearly present.
+
+17) primary_protein
+    - Extract the single primary protein source ingredient if clearly identified.
+    - Examples: Chicken, Salmon, Lamb, Duck, Beef, Venison, Turkey.
+    - This may differ from "flavor" (e.g., "Salmon Flavor" may use different protein).
+    - Look in ingredients list or specs for the first meat/fish ingredient.
+    - Return empty string if not clearly identifiable.
+
+18) diet_type
+    - Extract the dietary formulation if clearly labeled.
+    - Examples: Grain-Free, Limited Ingredient, High-Protein, Weight Control, Sensitive Stomach, Gluten-Free.
+    - Look in product specs, attributes block, description, or title.
+    - Return empty string if not clearly present.
+
+19) package_count
+    - Extract the number of individual units in the package if visible.
+    - Examples: "24", "12", "6", "48".
+    - Look in product title, size_metrics, or specs.
+    - This is the count of items, not the weight (e.g., "24 ct", "12-pack" -> "24", "12").
+    - Return empty string if not clearly present.
+
+20) package_weight
+    - Extract the total weight of the entire package if visible.
+    - Examples: "30 lb", "4 oz", "10 kg", "2.5 lbs".
+    - Look in product title, size_metrics, specs, or shipping weight.
+    - This is the total weight including packaging, not the unit weight.
+    - Return empty string if not clearly present.
+
+21) dimensions
+    - Extract the physical dimensions of the product or package if visible.
+    - Examples: "24x18x6 in", "30x30x30 cm", "12 x 8 x 4 inches".
+    - Look in product specs, shipping information, or description.
+    - Return empty string if not clearly present.
+
+22) packaging_type
+    - Extract the type of packaging if clearly stated.
+    - Examples: Bag, Box, Can, Pouch, Jug, Bottle, Tub, Carton, Sack, Jar.
+    - Look in product specs, description, title, or attributes.
+    - Return empty string if not clearly present.
+
+23) material
+    - Extract the primary material the product is made from if clearly stated.
+    - Examples: Plastic, Wood, Metal, Cotton, Stainless Steel, Ceramic, Fabric.
+    - Look in product specs, description, features, or attributes.
+    - Return empty string if not clearly present.
+
+24) color
+    - Extract the primary color or color pattern if clearly stated.
+    - Examples: Red, Blue, Brown, Assorted, Black, White, Stainless, Clear.
+    - Look in product title, specs, attributes, or swatches.
+    - For multi-color items, use the primary color or "Assorted" if no single dominant color.
+    - Return empty string if not clearly present.
+
+OUTPUT
+- Fill all REQUIRED fields. Fill OPTIONAL and CANONICAL FACET fields only when evidence is clear on the page.
+- Do not hallucinate missing values.
+- If a text field cannot be verified, return an empty string.
+- If a list field cannot be verified, return [].
+- Never extract or return price, stock status, availability, shipping cost, minimum order quantity, is_special_order, or is_taxable.
+
+PER-FIELD CONFIDENCE
+After the main data fields, the calling code computes confidence heuristically.
+For your output, return accurate data for all fields that have clear evidence.
+Prefer returning empty/null for fields you are unsure about rather than guessing.

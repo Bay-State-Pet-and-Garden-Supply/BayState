@@ -790,3 +790,211 @@ class TestFallbackExtractor:
             "success": False,
             "error": "Fallback extraction title does not match expected product",
         }
+
+
+class TestCanonicalFacets:
+    """Tests for canonical facet fields passing through the pipeline.
+
+    Note: _normalize_llm_product_data passes product_data through as-is
+    (canonical fields are preserved in the raw product_data dict).
+    """
+
+    @pytest.fixture
+    def extractor(self):
+        ext = Crawl4AIExtractor(
+            headless=True,
+            llm_model="gpt-4o-mini",
+            scoring=MagicMock(),
+            matching=MagicMock(),
+            extraction_strategy="llm",
+            llm_api_key="test-key",
+        )
+        return ext
+
+    def test_canonical_facets_preserved_in_normalized_output(self, extractor):
+        """Canonical facet fields from LLM output should be preserved after normalization.
+
+        Since _normalize_llm_product_data copies the raw product_data dict,
+        canonical fields pass through in their original form.
+        """
+        llm_payload = {
+            "product_name": "Premium Dog Food Chicken Recipe 30 lb",
+            "brand": "Premium Brand",
+            "description": "A high-quality grain-free dog food.",
+            "size_metrics": "30 lb",
+            "images": [],
+            "categories": ["Dog Food"],
+            "animal_type": "Dog",
+            "life_stage": "Adult",
+            "breed_size": "Large Breed",
+            "food_form": "Dry Food",
+            "flavor": "Chicken",
+            "primary_protein": "Chicken",
+            "diet_type": "Grain-Free",
+            "package_count": "12",
+            "package_weight": "30 lb",
+            "dimensions": "24x18x6 in",
+            "packaging_type": "Bag",
+            "material": "Plastic",
+            "color": "Red",
+        }
+        with (
+            patch.object(extractor, "_extraction") as mock_extraction,
+        ):
+            mock_extraction.normalize_product_title.return_value = "Premium Dog Food Chicken Recipe 30 lb"
+            mock_extraction.clean_text.side_effect = lambda x: x or ""
+            mock_extraction.infer_brand.return_value = "Premium Brand"
+            mock_extraction.extract_size_metrics.return_value = "30 lb"
+            mock_extraction.normalize_images.return_value = []
+            mock_extraction.coerce_string_list.return_value = []
+            mock_extraction.infer_categories.return_value = ["Dog Food"]
+
+            normalized = extractor._normalize_llm_product_data(
+                llm_payload,
+                url="https://example.com/product",
+                html="<html></html>",
+                expected_name="Premium Dog Food",
+                expected_brand="Premium Brand",
+            )
+
+        # Canonical fields should be preserved in normalized output
+        assert normalized["animal_type"] == "Dog"
+        assert normalized["life_stage"] == "Adult"
+        assert normalized["breed_size"] == "Large Breed"
+        assert normalized["food_form"] == "Dry Food"
+        assert normalized["flavor"] == "Chicken"
+        assert normalized["primary_protein"] == "Chicken"
+        assert normalized["diet_type"] == "Grain-Free"
+        assert normalized["package_count"] == "12"  # passed through as string
+        assert normalized["package_weight"] == "30 lb"
+        assert normalized["dimensions"] == "24x18x6 in"
+        assert normalized["packaging_type"] == "Bag"
+        assert normalized["material"] == "Plastic"
+        assert normalized["color"] == "Red"
+
+    def test_canonical_facets_without_llm_fields_not_in_output(self, extractor):
+        """When LLM does not emit canonical facet fields, they should not be in output."""
+        llm_payload = {
+            "product_name": "Test Product",
+            "brand": "Brand",
+            "description": "Test",
+            "size_metrics": "12 oz",
+            "images": [],
+            "categories": ["Cat1"],
+        }
+        with (
+            patch.object(extractor, "_extraction") as mock_extraction,
+        ):
+            mock_extraction.normalize_product_title.return_value = "Test Product"
+            mock_extraction.clean_text.side_effect = lambda x: x or ""
+            mock_extraction.infer_brand.return_value = "Brand"
+            mock_extraction.extract_size_metrics.return_value = "12 oz"
+            mock_extraction.normalize_images.return_value = []
+            mock_extraction.coerce_string_list.return_value = []
+            mock_extraction.infer_categories.return_value = ["Cat1"]
+
+            normalized = extractor._normalize_llm_product_data(
+                llm_payload,
+                url="https://example.com/product",
+                html="<html></html>",
+                expected_name="Test Product",
+                expected_brand="Brand",
+            )
+
+        # Canonical fields should not appear in output
+        for field in ("animal_type", "breed_size", "diet_type", "primary_protein",
+                      "package_count", "dimensions", "packaging_type"):
+            assert field not in normalized, f"Field '{field}' should not be present when LLM didn't emit it"
+
+
+class TestExtractionQualityGates:
+    """Tests for extraction completeness and evidence quality gates."""
+
+    @pytest.fixture
+    def extractor(self):
+        return Crawl4AIExtractor(
+            headless=True,
+            llm_model="gpt-4o-mini",
+            scoring=MagicMock(),
+            matching=MagicMock(),
+            extraction_strategy="llm",
+            llm_api_key="test-key",
+        )
+
+    def test_completeness_check_passes_good_product(self, extractor):
+        """Product with name, description, size, and categories should be complete."""
+        data = {
+            "product_name": "Premium Dog Food",
+            "description": "High quality grain-free dog food for all breeds",
+            "size_metrics": "30 lb",
+            "categories": ["Dog Food", "Dry Food"],
+            "animal_type": "Dog",
+            "flavor": "Chicken",
+        }
+        result = extractor._check_extraction_completeness(data, "Premium Brand")
+        assert result["is_complete"] is True
+        assert result["missing_critical"] is False
+
+    def test_completeness_check_fails_brand_only_name(self, extractor):
+        """Name that is just the brand name should fail completeness."""
+        data = {
+            "product_name": "NUTRO",
+            "description": "",
+            "size_metrics": "",
+            "categories": [],
+        }
+        result = extractor._check_extraction_completeness(data, "NUTRO")
+        assert result["is_complete"] is False
+        assert result["is_brand_only_name"] is True
+
+    def test_completeness_check_fails_generic_description(self, extractor):
+        """Category-collection descriptions should fail completeness."""
+        data = {
+            "product_name": "Some Product",
+            "description": "Shop our wide selection of premium products",
+            "size_metrics": "",
+            "categories": ["Catalog"],
+        }
+        result = extractor._check_extraction_completeness(data, "Brand")
+        assert result["is_complete"] is False
+        assert result["is_generic_description"] is True
+
+    def test_completeness_check_fails_missing_critical(self, extractor):
+        """Missing both description and size should fail completeness."""
+        data = {
+            "product_name": "Product",
+            "description": "",
+            "size_metrics": "",
+            "categories": ["Weak Cat"],
+        }
+        result = extractor._check_extraction_completeness(data, "Brand")
+        assert result["is_complete"] is False
+        assert result["missing_critical"] is True
+
+
+class TestLogoImageRejection:
+    """Tests for logo/icon/placeholder image rejection in extraction pipeline."""
+
+    def test_image_filter_rejects_logo_urls(self):
+        """Logo URLs should be rejected by the image validation logic."""
+        from scrapers.ai_search.platform_extraction import _is_valid_product_image
+        logo_urls = [
+            "https://cdn.example.com/stencil/bci-logo_12345.png",
+            "https://example.com/images/company-logo.svg",
+            "https://example.com/icon-50x50.png",
+            "https://example.com/placeholder-300x300.jpg",
+            "https://example.com/no-image-available.png",
+        ]
+        for url in logo_urls:
+            assert not _is_valid_product_image(url), f"'{url}' should be rejected as logo/placeholder"
+
+    def test_image_filter_allows_product_images(self):
+        """Actual product images should pass validation."""
+        from scrapers.ai_search.platform_extraction import _is_valid_product_image
+        product_urls = [
+            "https://cdn.example.com/products/12345_main.jpg",
+            "https://example.com/images/product-name-large.jpg",
+            "https://cdn.shopify.com/s/files/1/2345/product_image.jpeg",
+        ]
+        for url in product_urls:
+            assert _is_valid_product_image(url), f"'{url}' should be accepted as product image"

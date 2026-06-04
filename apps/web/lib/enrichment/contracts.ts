@@ -123,6 +123,9 @@ export interface SourceResultInfo {
   matchedFields?: string[];
   evidenceUrl?: string | null;
   product?: EnrichedProductFactsV1 | null;
+  extractionMethod?: string | null;
+  platform?: string | null;
+  llmUsed?: boolean | null;
 }
 
 export interface EnrichmentResultV1 {

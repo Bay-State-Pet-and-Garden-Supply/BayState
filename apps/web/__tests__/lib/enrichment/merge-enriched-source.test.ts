@@ -170,4 +170,61 @@ describe('mergeEnrichedSource', () => {
     expect(merged.active_source_slug).toBe('phillips');
     expect(merged.name).toBe('Existing Phillips Product');
   });
+
+  it('preserves source-result telemetry fields (extractionMethod, platform, llmUsed)', () => {
+    const source = makeEnrichedSource({
+      sourceSlug: 'bradley',
+    });
+    // Add telemetry fields to source_results
+    source.source_results![0].extractionMethod = 'platform-schema:bigcommerce';
+    source.source_results![0].platform = 'bigcommerce';
+    source.source_results![0].llmUsed = false;
+
+    const incoming = makeEnrichedSource({
+      sourceSlug: 'orgill',
+    });
+    incoming.source_results![0].extractionMethod = 'llm';
+    incoming.source_results![0].platform = null;
+    incoming.source_results![0].llmUsed = true;
+
+    const merged = mergeEnrichedSource(source, incoming, {
+      incomingStatus: 'success',
+    });
+
+    // orgill is active (newest)
+    expect(merged.active_source_slug).toBe('orgill');
+
+    // Find orgill source result
+    const orgillResult = merged.source_results?.find((sr) => sr.sourceSlug === 'orgill');
+    expect(orgillResult?.extractionMethod).toBe('llm');
+    expect(orgillResult?.platform).toBeNull();
+    expect(orgillResult?.llmUsed).toBe(true);
+
+    // Find bradley source result
+    const bradleyResult = merged.source_results?.find((sr) => sr.sourceSlug === 'bradley');
+    expect(bradleyResult?.extractionMethod).toBe('platform-schema:bigcommerce');
+    expect(bradleyResult?.platform).toBe('bigcommerce');
+    expect(bradleyResult?.llmUsed).toBe(false);
+  });
+
+  it('handles legacy source_results missing telemetry fields gracefully', () => {
+    const source = makeEnrichedSource({
+      sourceSlug: 'orgill',
+    });
+    // Remove telemetry fields explicitly
+    delete source.source_results![0].extractionMethod;
+    delete source.source_results![0].platform;
+    delete source.source_results![0].llmUsed;
+
+    const merged = mergeEnrichedSource(source, source, {
+      incomingStatus: 'success',
+    });
+
+    // Legacy fields should be undefined/null without error
+    expect(merged.source_results?.length).toBe(1);
+    const result = merged.source_results![0];
+    expect(result.sourceSlug).toBe('orgill');
+    // These should be absent/null without throwing
+    expect(result.extractionMethod).toBeUndefined();
+  });
 });

@@ -157,6 +157,9 @@ const sourceResultInfoSchema = z.object({
   matchedFields: z.array(z.string()).optional(),
   evidenceUrl: z.string().nullable().optional(),
   product: enrichedProductFactsV1Schema.nullable().optional(),
+  extractionMethod: z.string().nullable().optional(),
+  platform: z.string().nullable().optional(),
+  llmUsed: z.boolean().nullable().optional(),
 });
 
 const enrichmentResultSourceV1Schema = z.object({

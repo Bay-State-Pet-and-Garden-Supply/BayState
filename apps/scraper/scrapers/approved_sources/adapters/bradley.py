@@ -72,6 +72,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                             det_result.product[k] = v
                     det_result.matched_fields = list(set(det_result.matched_fields + pdp_result.matched_fields))
                     det_result.sku_match = pdp_result.sku_match
+                    det_result.evidence_url = self._product_page_url
                     logger.info("[%s] Successfully enriched product details from PDP: %s", self.adapter_slug, self._product_page_url)
                 else:
                     logger.warning("[%s] Failed to parse product details from PDP HTML", self.adapter_slug)
@@ -463,7 +464,8 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     src = 'https:' + src
                 elif src.startswith('/'):
                     src = urljoin(self.base_url, src)
-                images.append(src)
+                if self._is_valid_product_image(src):
+                    images.append(src)
         if images:
             product['image_urls'] = images
             if 'image_urls' not in matched:
