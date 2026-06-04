@@ -187,7 +187,8 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                         src = "https:" + src
                     elif src.startswith("/"):
                         src = urljoin(self.base_url, src)
-                    images.append(src)
+                    if self._is_valid_product_image(src):
+                        images.append(src)
         if not images:
             # Fallback for redesigned PDP page: scan all images on page
             for img in soup.select("img[src]"):
@@ -197,6 +198,18 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                         src = "https:" + src
                     elif src.startswith("/"):
                         src = urljoin(self.base_url, src)
+                    if not self._is_valid_product_image(src):
+                        continue
+                    # On PDP, filter out images inside recommended product cards (inside <article>)
+                    is_recommended = False
+                    parent = img.parent
+                    while parent and parent.name not in ("body", "html"):
+                        if parent.name == "article" or any(c in parent.get("class", []) for c in ("card", "product-card")):
+                            is_recommended = True
+                            break
+                        parent = parent.parent
+                    if is_recommended:
+                        continue
                     if src not in images:
                         images.append(src)
         if images:
@@ -515,7 +528,8 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     img_src = "https:" + img_src
                 elif img_src.startswith("/"):
                     img_src = urljoin(self.base_url, img_src)
-                images.append(img_src)
+                if self._is_valid_product_image(img_src):
+                    images.append(img_src)
             product["image_urls"] = images
             matched.append("image_urls")
 

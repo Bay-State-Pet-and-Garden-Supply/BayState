@@ -119,3 +119,56 @@ def test_bradley_headless_card_matching_flexible_regexes() -> None:
     assert result.product.get("bci_item_number") == "001135"
     assert result.product.get("upc") == "4018653001135"
     assert result.product.get("case_pack") == "12"
+
+
+def test_bradley_pdp_image_filtering() -> None:
+    """Test that PDP page parsing filters out logo images and recommended product cards."""
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>DOGGINSTIX BULLY STICKS</title></head>
+    <body>
+      <header>
+        <img class="logo" src="https://cdn.bigcommerce.com/images/bci-logo_123.original.png" />
+      </header>
+      <main>
+        <h1>DOGGINSTIX BULLY STICKS</h1>
+        <p>Brand: <a href="/dogginstix">DOGGINSTIX</a></p>
+        
+        <!-- Main Product Gallery -->
+        <div class="sticky top-4">
+          <div class="flex">
+            <img src="https://cdn.bigcommerce.com/products/028004__98409.jpg" />
+          </div>
+        </div>
+        
+        <!-- Recommended Product Cards (Should be excluded) -->
+        <div class="related-products">
+          <article class="group relative flex">
+            <a href="/other-product-028006">
+              <img src="https://cdn.bigcommerce.com/products/028006__42620.jpg" />
+            </a>
+          </article>
+        </div>
+      </main>
+    </body>
+    </html>
+    """
+
+    plan = _make_minimal_plan(upc="028004")
+    entry = _make_entry()
+    adapter = BradleyAdapter(entry, plan)
+
+    result = adapter.extract_from_html(html_content, "028004", "https://www.bradleycaldwell.com/dogginstix-bully-sticks-028004")
+    
+    assert result.success
+    image_urls = result.product.get("image_urls", [])
+    
+    # Correct main product image should be extracted
+    assert "https://cdn.bigcommerce.com/products/028004__98409.jpg" in image_urls
+    
+    # Logo should be excluded
+    assert not any("logo" in url for url in image_urls)
+    
+    # Recommended product image should be excluded
+    assert not any("028006" in url for url in image_urls)
