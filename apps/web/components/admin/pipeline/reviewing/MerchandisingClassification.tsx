@@ -58,6 +58,19 @@ interface FacetDefinition {
   values: FacetValue[];
 }
 
+const STRICT_ENUM_SLUGS = new Set([
+  "animal-type",
+  "breed-size",
+  "life-stage",
+  "lifestage",
+  "indoor-outdoor",
+  "subscription-eligible",
+  "clumping",
+  "has-squeaker",
+  "organic",
+  "rawhide-free",
+]);
+
 export function MerchandisingClassification({
   formData,
   handleInputChange,
@@ -454,15 +467,33 @@ export function MerchandisingClassification({
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {applicableFacets.map((def) => {
-            const currentValue = formData.facets?.[def.slug] || "";
             const hasValues = def.values && def.values.length > 0;
+            const isStrictEnum = STRICT_ENUM_SLUGS.has(def.slug);
+
+            let currentValue = formData.facets?.[def.slug] || "";
+            let selectOptions = [...(def.values || [])];
+
+            if (currentValue && hasValues && isStrictEnum) {
+              const match = selectOptions.find(
+                (v) => v.value.toLowerCase() === currentValue.toLowerCase()
+              );
+              if (match) {
+                currentValue = match.value;
+              } else {
+                selectOptions.push({
+                  id: `temp-${currentValue}`,
+                  value: currentValue,
+                  slug: currentValue.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                });
+              }
+            }
 
             return (
               <div key={def.id} className="space-y-1.5">
                 <Label htmlFor={`facet-${def.slug}`} className="text-[10px] font-semibold text-foreground">
                   {def.name}
                 </Label>
-                {hasValues ? (
+                {hasValues && isStrictEnum ? (
                   <Select
                     value={currentValue}
                     onValueChange={(value) => handleFacetChange(def.slug, value)}
@@ -474,7 +505,7 @@ export function MerchandisingClassification({
                       <SelectValue placeholder={`Select ${def.name.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent className="rounded-none border-border">
-                      {def.values.map((v) => (
+                      {selectOptions.map((v) => (
                         <SelectItem
                           key={v.id}
                           value={v.value}
@@ -486,13 +517,23 @@ export function MerchandisingClassification({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input
-                    id={`facet-${def.slug}`}
-                    value={currentValue}
-                    onChange={(e) => handleFacetChange(def.slug, e.target.value)}
-                    placeholder={`e.g. Enter ${def.name.toLowerCase()}`}
-                    className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-                  />
+                  <>
+                    <Input
+                      id={`facet-${def.slug}`}
+                      value={currentValue}
+                      onChange={(e) => handleFacetChange(def.slug, e.target.value)}
+                      placeholder={`e.g. Enter ${def.name.toLowerCase()}`}
+                      list={hasValues ? `suggestions-${def.slug}` : undefined}
+                      className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+                    />
+                    {hasValues && (
+                      <datalist id={`suggestions-${def.slug}`}>
+                        {selectOptions.map((v) => (
+                          <option key={v.id} value={v.value} />
+                        ))}
+                      </datalist>
+                    )}
+                  </>
                 )}
               </div>
             );
