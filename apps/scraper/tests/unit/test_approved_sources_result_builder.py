@@ -38,6 +38,123 @@ class TestBuildSuccessResult:
         assert result.product.brand == "KERBL"
         assert result.validation.upc_match is True
 
+    def test_success_capture_preserves_data_url_in_media(self):
+        """Successful authenticated capture dicts preserve data_url, not original_url."""
+        result = build_success_result(
+            upc="072705115310",
+            source_slug="phillips",
+            source_type="distributor",
+            evidence_url="approved_source_extraction",
+            product_fields={
+                "name": "Test Product",
+                "image_urls": [
+                    {
+                        "status": "success",
+                        "data_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAwMCAO7Z0ioAAAAASUVORK5CYII=",
+                        "original_url": "https://shop.phillipspet.com/images/private/product.jpg",
+                        "status_code": 200,
+                    }
+                ],
+            },
+            matched_fields=["name"],
+            overall_confidence=0.9,
+        )
+        assert len(result.product.media) == 1
+        media_url = result.product.media[0].url
+        assert media_url.startswith("data:image/png;base64,"), \
+            f"Expected data URL in media, got: {media_url}"
+        assert "shop.phillipspet.com" not in media_url, \
+            f"Private vendor URL leaked into media: {media_url}"
+        assert len(result.product.evidence.selected_images) == 1
+        assert result.product.evidence.selected_images[0].startswith("data:image/png;base64,")
+
+    def test_error_capture_does_not_leak_original_url(self):
+        """Errored capture dicts do not leak private vendor URLs into media."""
+        result = build_success_result(
+            upc="072705115310",
+            source_slug="phillips",
+            source_type="distributor",
+            evidence_url="approved_source_extraction",
+            product_fields={
+                "name": "Test Product",
+                "image_urls": [
+                    {
+                        "status": "error",
+                        "error_type": "auth_401",
+                        "error_message": "HTTP 403: Forbidden",
+                        "original_url": "https://shop.phillipspet.com/images/private/product.jpg",
+                        "status_code": 403,
+                    },
+                    {
+                        "status": "success",
+                        "data_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/w8AAwMCAO7Z0ioAAAAASUVORK5CYII=",
+                        "original_url": "https://shop.phillipspet.com/images/private/product2.jpg",
+                        "status_code": 200,
+                    },
+                ],
+            },
+            matched_fields=["name"],
+            overall_confidence=0.9,
+        )
+        # The errored entry should be skipped entirely; only the success entry should appear
+        assert len(result.product.media) == 1, \
+            f"Expected 1 media entry (skipping errored capture), got {len(result.product.media)}"
+        assert result.product.media[0].role == "primary"
+        media_url = result.product.media[0].url
+        assert media_url.startswith("data:image/png;base64,"), \
+            f"Expected data URL from success capture, got: {media_url}"
+        # Evidence selected_images must only contain the success image, not the protected URL
+        assert len(result.product.evidence.selected_images) == 1
+        assert result.product.evidence.selected_images[0].startswith("data:image/png;base64,")
+
+    def test_capture_like_success_without_data_url_is_skipped(self):
+        """Capture-shaped dicts without a usable data_url must not fall back to original_url."""
+        result = build_success_result(
+            upc="072705115310",
+            source_slug="phillips",
+            source_type="distributor",
+            evidence_url="approved_source_extraction",
+            product_fields={
+                "name": "Test Product",
+                "image_urls": [
+                    {
+                        "status": "success",
+                        "original_url": "https://shop.phillipspet.com/images/private/product.jpg",
+                        "status_code": 200,
+                    },
+                ],
+            },
+            matched_fields=["name"],
+            overall_confidence=0.9,
+        )
+
+        assert result.product.media == []
+        assert result.product.evidence.selected_images == []
+
+    def test_plain_metadata_dict_can_still_use_original_url(self):
+        """Non-capture metadata dicts keep backward-compatible original_url behavior."""
+        result = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={
+                "name": "Plain Metadata Product",
+                "image_urls": [
+                    {
+                        "original_url": "https://cdn.example.com/product.jpg",
+                    },
+                ],
+            },
+            matched_fields=["name"],
+            overall_confidence=0.85,
+        )
+
+        assert len(result.product.media) == 1
+        assert result.product.media[0].url == "https://cdn.example.com/product.jpg"
+        assert result.product.media[0].role == "primary"
+        assert result.product.evidence.selected_images == ["https://cdn.example.com/product.jpg"]
+
     def test_llm_fallback_decision(self):
         result = build_success_result(
             upc="001135",

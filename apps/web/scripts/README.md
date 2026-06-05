@@ -30,20 +30,50 @@ bunx tsx scripts/verify_admin.ts
 - `repair_login.sql`: Restores the `profiles` table and forces admin role. Run in Supabase Dashboard.
 - `fix_profiles_schema.sql`: Adds missing columns (phone, preferences, etc.) if `repair_login.sql` recreated the table. Run AFTER repair.
 
-## Login-Protected Image Backfill (`backfill-login-protected-images.ts`)
+## Login-Protected Image Backfill (`backfill-login-protected-images-logic.ts`)
 
-Use this script to clean broken login-only image URLs out of `products_ingestion` rows for login-protected scrapers, then queue replacement scrape jobs for the affected SKU/source combinations.
+Use this script to scan existing `products_ingestion` rows for login-protected distributor
+images (Phillips, Orgill, Pet Food Experts) that are not yet stored as durable BayState-owned
+URLs, and queue them into `image_retry_queue` for re-capture.
+
+Login-protected distributor slugs are resolved from the fixed distributor catalog in
+`lib/approved-sources/distributor-catalog.ts` (`requiresAuth: true` entries). This does
+**not** depend on local YAML scraper configs.
+
+### ⚠️ Important: `image_retry_queue` Has No Consumer
+
+No runtime code currently polls or processes `image_retry_queue`. Inserting entries marks
+images for retry but does **not** by itself repair the product sources. A retry queue worker
+or re-enrichment flow is needed as a follow-up. Using this script is a data-preparation step,
+not a complete fix.
 
 ### Usage
 
-Run from `apps/web` so local scraper configs resolve correctly:
+Run from the repo root or `apps/web`:
 
 ```bash
 cd apps/web
-bun scripts/backfill-login-protected-images.ts --limit 100
+bun scripts/backfill-login-protected-images-logic.ts --limit 100
 ```
 
-Dry runs are the default. Add `--execute` to persist the cleanup and queue the replacement scrapes.
+Or from repository root:
+
+```bash
+bun run web scripts/backfill-login-protected-images-logic.ts --limit 100
+```
+
+Dry runs are the default. Add `--execute` to insert retry queue entries.
+
+### Options
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Scan and report without inserting queue entries (default) |
+| `--execute` | Insert queue entries into `image_retry_queue` |
+| `--upc <upc>` | Limit to specific UPC(s) (repeatable) |
+| `--limit <n>` | Maximum products to scan |
+| `--batch-size <n>` | Products per DB batch (default: 100) |
+| `--help` | Show usage help |
 
 ## Amazon Image Duplicate Backfill (`backfill-amazon-image-duplicates.ts`)
 

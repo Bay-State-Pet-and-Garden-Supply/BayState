@@ -471,6 +471,16 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                     det_result.product["image_urls"] = captured
                 except Exception as img_err:
                     logger.error("[%s] Authenticated image capture failed: %s", self.adapter_slug, img_err)
+                    det_result.product["image_urls"] = [
+                        {
+                            "status": "error",
+                            "error_type": "unknown",
+                            "error_message": f"Authenticated image capture failed: {img_err}",
+                            "original_url": url,
+                        }
+                        for url in det_result.product.get("image_urls", [])
+                        if isinstance(url, str) and url
+                    ]
 
             # 10. Filter allowed fields
             if det_result.success and self.entry.allowedFields:

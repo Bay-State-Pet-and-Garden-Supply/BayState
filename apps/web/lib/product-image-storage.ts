@@ -15,6 +15,24 @@ type ImageRetryQueueInsert = Database['public']['Tables']['image_retry_queue']['
 const PRODUCT_IMAGES_BUCKET = 'product-images';
 export const PENDING_RETRY_IMAGE_PREFIX = 'pending_retry://';
 
+/**
+ * Optional base URL for R2/custom CDN public image delivery.
+ * When set, isDurableProductImageReference will recognize URLs starting
+ * with this prefix as durable (alongside native Supabase Storage URLs).
+ * Not used for uploads in Phase 1; Supabase remains the active provider.
+ * Configure via PRODUCT_IMAGE_PUBLIC_BASE_URL env var.
+ * Example: "https://images.baystate.app" or "https://r2.baystate.app/product-images"
+ */
+function getConfiguredPublicBaseUrl(): string | null {
+  if (typeof process !== 'undefined' && process.env?.PRODUCT_IMAGE_PUBLIC_BASE_URL) {
+    const base = process.env.PRODUCT_IMAGE_PUBLIC_BASE_URL.trim();
+    if (base.length > 0) {
+      return base.replace(/\/+$/, '');
+    }
+  }
+  return null;
+}
+
 const INLINE_IMAGE_DATA_URL_REGEX = /^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i;
 const HTTP_STATUS_CODE_REGEX = /\b(?:http\s*)?(\d{3})\b/i;
 
@@ -82,13 +100,10 @@ function isScraperImageCaptureResult(value: unknown): value is ScraperImageCaptu
     return false;
   }
 
-  return (
-    'data_url' in value ||
-    'error_type' in value ||
-    'error_message' in value ||
-    'original_url' in value ||
-    'status' in value
-  );
+  const hasImagePayloadFields = 'data_url' in value || 'original_url' in value || 'status_code' in value;
+  const hasImageErrorType = 'error_type' in value && isImageErrorType(value.error_type);
+
+  return hasImagePayloadFields || hasImageErrorType;
 }
 
 function normalizeContentTypeExtension(contentType: string): string {
@@ -130,10 +145,20 @@ function isInlineImageDataUrl(value: string): boolean {
 function isProductImageStorageUrl(value: string): boolean {
   const normalized = value.trim();
 
-  return (
+  if (
     normalized.includes(`/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/`) ||
     normalized.includes(`/storage/v1/render/image/public/${PRODUCT_IMAGES_BUCKET}/`)
-  );
+  ) {
+    return true;
+  }
+
+  // Also recognize configured R2 / custom CDN public base URL if set
+  const configuredBase = getConfiguredPublicBaseUrl();
+  if (configuredBase && normalized.startsWith(configuredBase + '/')) {
+    return true;
+  }
+
+  return false;
 }
 
 function isDurableProductImageReference(value: string): boolean {

@@ -6,9 +6,25 @@ import {
   collectLoginProtectedImageBackfillCandidates,
   executeLoginProtectedImageBackfillWithClient,
   resolveLoginProtectedScraperSlugs,
+  resolveLoginProtectedSlugsFromCatalog,
 } from '../../scripts/backfill-login-protected-images-logic';
 
 describe('backfill-login-protected-images logic', () => {
+  it('resolves login-protected slugs and aliases from distributor catalog', () => {
+    const slugs = resolveLoginProtectedSlugsFromCatalog();
+    expect(slugs).toContain('phillips');
+    expect(slugs).toContain('phillips_crawl4ai');
+    expect(slugs).toContain('orgill');
+    expect(slugs).toContain('orgill_crawl4ai');
+    expect(slugs).toContain('pet_food_experts');
+    expect(slugs).toContain('petfoodex');
+    expect(slugs).toContain('pet_food_experts_crawl4ai');
+    expect(slugs).not.toContain('bradley');
+    expect(slugs).not.toContain('amazon');
+    expect(slugs).not.toContain('chewy');
+    expect(new Set(slugs).size).toBe(slugs.length);
+  });
+
   it('resolves login-protected scrapers from config', () => {
     const result = resolveLoginProtectedScraperSlugs([
       {
@@ -96,6 +112,41 @@ describe('backfill-login-protected-images logic', () => {
         },
       ],
     });
+  });
+
+  it('treats configured public base URLs as durable during backfill scans', async () => {
+    process.env.PRODUCT_IMAGE_PUBLIC_BASE_URL = 'https://images.baystate.app';
+
+    try {
+      const candidates = await collectLoginProtectedImageBackfillCandidates(
+        [
+          {
+            id: 'product-1',
+            upc: 'UPC-1',
+            sources: {
+              petfoodex: {
+                images: [
+                  'https://private.example.com/one.jpg',
+                  'https://images.baystate.app/product-images/catalog/durable.webp',
+                ],
+              },
+            },
+          },
+        ] as never,
+        resolveLoginProtectedSlugsFromCatalog(),
+      );
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].targets).toEqual([
+        {
+          sourceName: 'petfoodex',
+          imageUrl: 'https://private.example.com/one.jpg',
+          normalizedUrl: 'https://private.example.com/one.jpg',
+        },
+      ]);
+    } finally {
+      delete process.env.PRODUCT_IMAGE_PUBLIC_BASE_URL;
+    }
   });
 
   it('batches 100 at a time in dry-run and reports counts without inserts', async () => {

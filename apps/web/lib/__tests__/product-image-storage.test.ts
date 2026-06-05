@@ -67,6 +67,53 @@ describe('replaceInlineImageDataUrls', () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
+  it('recognizes configured public base URLs as already durable', async () => {
+    process.env.PRODUCT_IMAGE_PUBLIC_BASE_URL = 'https://images.baystate.app';
+
+    try {
+      const { supabase, insert, upload, getPublicUrl } = createSupabaseMock();
+      const durableUrl = 'https://images.baystate.app/product-images/folder/uploaded.webp';
+
+      const result = await replaceInlineImageDataUrls(
+        supabase as never,
+        { images: [durableUrl] },
+        { folderPath: 'pipeline-sources/test-upc' }
+      );
+
+      expect(result.value).toEqual({ images: [durableUrl] });
+      expect(result.queuedImages).toEqual([]);
+      expect(upload).not.toHaveBeenCalled();
+      expect(getPublicUrl).not.toHaveBeenCalled();
+      expect(insert).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.PRODUCT_IMAGE_PUBLIC_BASE_URL;
+    }
+  });
+
+  it('ignores non-image status objects instead of treating them as capture results', async () => {
+    const { supabase, insert, upload, getPublicUrl } = createSupabaseMock();
+
+    const attempts = [
+      {
+        mode: 'structured',
+        status: 'failed',
+        error: 'Temporary extraction error',
+      },
+    ];
+
+    const result = await replaceInlineImageDataUrls(
+      supabase as never,
+      { attempts },
+      { folderPath: 'pipeline-sources/test-upc' }
+    );
+
+    expect(result.value).toEqual({ attempts });
+    expect(result.queuedImages).toEqual([]);
+    expect(upload).not.toHaveBeenCalled();
+    expect(getPublicUrl).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
   it('queues upload failures when scraper metadata includes the protected source URL', async () => {
     const { supabase, insert, upload } = createSupabaseMock({
       uploadError: { message: 'Storage service returned 500' },

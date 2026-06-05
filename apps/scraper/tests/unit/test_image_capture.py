@@ -28,6 +28,22 @@ def test_is_durable_image_url():
     assert not is_durable_image_url(None)
 
 
+def test_is_durable_image_url_custom_public_base(monkeypatch):
+    """When PRODUCT_IMAGE_PUBLIC_BASE_URL is set, matching URLs are durable."""
+    monkeypatch.setenv("PRODUCT_IMAGE_PUBLIC_BASE_URL", "https://images.baystate.app")
+    assert is_durable_image_url("https://images.baystate.app/product-images/hash.webp")
+    assert is_durable_image_url("https://images.baystate.app/product-images/abc.webp")
+    # Non-matching URLs (different domain) should still not be durable
+    assert not is_durable_image_url("https://images.other.app/product-images/hash.webp")
+    assert not is_durable_image_url("https://www.orgill.com/images/widget.jpg")
+
+
+def test_is_durable_image_url_custom_public_base_unset(monkeypatch):
+    """Without PRODUCT_IMAGE_PUBLIC_BASE_URL set, custom base URLs should not be recognized."""
+    monkeypatch.delenv("PRODUCT_IMAGE_PUBLIC_BASE_URL", raising=False)
+    assert not is_durable_image_url("https://images.baystate.app/product-images/hash.webp")
+
+
 @pytest.mark.asyncio
 async def test_capture_image_durable_url_bypass():
     """Verify that durable URLs are bypassed and returned immediately."""

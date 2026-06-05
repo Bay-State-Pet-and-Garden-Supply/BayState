@@ -52,6 +52,7 @@ jest.mock('@/lib/supabase/config', () => ({
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { validateActiveRunner } from '@/lib/scraper-auth';
+import * as productImageStorage from '@/lib/product-image-storage';
 import {
   POST,
   shouldRetryEnrichmentResult,
@@ -76,6 +77,21 @@ function createMockSupabase(options: {
   const retryInsertions: unknown[] = [];
   const jobUpdates: unknown[] = [];
   const productUpdates: unknown[] = [];
+  const storageUploads: Array<{ path: string; bytes: Uint8Array; options: Record<string, unknown> }> = [];
+
+  const upload = jest.fn((path: string, bytes: Uint8Array, opts: Record<string, unknown>) => {
+    storageUploads.push({ path, bytes, options: opts });
+    return Promise.resolve({ error: null });
+  });
+  const getPublicUrl = jest.fn((storagePath: string) => ({
+    data: {
+      publicUrl: `https://supabase.example.com/storage/v1/object/public/product-images/${storagePath}`,
+    },
+  }));
+  const storageFrom = jest.fn((bucket: string) => {
+    if (bucket !== 'product-images') throw new Error(`Unexpected bucket: ${bucket}`);
+    return { upload, getPublicUrl };
+  });
 
   const from = jest.fn((table: string) => {
     if (table === 'enrichment_attempts') {
@@ -116,6 +132,12 @@ function createMockSupabase(options: {
       };
     }
 
+    if (table === 'image_retry_queue') {
+      return {
+        insert: jest.fn().mockResolvedValue({ error: null }),
+      };
+    }
+
     if (table === 'products_ingestion') {
       if (options.productsIngestionData === undefined) {
         throw new Error('products_ingestion should not be accessed for test jobs');
@@ -140,10 +162,14 @@ function createMockSupabase(options: {
 
   return {
     from,
+    storage: { from: storageFrom },
     attemptUpdates,
     retryInsertions,
     jobUpdates,
     productUpdates,
+    storageUploads,
+    upload,
+    getPublicUrl,
   };
 }
 
@@ -404,6 +430,110 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     );
 
     expect(shouldRetry).toBe(false);
+  });
+
+  it('replaces inline image data URLs in source_results with durable Supabase storage URLs', async () => {
+    const existingSources = {
+      enriched: {},
+      phillips: {
+        _url: 'approved_source_extraction',
+        _scraped_at: '2026-05-20T00:00:00.000Z',
+      },
+    };
+
+    const inlineDataUrl =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0ioAAAAASUVORK5CYII=';
+
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: false,
+          mode: 'mixed',
+          config: { extraction_mode: 'mixed' },
+        },
+      },
+      productsIngestionData: {
+        sources: existingSources,
+      },
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const body = buildCallbackBody({
+      upc: 'UPC-1',
+      status: 'success',
+      extracted_at: '2026-05-28T20:05:11.249700+00:00',
+      source: {
+        url: 'approved_source_extraction',
+        source_type: 'distributor',
+        source_slug: 'phillips',
+      },
+      product: {
+        name: 'Auth Captured Product',
+        image_urls: [inlineDataUrl],
+      },
+      confidence: { overall: 0.9, fields: {} },
+      source_results: [
+        {
+          sourceSlug: 'phillips',
+          sourceType: 'distributor',
+          confidence: 0.9,
+          evidenceUrl: 'approved_source_extraction',
+          product: {
+            name: 'Auth Captured Product',
+            media: [
+              {
+                url: inlineDataUrl,
+                role: 'primary',
+                source: 'enrichment',
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(body),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+
+    // Verify the product update happened with durable URLs replacing the inline data URLs
+    expect(mockSupabase.productUpdates).toHaveLength(1);
+    if (mockSupabase.storageUploads.length < 1) {
+      throw new Error('Expected at least one storage upload for the inline image payload');
+    }
+    const updatedSources = (mockSupabase.productUpdates[0] as any).sources;
+
+    // The source-specific nested media URL should be a Supabase storage URL, not the data URL
+    const phillipsSource = updatedSources.phillips;
+    expect(phillipsSource).toBeDefined();
+    expect(phillipsSource.media).toBeDefined();
+    const mediaUrl = phillipsSource.media[0].url;
+    expect(mediaUrl).toContain('/storage/v1/object/public/product-images/');
+    expect(mediaUrl).not.toContain('data:image');
+    expect(mediaUrl).not.toContain('shop.phillipspet.com');
+
+    // The enriched aggregate should also contain durable URLs in its legacy aliases
+    expect(updatedSources.enriched).toBeDefined();
+    expect(updatedSources.enriched.images[0]).toContain('/storage/v1/object/public/product-images/');
+    expect(updatedSources.enriched.image_urls[0]).toContain('/storage/v1/object/public/product-images/');
+    expect(updatedSources.enriched.images[0]).not.toContain('data:image');
+
+    // And nested source_results payloads under the enriched aggregate should also be durable
+    expect(updatedSources.enriched.source_results[0].product.media[0].url).toContain(
+      '/storage/v1/object/public/product-images/'
+    );
+
+    expect(payload.success).toBe(true);
   });
 
   it('overwrites old source result data fields but keeps metadata keys starting with underscore', async () => {

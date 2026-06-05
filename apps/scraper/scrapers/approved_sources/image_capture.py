@@ -5,15 +5,29 @@ from typing import Any, Dict, List
 logger = logging.getLogger(__name__)
 
 def is_durable_image_url(url: str) -> bool:
-    """Check if the URL is already a base64 inline URL or a Supabase Storage URL."""
+    """Check if the URL is already a base64 inline URL or a durable
+    Supabase Storage URL (or an R2 / custom public base URL if configured).
+
+    Uses PRODUCT_IMAGE_PUBLIC_BASE_URL env var to recognize custom CDN or
+    R2 delivered image URLs as durable, preventing re-capture attempts.
+    """
     if not url:
         return False
     normalized = url.strip()
-    return (
+    if (
         normalized.startswith("data:") or
         "/storage/v1/object/public/product-images/" in normalized or
         "/storage/v1/render/image/public/product-images/" in normalized
-    )
+    ):
+        return True
+
+    # Optional: recognize configured custom public base URL (R2 / CDN)
+    import os
+    configured_base = os.environ.get("PRODUCT_IMAGE_PUBLIC_BASE_URL", "").strip()
+    if configured_base and normalized.startswith(configured_base.rstrip("/") + "/"):
+        return True
+
+    return False
 
 async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 1024 * 1024) -> Dict[str, Any]:
     """Capture a single image by downloading it through the authenticated Playwright page session."""

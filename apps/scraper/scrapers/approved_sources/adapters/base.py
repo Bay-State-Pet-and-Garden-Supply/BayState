@@ -749,6 +749,16 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                         det_result.product["image_urls"] = captured
                     except Exception as e:
                         logger.error("[%s] Failed to capture authenticated images: %s", self.adapter_slug, e)
+                        det_result.product["image_urls"] = [
+                            {
+                                "status": "error",
+                                "error_type": "unknown",
+                                "error_message": f"Authenticated image capture failed: {e}",
+                                "original_url": url,
+                            }
+                            for url in det_result.product.get("image_urls", [])
+                            if isinstance(url, str) and url
+                        ]
                     finally:
                         try:
                             await page.close()
@@ -756,6 +766,16 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                             logger.warning("[%s] Failed to close page after image capture: %s", self.adapter_slug, close_err)
                 else:
                     logger.warning("[%s] No active Playwright page available for authenticated image capture", self.adapter_slug)
+                    det_result.product["image_urls"] = [
+                        {
+                            "status": "error",
+                            "error_type": "unknown",
+                            "error_message": "No active Playwright page available for authenticated image capture",
+                            "original_url": url,
+                        }
+                        for url in det_result.product.get("image_urls", [])
+                        if isinstance(url, str) and url
+                    ]
 
         # 7. Apply allowedFields filter
         if det_result.success and self.entry.allowedFields:

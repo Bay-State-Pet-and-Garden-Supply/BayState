@@ -1,9 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import yaml from 'yaml';
 import type { Database } from '../lib/supabase/database.types';
 import { scraperConfigRequiresLogin } from '../lib/scraper-config-login';
+import { FIXED_DISTRIBUTOR_CATALOG } from '../lib/approved-sources/distributor-catalog';
+import type { FixedDistributorEntry } from '../lib/approved-sources/distributor-catalog';
 
 type ImageRetryQueueInsert = Database['public']['Tables']['image_retry_queue']['Insert'];
 
@@ -81,12 +84,23 @@ function isInlineImageDataUrl(value: string): boolean {
   return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(value.trim());
 }
 
+function getConfiguredPublicBaseUrl(): string | null {
+  const base = process.env.PRODUCT_IMAGE_PUBLIC_BASE_URL?.trim();
+  return base ? base.replace(/\/+$/, '') : null;
+}
+
 function isProductImageStorageUrl(value: string): boolean {
   const normalized = value.trim();
-  return (
+
+  if (
     normalized.includes('/storage/v1/object/public/product-images/') ||
     normalized.includes('/storage/v1/render/image/public/product-images/')
-  );
+  ) {
+    return true;
+  }
+
+  const configuredBase = getConfiguredPublicBaseUrl();
+  return Boolean(configuredBase && normalized.startsWith(`${configuredBase}/`));
 }
 
 function isDurableProductImageReference(value: string): boolean {
@@ -95,6 +109,26 @@ function isDurableProductImageReference(value: string): boolean {
 }
 
 
+
+/**
+ * Derive login-protected source keys from the fixed distributor catalog.
+ * This is the primary source of truth for auth-required sources;
+ * it does not depend on local YAML config files.
+ *
+ * Returns canonical source slugs plus known aliases so backfills can match
+ * existing persisted source keys like `petfoodex` or `phillips_crawl4ai`.
+ */
+export function resolveLoginProtectedSlugsFromCatalog(): string[] {
+  return Array.from(
+    new Set(
+      FIXED_DISTRIBUTOR_CATALOG
+        .filter((entry: FixedDistributorEntry) => entry.requiresAuth)
+        .flatMap((entry: FixedDistributorEntry) => [entry.sourceSlug, ...entry.aliases])
+        .map((slug) => slug.trim())
+        .filter((slug) => slug.length > 0)
+    )
+  );
+}
 
 export function resolveLoginProtectedScraperSlugs(configs: ScraperConfigLike[]): string[] {
   return configs
@@ -109,7 +143,33 @@ export function resolveLoginProtectedScraperSlugs(configs: ScraperConfigLike[]):
 }
 
 async function loadScraperConfigs(supabase: SupabaseClient): Promise<ScraperConfigLike[]> {
-  const configsDir = path.join(process.cwd(), 'apps/scraper/scrapers/configs');
+  const dirname = () => {
+    try {
+      return path.dirname(fileURLToPath(import.meta.url));
+    } catch {
+      return process.cwd();
+    }
+  };
+
+  // Try multiple paths: relative to script dir, relative to cwd
+  const scriptDir = dirname();
+  const possiblePaths = [
+    path.resolve(scriptDir, '..', '..', 'scraper', 'scrapers', 'configs'),
+    path.resolve(scriptDir, '..', '..', 'apps', 'scraper', 'scrapers', 'configs'),
+    path.join(process.cwd(), 'apps/scraper/scrapers/configs'),
+    path.join(process.cwd(), '../scraper/scrapers/configs'),
+  ];
+  let configsDir = '';
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      configsDir = p;
+      break;
+    }
+  }
+  if (!configsDir) {
+    console.warn('[Login Image Backfill] No scraper configs directory found. Skipping YAML config loading.');
+    return [];
+  }
   if (!fs.existsSync(configsDir)) {
     return [];
   }
@@ -442,8 +502,22 @@ async function runLoginProtectedImageBackfill(
   options: LoginProtectedImageBackfillOptions,
 ): Promise<LoginProtectedImageBackfillResult> {
   const supabase = createSupabaseAdminClient();
+
+  // Primary source: fixed distributor catalog (doesn't depend on local YAML files)
+  const catalogSlugs = resolveLoginProtectedSlugsFromCatalog();
+
+  // Fallback source: local YAML scraper configs (if available)
   const configs = await loadScraperConfigs(supabase);
-  const loginProtectedScraperSlugs = resolveLoginProtectedScraperSlugs(configs);
+  const yamlSlugs = resolveLoginProtectedScraperSlugs(configs);
+
+  // Merge both, preferring catalog slugs (canonical names)
+  const loginProtectedScraperSlugs = [...new Set([...catalogSlugs, ...yamlSlugs])];
+
+  console.log(
+    `[Login Image Backfill] Resolved ${loginProtectedScraperSlugs.length} login-protected scraper slugs: ` +
+    `${loginProtectedScraperSlugs.join(', ')} ` +
+    `(catalog=${catalogSlugs.length}, yaml=${yamlSlugs.length})`
+  );
 
   return executeLoginProtectedImageBackfillWithClient(
     supabase,
@@ -467,7 +541,7 @@ function parseIntegerFlag(flag: string, value: string | undefined): number {
 
 function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
   const options: LoginProtectedImageBackfillOptions = {
-    mode: 'execute',
+    mode: 'dry-run',
     batchSize: 100,
   };
 
@@ -506,8 +580,8 @@ function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
             '  node apps/web/scripts/backfill-login-protected-images-logic.ts [options]',
             '',
             'Options:',
-            '  --dry-run            Scan and report without inserting queue entries',
-            '  --execute            Insert queue entries (default mode)',
+            '  --dry-run            Scan and report without inserting queue entries (default mode)',
+            '  --execute            Insert queue entries',
             '  --upc <upc>          Limit to a single UPC (repeatable)',
             '  --limit <number>     Maximum products_ingestion rows to scan',
             '  --batch-size <num>   Products processed per batch (default: 100)',

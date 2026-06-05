@@ -325,16 +325,41 @@ def build_nested_product_facts(fields: dict[str, Any], evidence_url: Optional[st
     media = []
     image_urls = fields.get("image_urls") or fields.get("images") or []
     if isinstance(image_urls, list):
-        for idx, img in enumerate(image_urls):
+        for img in image_urls:
             img_url = None
             if isinstance(img, str):
                 img_url = img
-            elif isinstance(img, dict) and img.get("original_url"):
-                img_url = img.get("original_url")
-            elif isinstance(img, dict) and img.get("data_url"):
-                img_url = img.get("data_url")
+            elif isinstance(img, dict):
+                # Capture result dicts from approved source extraction should only emit
+                # the browser-captured inline payload. If the capture did not produce a
+                # usable data_url, skip the entry entirely so private vendor URLs do not leak.
+                status = img.get("status")
+                data_url = img.get("data_url") or ""
+                original_url = img.get("original_url") or ""
+                has_capture_metadata = (
+                    status is not None
+                    or "error_type" in img
+                    or "status_code" in img
+                    or "error_message" in img
+                    or "data_url" in img
+                )
+
+                if has_capture_metadata:
+                    if status == "success" and data_url:
+                        img_url = data_url
+                    elif status is None and data_url:
+                        # Older capture-like payloads without an explicit status still get
+                        # the safe inline image if one was captured.
+                        img_url = data_url
+                    else:
+                        continue
+                elif original_url:
+                    # Plain metadata dict without capture fields - keep historical behavior.
+                    img_url = original_url
+                elif data_url:
+                    img_url = data_url
             if img_url:
-                role = "primary" if idx == 0 else "additional"
+                role = "primary" if len(media) == 0 else "additional"
                 media.append(MediaData(url=img_url, role=role, source="enrichment"))
                 
     evidence_urls = [evidence_url] if evidence_url else []
