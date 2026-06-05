@@ -301,4 +301,30 @@ describe('loadPublishedShopSiteExport', () => {
             expect.arrayContaining(['Cat Food Shop All', 'Cat Food Raw'])
         );
     });
+
+    it('infers ShopSite pages for Dog Toys from category Dog > Toys > Chew Toys', () => {
+        const rows: ShopSiteExportSourceRow[] = [
+            {
+                upc: '012345678902',
+                input: {
+                    name: 'KONG Classic Dog Toy',
+                    price: 12.99,
+                },
+                consolidated: {
+                    name: 'KONG Classic Dog Toy',
+                    price: 12.99,
+                    brand_id: 'brand-3',
+                    category: 'Dog > Toys > Chew Toys',
+                },
+                selected_images: null,
+            },
+        ];
+        const brands = new Map<string, ShopSiteExportBrandRow>([
+            ['brand-3', { id: 'brand-3', name: 'KONG', slug: 'kong' }],
+        ]);
+
+        const [product] = preparePublishedShopSiteExport(rows, brands);
+
+        expect(product.shopsite_pages).toEqual(['Dog Toys']);
+    });
 });

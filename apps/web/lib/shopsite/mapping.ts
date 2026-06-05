@@ -442,34 +442,120 @@ function inferShopSitePagesFromCategory(category: string | null): string[] {
 
   // Mapping logic based on new retail taxonomy departments+subcategories
   // New breadcrumbs: "Dog > Food", "Cat > Litter", "Pet Bird > Food", "Horse > Feed", etc.
-  if (isDog && (subCategory === 'food' || normalized.includes('dog food'))) {
-    pages.push('Dog Food Shop All');
-    if (normalized.includes('dry')) pages.push('Dog Food Dry');
-    if (normalized.includes('wet')) pages.push('Dog Food Wet');
-    if (normalized.includes('raw') || normalized.includes('freeze-dried')) pages.push('Dog Food Raw');
-    if (normalized.includes('treat')) pages.push('Dog Treats Shop All');
-  } else if (isCat && (subCategory === 'food' || normalized.includes('cat food'))) {
-    pages.push('Cat Food Shop All');
-    if (normalized.includes('dry')) pages.push('Cat Food Dry');
-    if (normalized.includes('wet')) pages.push('Cat Food Wet');
-    if (normalized.includes('raw') || normalized.includes('freeze-dried')) pages.push('Cat Food Raw');
-    if (normalized.includes('treat')) pages.push('Cat Treats');
-  } else if ((isDog && (subCategory?.includes('treat') || subCategory?.includes('chew'))) || normalized.includes('dog treats')) {
-    pages.push('Dog Treats Shop All');
-    if (normalized.includes('biscuits') || normalized.includes('cookies') || normalized.includes('crunchy')) {
-      pages.push('Dog Treats Biscuits Cookies & Crunchy Treats');
+  if (isDog) {
+    if (subCategory === 'food' || normalized.includes('dog food')) {
+      pages.push('Dog Food Shop All');
+      if (normalized.includes('dry')) pages.push('Dog Food Dry');
+      if (normalized.includes('wet')) pages.push('Dog Food Wet');
+      if (normalized.includes('raw') || normalized.includes('freeze-dried')) pages.push('Dog Food Raw');
+      if (normalized.includes('treat')) pages.push('Dog Treats Shop All');
+    } else if (subCategory?.includes('treat') || subCategory?.includes('chew') || normalized.includes('dog treats')) {
+      pages.push('Dog Treats Shop All');
+      if (normalized.includes('biscuits') || normalized.includes('cookies') || normalized.includes('crunchy')) {
+        pages.push('Dog Treats Biscuits Cookies & Crunchy Treats');
+      }
+      if (normalized.includes('bones') || normalized.includes('chews') || normalized.includes('bully') || normalized.includes('natural')) {
+        pages.push('Dog Treats Bones Bully Sticks & Natural Chews');
+      }
+      if (normalized.includes('soft') || normalized.includes('chewy')) {
+        pages.push('Dog Treats Soft & Chewy');
+      }
+      if (normalized.includes('dental')) {
+        pages.push('Dog Dental Treats');
+      }
+      if (normalized.includes('jerky')) {
+        pages.push('Jerky Dog Treats');
+      }
+    } else if (subCategory?.includes('toy') || normalized.includes('toy')) {
+      pages.push('Dog Toys');
+    } else {
+      let isSupply = false;
+      if (normalized.includes('bed')) {
+        pages.push('Dog Beds');
+        isSupply = true;
+      }
+      if (normalized.includes('bowl') || normalized.includes('feeder')) {
+        pages.push('Dog Bowls & Feeders');
+        isSupply = true;
+      }
+      if (normalized.includes('clean') || normalized.includes('cleanup') || normalized.includes('waste') || normalized.includes('potty')) {
+        pages.push('Dog Cleanup');
+        isSupply = true;
+      }
+      if (normalized.includes('clothing') || normalized.includes('apparel') || normalized.includes('coat') || normalized.includes('sweater')) {
+        pages.push('Dog Clothing & Accessories');
+        isSupply = true;
+      }
+      if (normalized.includes('crate') || normalized.includes('carrier') || normalized.includes('kennel')) {
+        pages.push('Dog Crates & Carriers');
+        isSupply = true;
+      }
+      if (normalized.includes('flea') || normalized.includes('tick')) {
+        pages.push('Dog Flea & Tick');
+        isSupply = true;
+      }
+      if (normalized.includes('grooming') || normalized.includes('shampoo') || normalized.includes('brush')) {
+        pages.push('Dog Grooming');
+        isSupply = true;
+      }
+      if (normalized.includes('healthcare') || normalized.includes('health') || normalized.includes('supplement') || normalized.includes('vitamin')) {
+        pages.push('Dog Healthcare');
+        isSupply = true;
+      }
+      if (normalized.includes('leash') || normalized.includes('collar') || normalized.includes('harness')) {
+        pages.push('Dog Leashes Collars & Harnesses');
+        isSupply = true;
+      }
+
+      if (isSupply || subCategory === 'supplies') {
+        pages.push('Dog Supplies Shop All');
+      }
     }
-    if (normalized.includes('bones') || normalized.includes('chews') || normalized.includes('bully') || normalized.includes('natural')) {
-      pages.push('Dog Treats Bones Bully Sticks & Natural Chews');
-    }
-    if (normalized.includes('soft') || normalized.includes('chewy')) {
-      pages.push('Dog Treats Soft & Chewy');
-    }
-    if (normalized.includes('dental')) {
-      pages.push('Dog Dental Treats');
-    }
-    if (normalized.includes('jerky')) {
-      pages.push('Jerky Dog Treats');
+  } else if (isCat) {
+    if (subCategory === 'food' || normalized.includes('cat food')) {
+      pages.push('Cat Food Shop All');
+      if (normalized.includes('dry')) pages.push('Cat Food Dry');
+      if (normalized.includes('wet')) pages.push('Cat Food Wet');
+      if (normalized.includes('raw') || normalized.includes('freeze-dried')) pages.push('Cat Food Raw');
+      if (normalized.includes('treat')) pages.push('Cat Treats');
+    } else if (subCategory?.includes('treat') || normalized.includes('cat treats') || normalized.includes('cat treat')) {
+      pages.push('Cat Treats');
+    } else if (subCategory?.includes('toy') || normalized.includes('toy') || normalized.includes('scratcher')) {
+      pages.push('Cat Toys & Scratchers');
+    } else {
+      let isSupply = false;
+      if (normalized.includes('bed') || normalized.includes('carrier')) {
+        pages.push('Cat Beds & Carriers');
+        isSupply = true;
+      }
+      if (normalized.includes('bowl') || normalized.includes('feeder')) {
+        pages.push('Cat Bowls & Feeders');
+        isSupply = true;
+      }
+      if (normalized.includes('flea') || normalized.includes('tick')) {
+        pages.push('Cat Flea & Tick');
+        isSupply = true;
+      }
+      if (normalized.includes('grooming') || normalized.includes('shampoo') || normalized.includes('brush')) {
+        pages.push('Cat Grooming');
+        isSupply = true;
+      }
+      if (normalized.includes('healthcare') || normalized.includes('health') || normalized.includes('supplement') || normalized.includes('vitamin')) {
+        pages.push('Cat Healthcare');
+        isSupply = true;
+      }
+      if (normalized.includes('leash') || normalized.includes('collar') || normalized.includes('harness')) {
+        pages.push('Cat Leashes Collars & Harnesses');
+        isSupply = true;
+      }
+      if (normalized.includes('litter')) {
+        pages.push('Cat Litter & Litter Boxes');
+        isSupply = true;
+      }
+
+      if (isSupply || subCategory === 'supplies') {
+        pages.push('Cat Supplies Shop All');
+      }
     }
   } else if (mainCategory === 'horse' || normalized.includes('horse feed') || normalized.includes('horse treats')) {
     pages.push('Horse Feed & Treats Shop All');
