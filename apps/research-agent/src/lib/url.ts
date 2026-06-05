@@ -27,6 +27,20 @@ export function normalizeDomain(input: string | undefined): string | undefined {
   }
 }
 
+export function getDomainAndPath(input: string | undefined): string | undefined {
+  if (!input?.trim()) return undefined;
+
+  try {
+    const url = toUrl(input);
+    const domain = url.hostname.toLowerCase().replace(/^www\./, "");
+    const path = url.pathname.replace(/\/$/, "");
+    return path && path !== "/" ? `${domain}${path}` : domain;
+  } catch {
+    return undefined;
+  }
+}
+
+
 export function normalizeUrl(input: string): string {
   const url = toUrl(input);
 

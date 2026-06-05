@@ -394,6 +394,17 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             # 6. Navigate to search URL
             await page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
             
+            # Dismiss overlay elements (e.g. Attentive SMS popup) if already present in the DOM
+            try:
+                await page.evaluate("""() => {
+                    for (const id of ['attentive_overlay', 'attentive_creative']) {
+                        const el = document.getElementById(id);
+                        if (el) el.remove();
+                    }
+                }""")
+            except Exception as overlay_err:
+                logger.debug("[%s] Error removing overlay elements: %s", self.adapter_slug, overlay_err)
+
             # Wait for search results container or empty message to appear
             selectors = [
                 "#plp-desktop-row",
@@ -404,7 +415,8 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             ]
             combined_selector = ", ".join(selectors)
             try:
-                await page.wait_for_selector(combined_selector, timeout=15000)
+                # Use state="attached" to avoid timeouts if elements are present but obscured/hidden by overlays
+                await page.wait_for_selector(combined_selector, state="attached", timeout=15000)
             except Exception as e:
                 logger.warning("[%s] Timeout waiting for search results: %s", self.adapter_slug, e)
 
@@ -429,9 +441,17 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 product_link_selector = ".cc_product_name a, .cc_product_image a, #plp-desktop-row a, .cc_row_product_info a"
                 link_clicked = False
                 try:
+                    # Dismiss overlays that intercept clicks
+                    await page.evaluate("""() => {
+                        for (const id of ['attentive_overlay', 'attentive_creative']) {
+                            const el = document.getElementById(id);
+                            if (el) el.remove();
+                        }
+                    }""")
                     link_element = await page.query_selector(product_link_selector)
                     if link_element:
-                        await link_element.click()
+                        # Use force=True to bypass pointer-interception checks and set a shorter timeout
+                        await link_element.click(force=True, timeout=5000)
                         link_clicked = True
                         logger.info("[%s] Clicked product details link successfully", self.adapter_slug)
                 except Exception as click_err:
@@ -450,7 +470,8 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 ]
                 pdp_combined = ", ".join(pdp_selectors)
                 try:
-                    await page.wait_for_selector(pdp_combined, timeout=15000)
+                    # Use state="attached" to avoid timeouts if elements are present but hidden/obscured
+                    await page.wait_for_selector(pdp_combined, state="attached", timeout=15000)
                 except Exception as pdp_wait_err:
                     logger.warning("[%s] Timeout waiting for PDP elements to render: %s", self.adapter_slug, pdp_wait_err)
 

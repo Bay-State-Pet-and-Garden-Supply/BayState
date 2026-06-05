@@ -209,6 +209,63 @@ describe("SerperCandidateDiscovery", () => {
     expect(result.candidates.some((candidate) => candidate.url === "https://lakevalleyseed.com/product/item-860-lettuce-black-seeded-simpson")).toBe(true);
   });
 
+  it("preserves path prefixes from officialWebsiteUrl/officialDomain for site search queries", async () => {
+    const requestedQueries: string[] = [];
+    const provider = new SerperCandidateDiscovery({
+      apiKey: "test-key",
+      resultLimit: 2,
+      fetchImpl: (async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const body = JSON.parse(String(init?.body)) as { q: string; num: number };
+        requestedQueries.push(body.q);
+
+        if (body.q === '"072705113446"') {
+          return new Response(
+            JSON.stringify({
+              organic: [
+                {
+                  title: "PurrSnickitty Cat Duck Stew 3 oz | Fromm Family Foods",
+                  link: "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+                  snippet: "UPC: 072705113446",
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+
+        if (body.q === "site:frommfamily.com/products PurrSnickitty Cat Duck Stew 3 oz") {
+          return new Response(
+            JSON.stringify({
+              organic: [
+                {
+                  title: "PurrSnickitty Cat Duck Stew 3 oz",
+                  link: "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+                  snippet: "Fromm Family Foods product detail page.",
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+
+        throw new Error(`Unexpected query: ${body.q}`);
+      }) as unknown as typeof fetch,
+    });
+
+    await provider.discoverCandidates(
+      createBrief({
+        registerName: "Fromm Cat PurrSnick Duck Stew 3 oz",
+        officialWebsiteUrl: "https://frommfamily.com/products/",
+      }),
+      { now: new Date() },
+    );
+
+    expect(requestedQueries).toEqual([
+      '"072705113446"',
+      "site:frommfamily.com/products PurrSnickitty Cat Duck Stew 3 oz",
+    ]);
+  });
+
   it("skips discovery with a warning when no API key is configured", async () => {
     let fetchCalled = false;
     const provider = new SerperCandidateDiscovery({

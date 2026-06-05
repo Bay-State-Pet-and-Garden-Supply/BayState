@@ -7,7 +7,7 @@ import type {
   ProductResearchPipelineContext,
 } from "../types";
 import { tokenizeText } from "../../lib/tokens";
-import { isSameOrSubdomain, normalizeDomain } from "../../lib/url";
+import { getDomainAndPath, isSameOrSubdomain, normalizeDomain } from "../../lib/url";
 
 export interface SerperCandidateDiscoveryOptions {
   apiKey?: string;
@@ -77,14 +77,15 @@ function buildSkuDiscoveryQuery(brief: ProductResearchBrief) {
 }
 
 function buildOfficialDomainQuery(brief: ProductResearchBrief, predictedName: string) {
-  const domain = normalizeDomain(brief.resolvedInput.officialDomainResolved);
+  const sourceUrl = brief.resolvedInput.officialDomain ?? brief.resolvedInput.officialWebsiteUrl;
+  const domainAndPath = getDomainAndPath(sourceUrl) ?? brief.resolvedInput.officialDomainResolved;
   const cleanName = cleanSearchText(predictedName);
 
-  if (!domain || !cleanName) {
+  if (!domainAndPath || !cleanName) {
     return undefined;
   }
 
-  return `site:${domain} ${cleanName}`;
+  return `site:${domainAndPath} ${cleanName}`;
 }
 
 function extractProductCodeHints(brief: ProductResearchBrief, payload: SerperResponse): string[] {
@@ -130,12 +131,13 @@ function extractProductCodeHints(brief: ProductResearchBrief, payload: SerperRes
 }
 
 function buildOfficialCodeQuery(brief: ProductResearchBrief, productCode: string) {
-  const domain = normalizeDomain(brief.resolvedInput.officialDomainResolved);
-  if (!domain || !productCode) {
+  const sourceUrl = brief.resolvedInput.officialDomain ?? brief.resolvedInput.officialWebsiteUrl;
+  const domainAndPath = getDomainAndPath(sourceUrl) ?? brief.resolvedInput.officialDomainResolved;
+  if (!domainAndPath || !productCode) {
     return undefined;
   }
 
-  return `site:${domain} "item-${productCode}"`;
+  return `site:${domainAndPath} "item-${productCode}"`;
 }
 
 function extractTitleSegments(title: string | undefined): string[] {
