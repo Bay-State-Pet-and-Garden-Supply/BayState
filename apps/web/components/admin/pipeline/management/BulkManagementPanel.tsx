@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { Layers, Save, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -250,12 +251,32 @@ export function BulkManagementPanel({
           onToggleScraper={toggleScraper}
           credentialStatuses={credentialStatuses}
           isAISerpEnabled={isAISerpEnabled}
-          ocrEnabled={ocrEnabled}
-          onToggleOcr={() => setOcrEnabled(!ocrEnabled)}
         />
       </div>
 
       <div className="border-t border-border bg-muted/30 p-4 space-y-3">
+        <div className="flex items-center justify-between p-2.5 border border-border bg-card">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-foreground">Vision OCR</span>
+            <span className="text-[9px] text-muted-foreground font-semibold">Extract text from packaging images</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOcrEnabled(!ocrEnabled)}
+            className={cn(
+              "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+              ocrEnabled ? "bg-brand-forest-green" : "bg-muted"
+            )}
+          >
+            <span
+              className={cn(
+                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-lg ring-0 transition duration-200 ease-in-out",
+                ocrEnabled ? "translate-x-4" : "translate-x-0"
+              )}
+            />
+          </button>
+        </div>
+
         <Button
           className="h-11 w-full bg-brand-gold text-ledger-charcoal hover:bg-brand-gold/90 font-bold uppercase text-xs tracking-wider"
           disabled={isSaving}

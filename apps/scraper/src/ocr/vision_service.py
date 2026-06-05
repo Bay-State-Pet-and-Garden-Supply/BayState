@@ -122,10 +122,25 @@ async def extract_text_from_image_urls(
 
     # Default prompt
     default_prompt = (
-        "Extract all visible text from this product image, focusing on product title, brand, "
-        "packaging details, ingredients, net weight, instructions, and specifications. "
-        "Output only the extracted text, formatted cleanly. Do not include introductory "
-        "or concluding text."
+        "You are an expert product label data extractor. Analyze this product image (which is packaging or a label) "
+        "and extract all key information. Format your output as a clean, structured Markdown document. "
+        "Use the following structure, omitting sections if no relevant information is present in the image:\n\n"
+        "### Product Identity\n"
+        "- Name/Title\n"
+        "- Brand\n"
+        "- Net Weight/Volume\n\n"
+        "### Ingredients\n"
+        "[Extract the exact ingredients list as printed, preserving order]\n\n"
+        "### Guaranteed Analysis / Nutrition Facts\n"
+        "[Extract guarantee analysis percentages, nutrition tables, or active ingredients]\n\n"
+        "### Feeding Guidelines / Directions for Use\n"
+        "[Extract guidelines, usage instructions, or dosage details]\n\n"
+        "### Other Information\n"
+        "- Warnings/Precautions\n"
+        "- Manufacturer info\n"
+        "- UPC/barcode numbers if printed\n"
+        "- Certifications (e.g. AAFCO statement, organic certificates)\n\n"
+        "Do not include any introductory or concluding conversational filler. Start directly with the first section."
     )
     user_prompt = prompt or default_prompt
 
