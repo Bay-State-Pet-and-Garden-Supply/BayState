@@ -186,6 +186,7 @@ async function processImageBuffer(
       // Standardize size to fit within 1200x1200px (inside fit, without enlarging smaller images)
       // and encode in modern WebP format for optimal loading performance.
       const processedBuffer = await sharpInstance
+        .flatten({ background: '#ffffff' })
         .resize(1200, 1200, {
           fit: 'inside',
           withoutEnlargement: true,

@@ -81,11 +81,12 @@ async function buildZipResponse(upcs?: string[], includeExportedSelection = fals
                         const arrayBuffer = await response.arrayBuffer();
                         const buffer = Buffer.from(arrayBuffer);
                         const resizedBuffer = await sharp(buffer)
+                            .flatten({ background: '#ffffff' })
                             .resize(1000, 1000, {
                                 fit: 'contain',
                                 background: { r: 255, g: 255, b: 255, alpha: 1 },
                             })
-                            .jpeg({ quality: 90 })
+                            .webp({ quality: 90 })
                             .toBuffer();
 
                         archive.append(resizedBuffer, { name: zipPath });
