@@ -448,6 +448,7 @@ export function ScrapedResultsView({
                 <div className="px-2 sm:px-3 pb-2 sm:pb-3 flex items-center justify-between gap-4">
                   <Tabs
                     value={activeSource}
+                    activationMode="manual"
                     onValueChange={setPreferredSource}
                     className="flex-1"
                   >

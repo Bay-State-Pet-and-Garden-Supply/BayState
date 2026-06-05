@@ -230,7 +230,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
       </div>
 
       {/* Tabs for detailed sections */}
-      <Tabs defaultValue="runs" className="space-y-4">
+      <Tabs defaultValue="runs" activationMode="manual" className="space-y-4">
         <TabsList variant="line" className={cn(isEmbedded && 'w-full justify-start border-b border-border')}>
           <TabsTrigger value="runs">Run History</TabsTrigger>
           <TabsTrigger value="console" className="gap-2">

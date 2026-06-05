@@ -163,7 +163,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="rename" className="w-full">
+      <Tabs defaultValue="rename" activationMode="manual" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="rename">Rename</TabsTrigger>
           <TabsTrigger value="api-key">API Key</TabsTrigger>

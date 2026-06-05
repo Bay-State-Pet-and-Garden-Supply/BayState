@@ -37,6 +37,7 @@ export function StageTabs({
 
           <Tabs
             value={currentStage}
+            activationMode="manual"
             onValueChange={(value) => {
               const nextStage = PIPELINE_TABS.find((stage) => stage === value);
               if (nextStage) {
