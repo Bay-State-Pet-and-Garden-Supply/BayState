@@ -61,8 +61,8 @@ describe('preparePublishedShopSiteExport', () => {
                 'https://cdn.example.com/source/feathered-friend-favorite-back.png',
             ],
             images: [
-                'feathered-friend/feathered-friend-favorite-20-lb.webp',
-                'feathered-friend/feathered-friend-favorite-20-lb-2.webp',
+                'feathered-friend/feathered-friend-favorite-20-lb.jpg',
+                'feathered-friend/feathered-friend-favorite-20-lb-2.jpg',
             ],
         });
     });
@@ -93,11 +93,11 @@ describe('preparePublishedShopSiteExport', () => {
         const products = preparePublishedShopSiteExport(rows, brands);
 
         expect(products[0].file_name).toBe('duplicate-product.html');
-        expect(products[0].images).toEqual(['test-brand/duplicate-product.webp']);
+        expect(products[0].images).toEqual(['test-brand/duplicate-product.jpg']);
         expect(products[0].image_sources).toEqual(['https://cdn.example.com/source/duplicate-one.png']);
 
         expect(products[1].file_name).toBe('duplicate-product-sku-2.html');
-        expect(products[1].images).toEqual(['test-brand/duplicate-product-sku-2.webp']);
+        expect(products[1].images).toEqual(['test-brand/duplicate-product-sku-2.jpg']);
         expect(products[1].image_sources).toEqual(['https://cdn.example.com/source/duplicate-two.png']);
     });
 
@@ -151,7 +151,7 @@ describe('preparePublishedShopSiteExport', () => {
             availability: 'out of stock',
             minimum_quantity: 2,
             image_sources: ['https://m.media-amazon.com/images/I/81QdgAw3zoL.jpg'],
-            images: ['dimples/dimples-horse-treats-16-lb.webp'],
+            images: ['dimples/dimples-horse-treats-16-lb.jpg'],
         });
     });
 });

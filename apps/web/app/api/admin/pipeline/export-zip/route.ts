@@ -86,7 +86,7 @@ async function buildZipResponse(upcs?: string[], includeExportedSelection = fals
                                 fit: 'contain',
                                 background: { r: 255, g: 255, b: 255, alpha: 1 },
                             })
-                            .webp({ quality: 90 })
+                            .jpeg({ quality: 90 })
                             .toBuffer();
 
                         archive.append(resizedBuffer, { name: zipPath });

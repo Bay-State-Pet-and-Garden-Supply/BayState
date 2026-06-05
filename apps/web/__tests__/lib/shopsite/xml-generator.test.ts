@@ -18,8 +18,8 @@ describe('generateShopSiteXml', () => {
                     category: 'Wild Bird Food',
                     product_type: 'Seeds & Seed Mixes',
                     images: [
-                        'feathered-friend/feathered-friend-favorite-20-lb.webp',
-                        'feathered-friend/feathered-friend-favorite-20-lb-2.webp',
+                        'feathered-friend/feathered-friend-favorite-20-lb.jpg',
+                        'feathered-friend/feathered-friend-favorite-20-lb-2.jpg',
                     ],
                     weight: '20 lb.',
                     is_special_order: true,
@@ -42,9 +42,9 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<Taxable>checked</Taxable>');
         expect(xml).toContain('<![CDATA[Feathered Friend Favorite 20 lb.]]>');
         expect(xml).toContain('<Weight>20 lb.</Weight>');
-        expect(xml).toContain('<Graphic>feathered-friend/feathered-friend-favorite-20-lb.webp</Graphic>');
-        expect(xml).toContain('<MoreInformationGraphic>feathered-friend/feathered-friend-favorite-20-lb.webp</MoreInformationGraphic>');
-        expect(xml).toContain('<MoreInfoImage1>feathered-friend/feathered-friend-favorite-20-lb-2.webp</MoreInfoImage1>');
+        expect(xml).toContain('<Graphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</Graphic>');
+        expect(xml).toContain('<MoreInformationGraphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</MoreInformationGraphic>');
+        expect(xml).toContain('<MoreInfoImage1>feathered-friend/feathered-friend-favorite-20-lb-2.jpg</MoreInfoImage1>');
         expect(xml).toContain('<ProductOnPages></ProductOnPages>');
         expect(xml).toContain('<ProductField16>Feathered Friend</ProductField16>');
         expect(xml).toContain('<ProductField24>Wild Bird Food</ProductField24>');

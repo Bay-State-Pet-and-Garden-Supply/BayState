@@ -363,7 +363,7 @@ export function preparePipelineRowsForShopSiteExport(
       consolidatedImages.length > 0 ? consolidatedImages : selectedImages;
     const images = imageSources.map(
       (_, index) =>
-        `${brandFolder}/${imageStem}${index === 0 ? "" : `-${index + 1}`}.webp`,
+        `${brandFolder}/${imageStem}${index === 0 ? "" : `-${index + 1}`}.jpg`,
     );
 
     const gtin = row.upc;
