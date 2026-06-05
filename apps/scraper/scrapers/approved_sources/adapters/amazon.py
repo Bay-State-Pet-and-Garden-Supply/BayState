@@ -597,10 +597,29 @@ class AmazonAdapter(ApprovedSourceAdapter):
                     break
 
         if not pdp_url:
-            logger.warning(
-                "[AmazonAdapter] No valid PDP URL found in search results for UPC: %s. (Possible bot block)",
-                upc,
-            )
+            # Check for bot block/captcha indicators
+            captcha_form = soup.select_one('form[action*="validateCaptcha"]')
+            has_robot_text = "make sure you're not a robot" in html.lower() or "automated access" in html.lower()
+
+            body_text = soup.body.get_text(" ", strip=True).lower() if soup.body else ""
+            no_results_patterns = ["no results for", "try checking your spelling", "did not match any products"]
+            found_no_results = any(p in body_text for p in no_results_patterns)
+
+            if captcha_form or has_robot_text:
+                logger.warning(
+                    "[AmazonAdapter] Search for UPC %s failed: BOT BLOCK DETECTED (CAPTCHA/robot check page loaded).",
+                    upc,
+                )
+            elif found_no_results:
+                logger.info(
+                    "[AmazonAdapter] Search for UPC %s failed: Genuinely NO RESULTS found on Amazon (product is not listed).",
+                    upc,
+                )
+            else:
+                logger.warning(
+                    "[AmazonAdapter] Search for UPC %s failed: No valid PDP URL found in search results.",
+                    upc,
+                )
             return None
 
         # Phase 3: Crawl PDP and extract from rendered HTML
@@ -664,11 +683,20 @@ class AmazonAdapter(ApprovedSourceAdapter):
                         ],
                     )
 
-                logger.warning(
-                    "[AmazonAdapter] DOM extraction missing required fields for UPC %s: %s. Falling back to LLM.",
-                    upc,
-                    ", ".join(missing_required),
-                )
+                pdp_soup = BeautifulSoup(pdp_result.html, "html.parser")
+                pdp_captcha = pdp_soup.select_one('form[action*="validateCaptcha"]')
+                pdp_robot_text = "make sure you're not a robot" in pdp_result.html.lower() or "automated access" in pdp_result.html.lower()
+                if pdp_captcha or pdp_robot_text:
+                    logger.warning(
+                        "[AmazonAdapter] PDP crawl for UPC %s failed: BOT BLOCK DETECTED (CAPTCHA/robot check page loaded on PDP).",
+                        upc,
+                    )
+                else:
+                    logger.warning(
+                        "[AmazonAdapter] DOM extraction missing required fields for UPC %s: %s. Falling back to LLM.",
+                        upc,
+                        ", ".join(missing_required),
+                    )
         except Exception as exc:
             logger.warning("[AmazonAdapter] DOM extraction failed with error: %s. Falling back to LLM...", exc)
 
