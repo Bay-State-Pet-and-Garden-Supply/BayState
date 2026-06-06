@@ -8,8 +8,7 @@
     "packages/*",
     "apps/web",
     "apps/scraper",
-    "apps/research-agent",
-    "apps/shopsite-cms"
+    "apps/research-agent"
   ],
   "scripts": {
     "bootstrap": "bun install && bun run web:db:start && bun run web:bootstrap && bun run scraper:sync-env",
@@ -21,7 +20,6 @@
     "web": "bun --cwd apps/web",
     "scraper": "bun --cwd apps/scraper",
     "research-agent": "bun --cwd apps/research-agent",
-    "shopsite-cms": "bun --cwd apps/shopsite-cms",
     "web:dev": "bun run web dev",
     "web:build": "bun run web build",
     "web:test": "bun run web test",
