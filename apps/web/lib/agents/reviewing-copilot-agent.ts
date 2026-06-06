@@ -5,6 +5,8 @@ import {
   stepCountIs,
 } from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createGoogle } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { getDeepSeekBaseURL } from "@/lib/ai-scraping/deepseek";
 import { getAIConsolidationRuntimeConfig } from "@/lib/ai-scraping/credentials";
 import { DEFAULT_AI_MODEL } from "@/lib/ai-scraping/models";
@@ -22,7 +24,18 @@ const FINALIZATION_COPILOT_MODEL = DEFAULT_AI_MODEL;
 const FINALIZATION_COPILOT_MISSING_KEY_ERROR =
   "DeepSeek API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Reviewing Copilot.";
 
-function buildFinalizationCopilotModel(apiKey: string, modelId: string, baseURL?: string) {
+function buildFinalizationCopilotModel(provider: string, apiKey: string, modelId: string, baseURL?: string) {
+  if (provider === "gemini") {
+    return createGoogle({
+      apiKey,
+    })(modelId);
+  }
+  if (provider === "openai" || provider === "openai_compatible" || provider === "lmstudio") {
+    return createOpenAI({
+      apiKey,
+      baseURL: baseURL || undefined,
+    })(modelId);
+  }
   return createDeepSeek({
     apiKey,
     ...(baseURL ? { baseURL: getDeepSeekBaseURL(baseURL) } : {}),
@@ -113,6 +126,7 @@ Field mapping reference:
 
 export const finalizationCopilotAgent = new ToolLoopAgent({
   model: buildFinalizationCopilotModel(
+    "deepseek",
     "supabase-managed-finalization-copilot",
     FINALIZATION_COPILOT_MODEL,
   ),
@@ -122,12 +136,13 @@ export const finalizationCopilotAgent = new ToolLoopAgent({
     "You are Bay State's reviewing copilot. Use tools to inspect and update selected products or explicit workspace scopes safely.",
   prepareCall: async ({ options, ...settings }) => {
     const runtimeConfig = await getAIConsolidationRuntimeConfig();
-    const deepseekApiKey = (
+    const apiKey = (
       runtimeConfig.deepseek_api_key ?? runtimeConfig.llm_api_key
     )?.trim();
-    if (!deepseekApiKey) {
+    if (!apiKey) {
       throw new Error(FINALIZATION_COPILOT_MISSING_KEY_ERROR);
     }
+    const provider = runtimeConfig.llm_provider || "deepseek";
     const modelId = runtimeConfig.llm_model?.trim() || FINALIZATION_COPILOT_MODEL;
     const baseURL = runtimeConfig.llm_base_url?.trim();
 
@@ -136,7 +151,7 @@ export const finalizationCopilotAgent = new ToolLoopAgent({
 
     return {
       ...settings,
-      model: buildFinalizationCopilotModel(deepseekApiKey, modelId, baseURL),
+      model: buildFinalizationCopilotModel(provider, apiKey, modelId, baseURL),
       instructions: buildInstructions(options),
       tools: createFinalizationCopilotTools({
         searchBrands: async (query) => {

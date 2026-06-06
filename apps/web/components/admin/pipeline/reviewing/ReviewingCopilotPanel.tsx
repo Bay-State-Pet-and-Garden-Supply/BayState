@@ -16,11 +16,6 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -153,13 +148,7 @@ interface ReviewingCopilotPanelProps {
   selectedUpc: string | null;
   workspaceProductCount: number;
   dirtyProductCount: number;
-  hasPendingCopilotReview: boolean;
-  pendingCopilotReviewCount: number;
-  pendingCopilotSummaries: string[];
-  reviewActionPending: boolean;
   getContext: () => FinalizationCopilotContext;
-  onAcceptPendingCopilotReview: () => Promise<void>;
-  onRejectPendingCopilotReview: () => void;
   onListWorkspaceProducts: (
     input: ListWorkspaceProductsInput,
   ) => Promise<ListWorkspaceProductsOutput>;
@@ -244,13 +233,7 @@ export function ReviewingCopilotPanel({
   selectedUpc,
   workspaceProductCount,
   dirtyProductCount,
-  hasPendingCopilotReview,
-  pendingCopilotReviewCount,
-  pendingCopilotSummaries,
-  reviewActionPending,
   getContext,
-  onAcceptPendingCopilotReview,
-  onRejectPendingCopilotReview,
   onListWorkspaceProducts,
   onPreviewProductScope,
   onGetProductSnapshot,
@@ -355,7 +338,6 @@ export function ReviewingCopilotPanel({
   const handleSubmit = () => {
     if (
       workspaceProductCount === 0
-      || hasPendingCopilotReview
       || !input.trim()
       || status !== "ready"
     ) {
@@ -617,55 +599,11 @@ export function ReviewingCopilotPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 bg-muted/10">
-        {hasPendingCopilotReview && (
-          <Alert className="mb-4 border border-border bg-violet-50 text-violet-950 rounded-none">
-            <AlertTitle className="font-semibold text-xs">Copilot changes are ready for review</AlertTitle>
-            <AlertDescription className="space-y-3">
-              <p className="text-xs font-semibold">
-                {pendingCopilotReviewCount} product
-                {pendingCopilotReviewCount === 1 ? "" : "s"} have staged
-                copilot edits. Accept autosaves them; reject restores the
-                previous drafts.
-              </p>
-              <div className="space-y-1">
-                {pendingCopilotSummaries.slice(-3).map((summary) => (
-                  <div key={summary} className="text-[10px] font-semibold text-muted-foreground">
-                    - {summary}
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="rounded-none border border-border bg-foreground text-background font-semibold text-[10px] hover:bg-foreground/80 active:translate-x-[1px] active:translate-y-[1px]"
-                  onClick={() => {
-                    void onAcceptPendingCopilotReview();
-                  }}
-                  disabled={reviewActionPending || status !== "ready"}
-                >
-                  Accept & Autosave
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="rounded-none border border-border bg-card text-foreground font-semibold text-[10px] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px]"
-                  onClick={onRejectPendingCopilotReview}
-                  disabled={reviewActionPending || status !== "ready"}
-                >
-                  Reject
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
         {messages.length === 0 ? (
           <div className="space-y-4">
             <div className="rounded-none border border-dashed border-border/20 bg-card px-4 py-5 text-sm font-semibold text-muted-foreground text-center">
-              Ask the copilot to inspect the selected product, preview a scope
-              across reviewing, and stage changes for review.
+              Ask the copilot to inspect the selected product or preview a scope
+              across reviewing to apply changes directly to drafts.
             </div>
 
             <div className="grid gap-2">
@@ -677,13 +615,11 @@ export function ReviewingCopilotPanel({
                   className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-xs font-semibold rounded-none border border-border bg-card hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] transition-all"
                   disabled={
                     workspaceProductCount === 0
-                    || hasPendingCopilotReview
                     || status !== "ready"
                   }
                   onClick={() => {
                     if (
                       workspaceProductCount === 0
-                      || hasPendingCopilotReview
                       || status !== "ready"
                     ) {
                       return;
@@ -775,15 +711,12 @@ export function ReviewingCopilotPanel({
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder={
-              hasPendingCopilotReview
-                ? "Accept or reject the staged copilot changes before sending another request."
-                : workspaceProductCount > 0
+              workspaceProductCount > 0
                 ? "Ask the copilot about the selected product or a scope across reviewing..."
                 : "No products are loaded in reviewing."
             }
             disabled={
               workspaceProductCount === 0
-              || hasPendingCopilotReview
               || status !== "ready"
             }
             className="min-h-28 resize-none rounded-none border border-border focus-visible:ring-border font-bold"
@@ -791,8 +724,7 @@ export function ReviewingCopilotPanel({
 
           <div className="flex items-center justify-between gap-3">
             <div className="text-[10px] font-semibold text-muted-foreground max-w-[70%]">
-              The copilot stages edits for review first. Accept autosaves the
-              staged changes; reject restores the previous drafts.
+              The copilot updates drafts directly. Standard save and publish actions apply.
             </div>
 
             <Button
@@ -800,7 +732,6 @@ export function ReviewingCopilotPanel({
               onClick={handleSubmit}
               disabled={
                 workspaceProductCount === 0
-                || hasPendingCopilotReview
                 || !input.trim()
                 || status !== "ready"
               }

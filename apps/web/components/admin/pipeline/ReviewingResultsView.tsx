@@ -10,32 +10,14 @@ import {
 } from "react";
 import {
   Package,
-  Plus,
-  X,
   ChevronRight,
-  Search,
-  Check,
   Sparkles,
-  Trash2,
-  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -43,7 +25,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
 
 import {
   isValidCustomImageUrl,
@@ -98,7 +79,7 @@ import type {
   SetProductFieldsInput,
   ToolSummary,
 } from "@/lib/tools/reviewing-copilot";
-import { filterPendingCopilotDraftReview, restorePendingCopilotDraftReview, stagePendingCopilotDraftReview, type PendingCopilotDraftReview } from "@/lib/pipeline/reviewing-copilot-review";
+
 import type { Brand } from "@/lib/types";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
 import { adminFetch } from '@/lib/admin/api-client';
@@ -332,30 +313,6 @@ export function ReviewingResultsView({
     [],
   );
   const savedDraftsByUpc = savedDraftsState;
-  const [pendingCopilotReviewState, setPendingCopilotReviewState] =
-    useState<PendingCopilotDraftReview | null>(null);
-  const pendingCopilotReviewRef = useRef<PendingCopilotDraftReview | null>(null);
-  const setPendingCopilotReview = useCallback(
-    (value: SetStateAction<PendingCopilotDraftReview | null>) => {
-      if (typeof value !== "function") {
-        pendingCopilotReviewRef.current = value;
-      }
-      setPendingCopilotReviewState((prev) => {
-        const next =
-          typeof value === "function"
-            ? (
-                value as (
-                  previous: PendingCopilotDraftReview | null,
-                ) => PendingCopilotDraftReview | null
-              )(prev)
-            : value;
-        pendingCopilotReviewRef.current = next;
-        return next;
-      });
-    },
-    [],
-  );
-  const pendingCopilotReview = pendingCopilotReviewState;
 
   const filteredBrands = useMemo(() => {
     if (!brandSearch.trim()) return brands;
@@ -397,7 +354,6 @@ export function ReviewingResultsView({
 
     return brand;
   }, [setBrands]);
-  const [selectedImageSourceId, setSelectedImageSourceId] = useState("");
   const productsByUpc = useMemo(
     () =>
       Object.fromEntries(sortedProducts.map((product) => [product.upc, product])),
@@ -502,10 +458,6 @@ export function ReviewingResultsView({
     setSavedDrafts(nextSavedDrafts);
   }, [sortedProducts, setDrafts, setSavedDrafts]);
 
-  useEffect(() => {
-    setSelectedImageSourceId("");
-  }, [selectedUpc]);
-
   const formData = selectedUpc
     ? draftsByUpc[selectedUpc] ?? EMPTY_FINALIZATION_DRAFT
     : EMPTY_FINALIZATION_DRAFT;
@@ -556,43 +508,7 @@ export function ReviewingResultsView({
     },
     [setSavedDrafts],
   );
-  const hasPendingCopilotReview = pendingCopilotReview !== null;
-
-  const stageCopilotDraftReview = useCallback(
-    (upcs: string[], summary: string): ToolSummary => {
-      const nextPendingReview = stagePendingCopilotDraftReview({
-        pendingReview: pendingCopilotReviewRef.current,
-        draftsByUpc: draftsRef.current,
-        targetUpcs: upcs,
-        summary,
-      });
-      setPendingCopilotReview(nextPendingReview);
-
-      return {
-        summary: `${summary} Review and accept to autosave, or reject to restore the previous draft.`,
-      };
-    },
-    [setPendingCopilotReview],
-  );
-
-  const ensureNoPendingCopilotReview = useCallback(
-    (action: string) => {
-      if (!pendingCopilotReviewRef.current) {
-        return;
-      }
-
-      throw new Error(
-        `Review the staged copilot changes before ${action}. Accept autosaves them; reject restores the previous drafts.`,
-      );
-    },
-    [],
-  );
-
-  const notifyPendingCopilotReview = useCallback((action: string) => {
-    toast.error(
-      `Accept or reject the staged copilot changes before ${action}.`,
-    );
-  }, []);
+  const hasPendingCopilotReview = false;
 
   const handleInputChange = useCallback(
     <K extends keyof FinalizationDraft>(
@@ -602,23 +518,15 @@ export function ReviewingResultsView({
       if (!selectedUpc) {
         return;
       }
-      if (pendingCopilotReviewRef.current) {
-        notifyPendingCopilotReview("editing the draft manually");
-        return;
-      }
 
       updateDraftForUpc(selectedUpc, (prev) => ({ ...prev, [field]: value }));
     },
-    [notifyPendingCopilotReview, selectedUpc, updateDraftForUpc],
+    [selectedUpc, updateDraftForUpc],
   );
 
   const handleBrandChange = useCallback(
     (brandId: string, brandName: string) => {
       if (!selectedUpc) {
-        return;
-      }
-      if (pendingCopilotReviewRef.current) {
-        notifyPendingCopilotReview("editing the draft manually");
         return;
       }
       updateDraftForUpc(selectedUpc, (prev) => ({
@@ -627,15 +535,11 @@ export function ReviewingResultsView({
         brandName,
       }));
     },
-    [notifyPendingCopilotReview, selectedUpc, updateDraftForUpc],
+    [selectedUpc, updateDraftForUpc],
   );
 
   const handleCreateBrand = async () => {
     if (!brandSearch.trim()) return;
-    if (pendingCopilotReviewRef.current) {
-      notifyPendingCopilotReview("editing the draft manually");
-      return;
-    }
     setCreatingBrand(true);
     try {
       const brand = await createBrandRecord(brandSearch);
@@ -658,20 +562,12 @@ export function ReviewingResultsView({
     if (!selectedUpc) {
       return;
     }
-    if (pendingCopilotReviewRef.current) {
-      notifyPendingCopilotReview("editing the draft manually");
-      return;
-    }
 
     updateDraftForUpc(selectedUpc, (prev) => ({ ...prev, name: newName }));
   };
 
   const toggleImage = (url: string) => {
     if (!selectedUpc) {
-      return;
-    }
-    if (pendingCopilotReviewRef.current) {
-      notifyPendingCopilotReview("editing the draft manually");
       return;
     }
 
@@ -691,10 +587,6 @@ export function ReviewingResultsView({
   const addCustomImage = () => {
     if (!selectedUpc) return;
     if (!formData.customImageUrl.trim()) return;
-    if (pendingCopilotReviewRef.current) {
-      notifyPendingCopilotReview("editing the draft manually");
-      return;
-    }
     const url = formData.customImageUrl.trim();
 
     if (!isValidCustomImageUrl(url)) {
@@ -720,10 +612,6 @@ export function ReviewingResultsView({
     if (!selectedUpc) return;
     const url = formData.customSourceUrl.trim();
     if (!url) return;
-    if (pendingCopilotReviewRef.current) {
-      notifyPendingCopilotReview("editing the draft manually");
-      return;
-    }
 
     try {
       new URL(url);
@@ -752,10 +640,6 @@ export function ReviewingResultsView({
 
   const removeSource = (sourceKey: string) => {
     if (!selectedUpc) return;
-    if (pendingCopilotReviewRef.current) {
-      notifyPendingCopilotReview("editing the draft manually");
-      return;
-    }
 
     updateDraftForUpc(selectedUpc, (prev) => {
       return {
@@ -795,6 +679,37 @@ export function ReviewingResultsView({
       }
 
       if (andPublish) {
+        // Validate all target products first
+        for (const upc of targetUpcs) {
+          const draft = draftsRef.current[upc];
+          if (draft) {
+            const validationErrors: string[] = [];
+            if (!draft.name?.trim()) {
+              validationErrors.push("Product Name is required");
+            }
+            const priceNum = typeof draft.price === "number" ? draft.price : parseFloat(draft.price);
+            if (isNaN(priceNum) || priceNum <= 0) {
+              validationErrors.push("Price must be greater than $0.00");
+            }
+            if (!draft.brandId || draft.brandId === "none") {
+              validationErrors.push("Brand selection is required");
+            }
+            if (!draft.category?.trim()) {
+              validationErrors.push("Category classification is required");
+            }
+            if (!draft.selectedImages || draft.selectedImages.length === 0) {
+              validationErrors.push("At least one image must be selected");
+            }
+
+            if (validationErrors.length > 0) {
+              const errorMsg = `Cannot publish product ${upc}: ${validationErrors.join(", ")}.`;
+              if (!silent) {
+                toast.error(errorMsg);
+              }
+              throw new Error(errorMsg);
+            }
+          }
+        }
         setPublishing(true);
       } else {
         setSaving(true);
@@ -968,70 +883,9 @@ export function ReviewingResultsView({
     [persistProducts],
   );
 
-  const handleAcceptPendingCopilotReview = useCallback(async () => {
-    const currentPendingReview = pendingCopilotReviewRef.current;
-    if (!currentPendingReview) {
-      return;
-    }
-
-    try {
-      const result = await persistProducts({
-        upcs: currentPendingReview.upcs,
-        silent: true,
-      });
-
-      setPendingCopilotReview(
-        filterPendingCopilotDraftReview(currentPendingReview, result.failedUpcs),
-      );
-
-      if (result.failedUpcs.length > 0) {
-        toast.error(
-          `Accepted ${result.successfulUpcs.length} copilot ${
-            result.successfulUpcs.length === 1 ? "change" : "changes"
-          }, but ${result.failedUpcs.length} product${
-            result.failedUpcs.length === 1 ? "" : "s"
-          } still need review: ${result.failedUpcs.join(", ")}.`,
-        );
-        return;
-      }
-
-      toast.success(`Accepted copilot changes. ${result.summary}`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to accept the staged copilot changes.",
-      );
-    }
-  }, [persistProducts, setPendingCopilotReview]);
-
-  const handleRejectPendingCopilotReview = useCallback(() => {
-    const currentPendingReview = pendingCopilotReviewRef.current;
-    if (!currentPendingReview) {
-      return;
-    }
-
-    setDrafts((prev) =>
-      restorePendingCopilotDraftReview(prev, currentPendingReview),
-    );
-    setPendingCopilotReview(null);
-    toast.success(
-      `Rejected staged copilot changes for ${currentPendingReview.upcs.length} product${
-        currentPendingReview.upcs.length === 1 ? "" : "s"
-      }.`,
-    );
-  }, [setDrafts, setPendingCopilotReview]);
-
   const handleSelectProduct = useCallback(
     async (newUpc: string | null) => {
       if (newUpc === preferredUpc) return;
-
-      if (pendingCopilotReviewRef.current) {
-        toast.error(
-          "Accept or reject the staged copilot changes before switching products.",
-        );
-        return;
-      }
 
       if (isDirty && selectedUpc && !saving && !publishing) {
         try {
@@ -1061,20 +915,12 @@ export function ReviewingResultsView({
 
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        if (pendingCopilotReviewRef.current) {
-          notifyPendingCopilotReview("saving");
-          return;
-        }
         void persistCurrentDraft();
         return;
       }
 
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (pendingCopilotReviewRef.current) {
-          notifyPendingCopilotReview("approving");
-          return;
-        }
         void persistCurrentDraft({ andPublish: true });
         return;
       }
@@ -1089,15 +935,10 @@ export function ReviewingResultsView({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     persistCurrentDraft,
-    notifyPendingCopilotReview,
   ]);
 
   const handleReject = async () => {
     if (!selectedUpc) return;
-    if (pendingCopilotReviewRef.current) {
-      notifyPendingCopilotReview("rejecting the product");
-      return;
-    }
     setConfirmRejectOpen(true);
   };
 
@@ -1372,15 +1213,13 @@ export function ReviewingResultsView({
         input,
       );
 
-      const review = stageCopilotDraftReview(
-        [currentUpc],
-        `Prepared updates for ${result.updatedFields.join(", ")} on ${currentUpc}.`,
-      );
       updateDraftForUpc(currentUpc, result.draft);
 
-      return review;
+      return {
+        summary: `Updated fields: ${result.updatedFields.join(", ")} on ${currentUpc}.`,
+      };
     },
-    [stageCopilotDraftReview, updateDraftForUpc],
+    [updateDraftForUpc],
   );
 
   const handleCopilotBulkSetProductFields = useCallback(
@@ -1408,14 +1247,13 @@ export function ReviewingResultsView({
 
       setDrafts(nextDrafts);
 
-      return stageCopilotDraftReview(
-        matchedUpcs,
-        `Prepared updates for ${matchedUpcs.length} product${
+      return {
+        summary: `Updated fields for ${matchedUpcs.length} product${
           matchedUpcs.length === 1 ? "" : "s"
         }: ${Array.from(updatedFields).join(", ")}.`,
-      );
+      };
     },
-    [resolveScopeUpcs, setDrafts, stageCopilotDraftReview],
+    [resolveScopeUpcs, setDrafts],
   );
 
   const handleCopilotBulkTransformProductNames = useCallback(
@@ -1457,14 +1295,13 @@ export function ReviewingResultsView({
 
       setDrafts(nextDrafts);
 
-      return stageCopilotDraftReview(
-        changedUpcs,
-        `Prepared ${mode} name updates for ${changedCount} product${
+      return {
+        summary: `Applied ${mode} name transform to ${changedCount} product${
           changedCount === 1 ? "" : "s"
         }.`,
-      );
+      };
     },
-    [resolveScopeUpcs, setDrafts, stageCopilotDraftReview],
+    [resolveScopeUpcs, setDrafts],
   );
 
   const handleCopilotAssignBrand = useCallback(
@@ -1482,17 +1319,15 @@ export function ReviewingResultsView({
         );
       }
 
-      const review = stageCopilotDraftReview(
-        [currentUpc],
-        brandId === "none"
-          ? `Prepared a cleared brand assignment for ${currentUpc}.`
-          : `Prepared a brand assignment to ${brandName} for ${currentUpc}.`,
-      );
-      handleInputChange("brandId", brandId);
+      handleBrandChange(brandId, brandName);
 
-      return review;
+      return {
+        summary: brandId === "none"
+          ? `Cleared brand assignment for ${currentUpc}.`
+          : `Assigned brand ${brandName} to ${currentUpc}.`,
+      };
     },
-    [handleInputChange, stageCopilotDraftReview],
+    [handleBrandChange],
   );
 
   const handleCopilotCreateBrand = useCallback(
@@ -1502,15 +1337,13 @@ export function ReviewingResultsView({
       if (!currentUpc) {
         throw new Error("Select a product before assigning a brand.");
       }
-      const review = stageCopilotDraftReview(
-        [currentUpc],
-        `Prepared a new brand assignment to ${brand.name} for ${currentUpc}.`,
-      );
-      handleInputChange("brandId", brand.id);
+      handleBrandChange(brand.id, brand.name);
 
-      return review;
+      return {
+        summary: `Created and assigned brand ${brand.name} to ${currentUpc}.`,
+      };
     },
-    [createBrandRecord, handleInputChange, stageCopilotDraftReview],
+    [createBrandRecord, handleBrandChange],
   );
 
   const handleCopilotBulkAssignBrand = useCallback(
@@ -1534,24 +1367,23 @@ export function ReviewingResultsView({
         nextDrafts[upc] = {
           ...(nextDrafts[upc] ?? EMPTY_FINALIZATION_DRAFT),
           brandId,
+          brandName,
         };
       });
       setDrafts(nextDrafts);
 
-      return stageCopilotDraftReview(
-        matchedUpcs,
-        brandId === "none"
-          ? `Prepared cleared brand assignments for ${matchedUpcs.length} product${
+      return {
+        summary: brandId === "none"
+          ? `Cleared brand assignments for ${matchedUpcs.length} product${
               matchedUpcs.length === 1 ? "" : "s"
             }.`
-          : `Prepared ${brandName} brand assignments for ${matchedUpcs.length} product${
+          : `Assigned brand ${brandName} to ${matchedUpcs.length} product${
               matchedUpcs.length === 1 ? "" : "s"
             }.`,
-      );
+      };
     },
-    [resolveScopeUpcs, setDrafts, stageCopilotDraftReview],
+    [resolveScopeUpcs, setDrafts],
   );
-
 
   const handleCopilotReplaceSelectedImages = useCallback(
     async ({ images }: ReplaceSelectedImagesInput): Promise<ToolSummary> => {
@@ -1564,14 +1396,15 @@ export function ReviewingResultsView({
         throw new Error("Provide at least one valid image URL.");
       }
 
-      const review = stageCopilotDraftReview(
-        [currentUpc],
-        `Prepared a replacement image set with ${nextImages.length} images for ${currentUpc}.`,
-      );
-      handleInputChange("selectedImages", nextImages);
-      return review;
+      updateDraftForUpc(currentUpc, (prev) => ({
+        ...prev,
+        selectedImages: nextImages,
+      }));
+      return {
+        summary: `Replaced selected images with ${nextImages.length} images for ${currentUpc}.`,
+      };
     },
-    [normalizeSelectedImages, handleInputChange, stageCopilotDraftReview],
+    [normalizeSelectedImages, updateDraftForUpc],
   );
 
   const handleCopilotAddSelectedImages = useCallback(
@@ -1583,17 +1416,18 @@ export function ReviewingResultsView({
         ...(selectedUpc ? draftsRef.current[selectedUpc]?.selectedImages ?? [] : []),
         ...images,
       ]);
-      const review = stageCopilotDraftReview(
-        [selectedUpc],
-        `Prepared ${normalizeSelectedImages(images).length} added image${
-          normalizeSelectedImages(images).length === 1 ? "" : "s"
-        } for ${selectedUpc}.`,
-      );
-      handleInputChange("selectedImages", nextImages);
+      updateDraftForUpc(selectedUpc, (prev) => ({
+        ...prev,
+        selectedImages: nextImages,
+      }));
 
-      return review;
+      return {
+        summary: `Added ${normalizeSelectedImages(images).length} image${
+          normalizeSelectedImages(images).length === 1 ? "" : "s"
+        } to ${selectedUpc}.`,
+      };
     },
-    [normalizeSelectedImages, handleInputChange, selectedUpc, stageCopilotDraftReview],
+    [normalizeSelectedImages, updateDraftForUpc, selectedUpc],
   );
 
   const handleCopilotRemoveSelectedImages = useCallback(
@@ -1607,17 +1441,18 @@ export function ReviewingResultsView({
       ).filter(
         (image) => !toRemove.has(image),
       );
-      const review = stageCopilotDraftReview(
-        [selectedUpc],
-        `Prepared removal of ${toRemove.size} image${
-          toRemove.size === 1 ? "" : "s"
-        } for ${selectedUpc}.`,
-      );
-      handleInputChange("selectedImages", nextImages);
+      updateDraftForUpc(selectedUpc, (prev) => ({
+        ...prev,
+        selectedImages: nextImages,
+      }));
 
-      return review;
+      return {
+        summary: `Removed ${toRemove.size} image${
+          toRemove.size === 1 ? "" : "s"
+        } from ${selectedUpc}.`,
+      };
     },
-    [normalizeSelectedImages, handleInputChange, selectedUpc, stageCopilotDraftReview],
+    [normalizeSelectedImages, updateDraftForUpc, selectedUpc],
   );
 
   const handleCopilotAddSourceUrl = useCallback(
@@ -1658,11 +1493,6 @@ export function ReviewingResultsView({
         collisionIndex += 1;
       }
 
-      const review = stageCopilotDraftReview(
-        [currentUpc],
-        `Prepared a custom source URL for ${currentUpc}: ${normalizedUrl}.`,
-      );
-
       updateDraftForUpc(currentUpc, (prev) => ({
         ...prev,
         sources: {
@@ -1676,9 +1506,11 @@ export function ReviewingResultsView({
         customSourceUrl: "",
       }));
 
-      return review;
+      return {
+        summary: `Added source URL for ${currentUpc}: ${normalizedUrl}.`,
+      };
     },
-    [stageCopilotDraftReview, updateDraftForUpc],
+    [updateDraftForUpc],
   );
 
   const handleCopilotRemoveSource = useCallback(
@@ -1694,11 +1526,6 @@ export function ReviewingResultsView({
         throw new Error(`Unknown source key: ${sourceKey}`);
       }
 
-      const review = stageCopilotDraftReview(
-        [currentUpc],
-        `Prepared removal of source ${sourceKey} for ${currentUpc}.`,
-      );
-
       updateDraftForUpc(currentUpc, (prev) => {
         return {
           ...prev,
@@ -1706,9 +1533,11 @@ export function ReviewingResultsView({
         };
       });
 
-      return review;
+      return {
+        summary: `Removed source ${sourceKey} for ${currentUpc}.`,
+      };
     },
-    [stageCopilotDraftReview, updateDraftForUpc],
+    [updateDraftForUpc],
   );
 
   const handleCopilotRestoreSavedDraft = useCallback(
@@ -1718,75 +1547,67 @@ export function ReviewingResultsView({
         throw new Error("Select a product before restoring its draft.");
       }
 
-      const review = stageCopilotDraftReview(
-        [currentUpc],
-        `Prepared a restore to the last saved draft for ${currentUpc}.`,
-      );
       updateDraftForUpc(
         currentUpc,
         savedDraftsRef.current[currentUpc] ?? EMPTY_FINALIZATION_DRAFT,
       );
-      return review;
+      return {
+        summary: `Restored last saved draft for ${currentUpc}.`,
+      };
     },
-    [stageCopilotDraftReview, updateDraftForUpc],
+    [updateDraftForUpc],
   );
 
   const handleCopilotSaveDraft = useCallback(
     async (): Promise<ToolSummary> => {
-      ensureNoPendingCopilotReview("saving");
       return persistCurrentDraft({ silent: true });
     },
-    [ensureNoPendingCopilotReview, persistCurrentDraft],
+    [persistCurrentDraft],
   );
 
   const handleCopilotApproveProduct = useCallback(
     async (): Promise<ToolSummary> => {
-      ensureNoPendingCopilotReview("approving");
       return persistCurrentDraft({ andPublish: true, silent: true });
     },
-    [ensureNoPendingCopilotReview, persistCurrentDraft],
+    [persistCurrentDraft],
   );
 
   const handleCopilotRejectProduct = useCallback(
     async (): Promise<ToolSummary> => {
-      ensureNoPendingCopilotReview("rejecting");
       return rejectCurrentProduct({ silent: true });
     },
-    [ensureNoPendingCopilotReview, rejectCurrentProduct],
+    [rejectCurrentProduct],
   );
 
   const handleCopilotSaveProducts = useCallback(
     async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
-      ensureNoPendingCopilotReview("saving");
       return persistProducts({
         upcs: resolveScopeUpcs(scope),
         silent: true,
       });
     },
-    [ensureNoPendingCopilotReview, persistProducts, resolveScopeUpcs],
+    [persistProducts, resolveScopeUpcs],
   );
 
   const handleCopilotApproveProducts = useCallback(
     async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
-      ensureNoPendingCopilotReview("approving");
       return persistProducts({
         upcs: resolveScopeUpcs(scope),
         andPublish: true,
         silent: true,
       });
     },
-    [ensureNoPendingCopilotReview, persistProducts, resolveScopeUpcs],
+    [persistProducts, resolveScopeUpcs],
   );
 
   const handleCopilotRejectProducts = useCallback(
     async ({ scope }: ScopedRejectProductInput): Promise<ToolSummary> => {
-      ensureNoPendingCopilotReview("rejecting");
       return rejectProducts({
         upcs: resolveScopeUpcs(scope),
         silent: true,
       });
     },
-    [ensureNoPendingCopilotReview, rejectProducts, resolveScopeUpcs],
+    [rejectProducts, resolveScopeUpcs],
   );
 
   const renderCopilotPanel = () => (
@@ -1794,13 +1615,7 @@ export function ReviewingResultsView({
       selectedUpc={selectedUpc}
       workspaceProductCount={sortedProducts.length}
       dirtyProductCount={dirtyUpcs.length}
-      hasPendingCopilotReview={hasPendingCopilotReview}
-      pendingCopilotReviewCount={pendingCopilotReview?.upcs.length ?? 0}
-      pendingCopilotSummaries={pendingCopilotReview?.summaries ?? []}
-      reviewActionPending={saving || publishing || rejecting}
       getContext={getCopilotContext}
-      onAcceptPendingCopilotReview={handleAcceptPendingCopilotReview}
-      onRejectPendingCopilotReview={handleRejectPendingCopilotReview}
       onListWorkspaceProducts={handleCopilotListWorkspaceProducts}
       onPreviewProductScope={handleCopilotPreviewProductScope}
       onGetProductSnapshot={handleCopilotGetProductSnapshot}
@@ -1869,17 +1684,9 @@ export function ReviewingResultsView({
                   publishing={publishing}
                   rejecting={rejecting}
                   onSave={() => {
-                    if (pendingCopilotReviewRef.current) {
-                      notifyPendingCopilotReview("saving");
-                      return;
-                    }
                     void persistCurrentDraft();
                   }}
                   onPublish={() => {
-                    if (pendingCopilotReviewRef.current) {
-                      notifyPendingCopilotReview("approving");
-                      return;
-                    }
                     void persistCurrentDraft({ andPublish: true });
                   }}
                   onReject={handleReject}
@@ -1896,20 +1703,6 @@ export function ReviewingResultsView({
                     </SheetTrigger>
                   }
                 />
-
-              {hasPendingCopilotReview ? (
-                <div className="border-b bg-primary/[0.02] px-4 py-3">
-                  <Alert className="border-primary/20 bg-card text-foreground rounded-none">
-                    <AlertTitle className="font-semibold text-xs">Copilot changes are staged</AlertTitle>
-                    <AlertDescription className="font-semibold text-[10px] text-muted-foreground">
-                      Review {pendingCopilotReview?.upcs.length ?? 0} product
-                      {(pendingCopilotReview?.upcs.length ?? 0) === 1 ? "" : "s"}{" "}
-                      in the Copilot panel before saving, approving, or
-                      switching products.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              ) : null}
 
             {/* Form Content */}
             <div className="flex-1 min-h-0 flex flex-col">

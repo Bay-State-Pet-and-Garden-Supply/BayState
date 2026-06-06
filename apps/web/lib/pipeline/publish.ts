@@ -256,6 +256,16 @@ export async function publishToStorefront(upc: string) {
       return { success: false, error: "Product has no name to publish" };
     }
 
+    const brandId = coalesceString(core.brand_id, consolidated.brand_id);
+    if (!brandId || brandId === "none") {
+      return { success: false, error: "Product cannot be published without a brand" };
+    }
+
+    const price = parseNonNegativeNumber(core.price, consolidated.price, input.price) ?? 0;
+    if (price <= 0) {
+      return { success: false, error: "Product price must be greater than $0.00" };
+    }
+
     const slug = buildProductSlug(name, upc);
     if (!slug) {
       return { success: false, error: "Product has no valid slug to publish" };
@@ -265,24 +275,24 @@ export async function publishToStorefront(upc: string) {
     let sourceImages: string[] = [];
     if (Array.isArray(consolidated.media)) {
       sourceImages = consolidated.media
-        .map((m: any) => m?.url)
-        .filter((url): url is string => typeof url === "string" && url.trim() !== "");
+          .map((m: any) => m?.url)
+          .filter((url): url is string => typeof url === "string" && url.trim() !== "");
     } else if (Array.isArray(consolidated.images)) {
       sourceImages = (consolidated.images as unknown[]).filter(
-        (img): img is string => typeof img === "string" && img.trim() !== "",
+          (img): img is string => typeof img === "string" && img.trim() !== "",
       );
     }
 
     if (sourceImages.length > 0) {
       const durableImages = await replaceInlineImageDataUrls(
-        supabase,
-        sourceImages,
-        {
-          folderPath: buildProductImageStorageFolder("pipeline-storefront", upc),
-          onError: (message, error) => {
-            console.error(`[Publish] ${message}`, error);
+          supabase,
+          sourceImages,
+          {
+            folderPath: buildProductImageStorageFolder("pipeline-storefront", upc),
+            onError: (message, error) => {
+              console.error(`[Publish] ${message}`, error);
+            },
           },
-        },
       );
       images = durableImages.value;
 
@@ -298,35 +308,39 @@ export async function publishToStorefront(upc: string) {
         }
 
         const { error: persistenceError } = await supabase
-          .from("products_ingestion")
-          .update({
-            consolidated: updatedConsolidated,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("upc", upc);
+            .from("products_ingestion")
+            .update({
+              consolidated: updatedConsolidated,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("upc", upc);
 
         if (persistenceError) {
           console.error(
-            `[Publish] Failed to persist durable pipeline images for ${upc}:`,
-            persistenceError,
+              `[Publish] Failed to persist durable pipeline images for ${upc}:`,
+              persistenceError,
           );
         }
       }
     }
 
+    if (images.length === 0) {
+      return { success: false, error: "Product must have at least one image selected to publish" };
+    }
+
     // Resolve canonical category and canonical_category_id
     const categoryBreadcrumb = coalesceString(
-      core.canonical_category_breadcrumb,
-      consolidated.category,
-      input.category
+        core.canonical_category_breadcrumb,
+        consolidated.category,
+        input.category
     );
 
     let canonicalCategoryId: string | null = null;
     if (categoryBreadcrumb) {
       try {
         const { data: taxonomyCategories, error: taxError } = await supabase
-          .from("categories")
-          .select("id, name, slug, parent_id, description, display_order, image_url, is_featured, synonym_keywords, breadcrumb");
+            .from("categories")
+            .select("id, name, slug, parent_id, description, display_order, image_url, is_featured, synonym_keywords, breadcrumb");
         if (!taxError && taxonomyCategories) {
           const categoryTokens = parseTaxonomyValues(categoryBreadcrumb);
           const { matched } = resolveTaxonomySelections(categoryTokens, taxonomyCategories);
@@ -337,6 +351,10 @@ export async function publishToStorefront(upc: string) {
       } catch (err) {
         console.error(`[Publish] Failed to resolve canonical category for ${upc}:`, err);
       }
+    }
+
+    if (!categoryBreadcrumb || !canonicalCategoryId) {
+      return { success: false, error: "Product must be assigned to a valid category in the taxonomy" };
     }
 
     const productData: Record<string, unknown> = {
