@@ -73,7 +73,7 @@ export async function recohortProducts(
     // Fetch current state for these products to preserve other consolidated fields
     const { data: currentProducts } = await supabase
       .from('products_ingestion')
-      .select('upc, brand_id, consolidated')
+      .select('upc, brand_id, consolidated, pipeline_status')
       .in('upc', groupUpcs);
 
     for (const upc of groupUpcs) {
@@ -87,10 +87,18 @@ export async function recohortProducts(
 
       const oldBrandId = product?.brand_id || null;
       const brandChanged = brandId !== oldBrandId;
+      const currentStatus = product?.pipeline_status || 'imported';
 
-      // Determine status transition: reset to imported when brand is assigned or changed
+      // Determine status transition: reset to imported when brand is assigned or changed.
+      // We only reset to 'imported' if the product is not in the final review or publishing stages.
+      // This prevents products in 'reviewing' or 'publishing' from resetting and disappearing from lists.
       const statusUpdate: Record<string, unknown> = {};
-      if (brandId !== null && brandChanged) {
+      if (
+        brandId !== null &&
+        brandChanged &&
+        currentStatus !== 'reviewing' &&
+        currentStatus !== 'publishing'
+      ) {
         statusUpdate.pipeline_status = 'imported';
       }
 
