@@ -155,64 +155,64 @@ revoke select on table "public"."subscription_suggestions" from "service_role";
 revoke trigger on table "public"."subscription_suggestions" from "service_role";
 revoke truncate on table "public"."subscription_suggestions" from "service_role";
 revoke update on table "public"."subscription_suggestions" from "service_role";
-alter table "public"."b2b_feeds" drop constraint "b2b_feeds_distributor_code_key";
-alter table "public"."b2b_feeds" drop constraint "b2b_feeds_feed_type_check";
-alter table "public"."b2b_feeds" drop constraint "b2b_feeds_status_check";
-alter table "public"."b2b_feeds" drop constraint "b2b_feeds_sync_frequency_check";
-alter table "public"."b2b_sync_jobs" drop constraint "b2b_sync_jobs_created_by_fkey";
-alter table "public"."b2b_sync_jobs" drop constraint "b2b_sync_jobs_feed_id_fkey";
-alter table "public"."b2b_sync_jobs" drop constraint "b2b_sync_jobs_job_type_check";
-alter table "public"."b2b_sync_jobs" drop constraint "b2b_sync_jobs_status_check";
-alter table "public"."enrichment_attempts" drop constraint "enrichment_attempts_config_id_fkey";
-alter table "public"."enrichment_jobs" drop constraint "enrichment_jobs_config_id_fkey";
-alter table "public"."inventory_reconciliation_items" drop constraint "inventory_reconciliation_items_sync_run_id_fkey";
-alter table "public"."order_items" drop constraint "order_items_item_type_check";
-alter table "public"."order_items" drop constraint "order_items_preorder_batch_id_fkey";
-alter table "public"."order_payments" drop constraint "order_payments_method_check";
-alter table "public"."order_payments" drop constraint "order_payments_status_check";
-alter table "public"."order_source_records" drop constraint "order_source_records_sync_run_id_fkey";
-alter table "public"."orders" drop constraint "orders_delivery_address_id_fkey";
-alter table "public"."orders" drop constraint "orders_fulfillment_method_check";
-alter table "public"."orders" drop constraint "orders_payment_method_check";
-alter table "public"."orders" drop constraint "orders_status_check";
-alter table "public"."orders" drop constraint "orders_user_id_fkey";
-alter table "public"."preorder_batches" drop constraint "preorder_batches_preorder_group_id_fkey";
-alter table "public"."preorder_groups" drop constraint "preorder_groups_slug_key";
-alter table "public"."product_preorder_groups" drop constraint "product_preorder_groups_preorder_group_id_fkey";
-alter table "public"."products" drop constraint "products_sku_key";
-alter table "public"."promo_codes" drop constraint "promo_codes_created_by_fkey";
-alter table "public"."promo_codes" drop constraint "promo_codes_discount_type_check";
-alter table "public"."promo_redemptions" drop constraint "promo_redemptions_user_id_fkey";
-alter table "public"."promo_redemptions" drop constraint "redemption_identifier";
-alter table "public"."service_costs" drop constraint "service_costs_billing_cycle_check";
-alter table "public"."service_costs" drop constraint "service_costs_category_check";
-alter table "public"."service_costs" drop constraint "service_costs_service_key";
-alter table "public"."stripe_webhook_events" drop constraint "stripe_webhook_events_order_id_fkey";
-alter table "public"."subscription_items" drop constraint "subscription_items_product_id_fkey";
-alter table "public"."subscription_items" drop constraint "subscription_items_quantity_check";
-alter table "public"."subscription_items" drop constraint "subscription_items_subscription_id_fkey";
-alter table "public"."subscription_items" drop constraint "subscription_items_unique_product";
-alter table "public"."subscription_suggestions" drop constraint "subscription_suggestions_pet_id_fkey";
-alter table "public"."subscription_suggestions" drop constraint "subscription_suggestions_product_id_fkey";
-alter table "public"."subscription_suggestions" drop constraint "subscription_suggestions_subscription_id_fkey";
-alter table "public"."batch_job_items" drop constraint "batch_job_items_unique_batch_sku";
-alter table "public"."consolidation_review_requests" drop constraint "consolidation_review_requests_sku_fkey";
-alter table "public"."enrichment_attempts" drop constraint "enrichment_attempts_job_id_sku_attempt_number_key";
-alter table "public"."enrichment_attempts" drop constraint "enrichment_attempts_sku_fkey";
-alter table "public"."enrichment_targets" drop constraint "enrichment_targets_sku_fkey";
-alter table "public"."enrichment_targets" drop constraint "enrichment_targets_sku_url_key";
-alter table "public"."image_retry_queue" drop constraint "image_retry_queue_sku_fkey";
-alter table "public"."integration_sync_runs" drop constraint "integration_sync_runs_status_check";
-alter table "public"."inventory_items" drop constraint "inventory_items_sku_key";
-alter table "public"."official_brand_url_candidates" drop constraint "official_brand_url_candidates_sku_fkey";
-alter table "public"."official_brand_url_candidates" drop constraint "official_brand_url_candidates_sku_normalized_url_key";
-alter table "public"."product_scraped_sites" drop constraint "product_scraped_sites_sku_fkey";
-alter table "public"."product_scraped_sites" drop constraint "product_scraped_sites_sku_scraper_name_key";
-alter table "public"."product_variants" drop constraint "product_variants_sku_key";
-alter table "public"."scraper_config_test_skus" drop constraint "scraper_config_test_skus_sku_type_check";
-alter table "public"."scraper_config_test_skus" drop constraint "unique_config_sku";
-alter table "public"."scraper_config_versions" drop constraint "scraper_config_versions_status_check";
-alter table "public"."scraper_config_versions" drop constraint "valid_status";
+alter table "public"."b2b_feeds" drop constraint if exists "b2b_feeds_distributor_code_key";
+alter table "public"."b2b_feeds" drop constraint if exists "b2b_feeds_feed_type_check";
+alter table "public"."b2b_feeds" drop constraint if exists "b2b_feeds_status_check";
+alter table "public"."b2b_feeds" drop constraint if exists "b2b_feeds_sync_frequency_check";
+alter table "public"."b2b_sync_jobs" drop constraint if exists "b2b_sync_jobs_created_by_fkey";
+alter table "public"."b2b_sync_jobs" drop constraint if exists "b2b_sync_jobs_feed_id_fkey";
+alter table "public"."b2b_sync_jobs" drop constraint if exists "b2b_sync_jobs_job_type_check";
+alter table "public"."b2b_sync_jobs" drop constraint if exists "b2b_sync_jobs_status_check";
+alter table "public"."enrichment_attempts" drop constraint if exists "enrichment_attempts_config_id_fkey";
+alter table "public"."enrichment_jobs" drop constraint if exists "enrichment_jobs_config_id_fkey";
+alter table "public"."inventory_reconciliation_items" drop constraint if exists "inventory_reconciliation_items_sync_run_id_fkey";
+alter table "public"."order_items" drop constraint if exists "order_items_item_type_check";
+alter table "public"."order_items" drop constraint if exists "order_items_preorder_batch_id_fkey";
+alter table "public"."order_payments" drop constraint if exists "order_payments_method_check";
+alter table "public"."order_payments" drop constraint if exists "order_payments_status_check";
+alter table "public"."order_source_records" drop constraint if exists "order_source_records_sync_run_id_fkey";
+alter table "public"."orders" drop constraint if exists "orders_delivery_address_id_fkey";
+alter table "public"."orders" drop constraint if exists "orders_fulfillment_method_check";
+alter table "public"."orders" drop constraint if exists "orders_payment_method_check";
+alter table "public"."orders" drop constraint if exists "orders_status_check";
+alter table "public"."orders" drop constraint if exists "orders_user_id_fkey";
+alter table "public"."preorder_batches" drop constraint if exists "preorder_batches_preorder_group_id_fkey";
+alter table "public"."preorder_groups" drop constraint if exists "preorder_groups_slug_key";
+alter table "public"."product_preorder_groups" drop constraint if exists "product_preorder_groups_preorder_group_id_fkey";
+alter table "public"."products" drop constraint if exists "products_sku_key";
+alter table "public"."promo_codes" drop constraint if exists "promo_codes_created_by_fkey";
+alter table "public"."promo_codes" drop constraint if exists "promo_codes_discount_type_check";
+alter table "public"."promo_redemptions" drop constraint if exists "promo_redemptions_user_id_fkey";
+alter table "public"."promo_redemptions" drop constraint if exists "redemption_identifier";
+alter table "public"."service_costs" drop constraint if exists "service_costs_billing_cycle_check";
+alter table "public"."service_costs" drop constraint if exists "service_costs_category_check";
+alter table "public"."service_costs" drop constraint if exists "service_costs_service_key";
+alter table "public"."stripe_webhook_events" drop constraint if exists "stripe_webhook_events_order_id_fkey";
+alter table "public"."subscription_items" drop constraint if exists "subscription_items_product_id_fkey";
+alter table "public"."subscription_items" drop constraint if exists "subscription_items_quantity_check";
+alter table "public"."subscription_items" drop constraint if exists "subscription_items_subscription_id_fkey";
+alter table "public"."subscription_items" drop constraint if exists "subscription_items_unique_product";
+alter table "public"."subscription_suggestions" drop constraint if exists "subscription_suggestions_pet_id_fkey";
+alter table "public"."subscription_suggestions" drop constraint if exists "subscription_suggestions_product_id_fkey";
+alter table "public"."subscription_suggestions" drop constraint if exists "subscription_suggestions_subscription_id_fkey";
+alter table "public"."batch_job_items" drop constraint if exists "batch_job_items_unique_batch_sku";
+alter table "public"."consolidation_review_requests" drop constraint if exists "consolidation_review_requests_sku_fkey";
+alter table "public"."enrichment_attempts" drop constraint if exists "enrichment_attempts_job_id_sku_attempt_number_key";
+alter table "public"."enrichment_attempts" drop constraint if exists "enrichment_attempts_sku_fkey";
+alter table "public"."enrichment_targets" drop constraint if exists "enrichment_targets_sku_fkey";
+alter table "public"."enrichment_targets" drop constraint if exists "enrichment_targets_sku_url_key";
+alter table "public"."image_retry_queue" drop constraint if exists "image_retry_queue_sku_fkey";
+alter table "public"."integration_sync_runs" drop constraint if exists "integration_sync_runs_status_check";
+alter table "public"."inventory_items" drop constraint if exists "inventory_items_sku_key";
+alter table "public"."official_brand_url_candidates" drop constraint if exists "official_brand_url_candidates_sku_fkey";
+alter table "public"."official_brand_url_candidates" drop constraint if exists "official_brand_url_candidates_sku_normalized_url_key";
+alter table "public"."product_scraped_sites" drop constraint if exists "product_scraped_sites_sku_fkey";
+alter table "public"."product_scraped_sites" drop constraint if exists "product_scraped_sites_sku_scraper_name_key";
+alter table "public"."product_variants" drop constraint if exists "product_variants_sku_key";
+alter table "public"."scraper_config_test_skus" drop constraint if exists "scraper_config_test_skus_sku_type_check";
+alter table "public"."scraper_config_test_skus" drop constraint if exists "unique_config_sku";
+alter table "public"."scraper_config_versions" drop constraint if exists "scraper_config_versions_status_check";
+alter table "public"."scraper_config_versions" drop constraint if exists "valid_status";
 drop view if exists "public"."dashboard_inventory_reconciliation_stats";
 drop function if exists "public"."get_product_image_retry_history"(p_sku text);
 drop view if exists "public"."admin_orders_list";
@@ -227,18 +227,17 @@ drop view if exists "public"."pipeline_export_queue";
 drop view if exists "public"."pipeline_finalized_review";
 drop view if exists "public"."pipeline_finalizing_queue";
 drop view if exists "public"."products_published";
-alter table "public"."b2b_sync_jobs" drop constraint "b2b_sync_jobs_pkey";
-alter table "public"."orders" drop constraint "orders_pkey1";
-alter table "public"."orders_ingestion" drop constraint "orders_pkey";
-alter table "public"."service_costs" drop constraint "service_costs_pkey";
-alter table "public"."subscription_items" drop constraint "subscription_items_pkey";
-alter table "public"."subscription_suggestions" drop constraint "subscription_suggestions_pkey";
-alter table "public"."cohort_members" drop constraint "cohort_members_pkey";
-alter table "public"."product_preorder_groups" drop constraint "product_preorder_groups_pkey";
-alter table "public"."products_ingestion" drop constraint "products_pkey";
+alter table "public"."b2b_sync_jobs" drop constraint if exists "b2b_sync_jobs_pkey";
+alter table "public"."orders" drop constraint if exists "orders_pkey1" cascade;
+alter table "public"."orders_ingestion" drop constraint if exists "orders_pkey";
+alter table "public"."service_costs" drop constraint if exists "service_costs_pkey";
+alter table "public"."subscription_items" drop constraint if exists "subscription_items_pkey";
+alter table "public"."subscription_suggestions" drop constraint if exists "subscription_suggestions_pkey";
+alter table "public"."cohort_members" drop constraint if exists "cohort_members_pkey";
+alter table "public"."product_preorder_groups" drop constraint if exists "product_preorder_groups_pkey";
+alter table "public"."products_ingestion" drop constraint if exists "products_pkey";
 drop index if exists "public"."b2b_feeds_distributor_code_key";
 drop index if exists "public"."b2b_sync_jobs_pkey";
-drop index if exists "public"."idx_ai_provider_configs_one_active_consolidation";
 drop index if exists "public"."idx_b2b_feeds_distributor";
 drop index if exists "public"."idx_b2b_feeds_status";
 drop index if exists "public"."idx_b2b_sync_jobs_created";
@@ -347,123 +346,122 @@ alter table "public"."orders" alter column payment_status type "public"."order_p
 alter table "public"."orders" alter column source_type type "public"."order_source_type" using source_type::text::"public"."order_source_type";
 alter table "public"."orders" alter column "payment_status" set default 'unpaid'::public.order_payment_status;
 alter table "public"."orders" alter column "source_type" set default null;
-alter table "public"."ai_provider_configs" drop column "is_active_for_consolidation";
 alter table "public"."ai_provider_configs" enable row level security;
-alter table "public"."b2b_feeds" drop column "display_name";
-alter table "public"."b2b_feeds" drop column "distributor_code";
-alter table "public"."b2b_feeds" drop column "enabled";
-alter table "public"."b2b_feeds" drop column "last_sync_at";
-alter table "public"."b2b_feeds" drop column "last_sync_job_id";
-alter table "public"."b2b_feeds" drop column "products_count";
-alter table "public"."b2b_feeds" drop column "status";
-alter table "public"."b2b_feeds" drop column "sync_frequency";
-alter table "public"."b2b_feeds" drop column "updated_at";
-alter table "public"."b2b_feeds" add column "last_generated_at" timestamp with time zone;
-alter table "public"."b2b_feeds" add column "name" text not null;
-alter table "public"."b2b_feeds" add column "url" text;
-alter table "public"."batch_job_items" drop column "sku";
-alter table "public"."batch_job_items" add column "upc" text not null;
-alter table "public"."batch_jobs" drop column "failed_skus";
-alter table "public"."batch_jobs" add column "failed_upcs" text[] default '{}'::text[];
+alter table "public"."b2b_feeds" drop column if exists "display_name";
+alter table "public"."b2b_feeds" drop column if exists "distributor_code";
+alter table "public"."b2b_feeds" drop column if exists "enabled";
+alter table "public"."b2b_feeds" drop column if exists "last_sync_at";
+alter table "public"."b2b_feeds" drop column if exists "last_sync_job_id";
+alter table "public"."b2b_feeds" drop column if exists "products_count";
+alter table "public"."b2b_feeds" drop column if exists "status";
+alter table "public"."b2b_feeds" drop column if exists "sync_frequency";
+alter table "public"."b2b_feeds" drop column if exists "updated_at";
+alter table "public"."b2b_feeds" add column if not exists "last_generated_at" timestamp with time zone;
+alter table "public"."b2b_feeds" add column if not exists "name" text not null;
+alter table "public"."b2b_feeds" add column if not exists "url" text;
+alter table "public"."batch_job_items" drop column if exists "sku";
+alter table "public"."batch_job_items" add column if not exists "upc" text not null;
+alter table "public"."batch_jobs" drop column if exists "failed_skus";
+alter table "public"."batch_jobs" add column if not exists "failed_upcs" text[] default '{}'::text[];
 alter table "public"."brand_sources" enable row level security;
-alter table "public"."cohort_members" drop column "product_sku";
-alter table "public"."cohort_members" add column "product_upc" text not null;
-alter table "public"."consolidation_review_requests" drop column "sku";
-alter table "public"."consolidation_review_requests" add column "upc" text not null;
-alter table "public"."enrichment_attempts" drop column "sku";
-alter table "public"."enrichment_attempts" add column "upc" text not null;
-alter table "public"."enrichment_job_logs" drop column "sku";
-alter table "public"."enrichment_job_logs" add column "upc" text;
-alter table "public"."enrichment_jobs" drop column "current_sku";
-alter table "public"."enrichment_jobs" drop column "skus";
-alter table "public"."enrichment_jobs" add column "current_upc" text;
-alter table "public"."enrichment_jobs" add column "upcs" text[] not null default '{}'::text[];
-alter table "public"."enrichment_targets" drop column "sku";
-alter table "public"."enrichment_targets" add column "upc" text not null;
+alter table "public"."cohort_members" drop column if exists "product_sku";
+alter table "public"."cohort_members" add column if not exists "product_upc" text not null;
+alter table "public"."consolidation_review_requests" drop column if exists "sku";
+alter table "public"."consolidation_review_requests" add column if not exists "upc" text not null;
+alter table "public"."enrichment_attempts" drop column if exists "sku";
+alter table "public"."enrichment_attempts" add column if not exists "upc" text not null;
+alter table "public"."enrichment_job_logs" drop column if exists "sku";
+alter table "public"."enrichment_job_logs" add column if not exists "upc" text;
+alter table "public"."enrichment_jobs" drop column if exists "current_sku";
+alter table "public"."enrichment_jobs" drop column if exists "skus";
+alter table "public"."enrichment_jobs" add column if not exists "current_upc" text;
+alter table "public"."enrichment_jobs" add column if not exists "upcs" text[] not null default '{}'::text[];
+alter table "public"."enrichment_targets" drop column if exists "sku";
+alter table "public"."enrichment_targets" add column if not exists "upc" text not null;
 alter table "public"."enrichment_targets" alter column "confidence" drop default;
-alter table "public"."image_retry_queue" drop column "sku";
-alter table "public"."image_retry_queue" add column "upc" text;
-alter table "public"."inventory_items" drop column "name";
-alter table "public"."inventory_items" drop column "price";
-alter table "public"."inventory_items" drop column "sku";
-alter table "public"."inventory_items" drop column "status";
-alter table "public"."inventory_items" add column "last_count_at" timestamp with time zone;
-alter table "public"."inventory_items" add column "last_sync_at" timestamp with time zone;
-alter table "public"."inventory_items" add column "location" text not null default 'main'::text;
-alter table "public"."inventory_items" add column "metadata" jsonb default '{}'::jsonb;
-alter table "public"."inventory_items" add column "product_id" uuid;
-alter table "public"."inventory_items" add column "quantity_available" integer generated always as ((quantity_on_hand - quantity_reserved)) stored;
-alter table "public"."inventory_items" add column "quantity_on_hand" integer not null default 0;
-alter table "public"."inventory_items" add column "quantity_reserved" integer not null default 0;
-alter table "public"."inventory_items" add column "upc" text not null;
+alter table "public"."image_retry_queue" drop column if exists "sku";
+alter table "public"."image_retry_queue" add column if not exists "upc" text;
+alter table "public"."inventory_items" drop column if exists "name";
+alter table "public"."inventory_items" drop column if exists "price";
+alter table "public"."inventory_items" drop column if exists "sku";
+alter table "public"."inventory_items" drop column if exists "status";
+alter table "public"."inventory_items" add column if not exists "last_count_at" timestamp with time zone;
+alter table "public"."inventory_items" add column if not exists "last_sync_at" timestamp with time zone;
+alter table "public"."inventory_items" add column if not exists "location" text not null default 'main'::text;
+alter table "public"."inventory_items" add column if not exists "metadata" jsonb default '{}'::jsonb;
+alter table "public"."inventory_items" add column if not exists "product_id" uuid;
+alter table "public"."inventory_items" add column if not exists "quantity_on_hand" integer not null default 0;
+alter table "public"."inventory_items" add column if not exists "quantity_reserved" integer not null default 0;
+alter table "public"."inventory_items" add column if not exists "quantity_available" integer generated always as ((quantity_on_hand - quantity_reserved)) stored;
+alter table "public"."inventory_items" add column if not exists "upc" text not null;
 alter table "public"."inventory_items" alter column "created_at" drop not null;
 alter table "public"."inventory_items" alter column "updated_at" drop not null;
-alter table "public"."inventory_reconciliation_items" drop column "metadata";
-alter table "public"."inventory_reconciliation_items" drop column "raw_register_payload";
-alter table "public"."inventory_reconciliation_items" drop column "recommended_action";
-alter table "public"."inventory_reconciliation_items" drop column "register_name";
-alter table "public"."inventory_reconciliation_items" drop column "severity";
-alter table "public"."inventory_reconciliation_items" drop column "sku";
-alter table "public"."inventory_reconciliation_items" drop column "sync_run_id";
-alter table "public"."inventory_reconciliation_items" drop column "website_name";
-alter table "public"."inventory_reconciliation_items" add column "notes" text;
-alter table "public"."inventory_reconciliation_items" add column "reconciliation_id" uuid;
-alter table "public"."inventory_reconciliation_items" add column "upc" text not null;
+alter table "public"."inventory_reconciliation_items" drop column if exists "metadata";
+alter table "public"."inventory_reconciliation_items" drop column if exists "raw_register_payload";
+alter table "public"."inventory_reconciliation_items" drop column if exists "recommended_action";
+alter table "public"."inventory_reconciliation_items" drop column if exists "register_name";
+alter table "public"."inventory_reconciliation_items" drop column if exists "severity";
+alter table "public"."inventory_reconciliation_items" drop column if exists "sku";
+alter table "public"."inventory_reconciliation_items" drop column if exists "sync_run_id";
+alter table "public"."inventory_reconciliation_items" drop column if exists "website_name";
+alter table "public"."inventory_reconciliation_items" add column if not exists "notes" text;
+alter table "public"."inventory_reconciliation_items" add column if not exists "reconciliation_id" uuid;
+alter table "public"."inventory_reconciliation_items" add column if not exists "upc" text not null;
 alter table "public"."inventory_reconciliation_items" alter column "created_at" drop not null;
 alter table "public"."inventory_reconciliation_items" alter column "issue_type" set data type text using "issue_type"::text;
 alter table "public"."inventory_reconciliation_items" alter column "register_price" set data type numeric(12,2) using "register_price"::numeric(12,2);
 alter table "public"."inventory_reconciliation_items" alter column "register_quantity" set data type integer using "register_quantity"::integer;
-alter table "public"."inventory_reconciliation_items" alter column "status" set default 'open'::text;
 alter table "public"."inventory_reconciliation_items" alter column "status" set data type text using "status"::text;
+alter table "public"."inventory_reconciliation_items" alter column "status" set default 'open'::text;
 alter table "public"."inventory_reconciliation_items" alter column "website_price" set data type numeric(12,2) using "website_price"::numeric(12,2);
 alter table "public"."inventory_reconciliation_items" alter column "website_quantity" set data type integer using "website_quantity"::integer;
-alter table "public"."official_brand_url_candidates" drop column "sku";
-alter table "public"."official_brand_url_candidates" add column "upc" text not null;
+alter table "public"."official_brand_url_candidates" drop column if exists "sku";
+alter table "public"."official_brand_url_candidates" add column if not exists "upc" text not null;
 alter table "public"."official_brand_url_candidates" alter column "confidence" drop default;
 alter table "public"."order_events" alter column "created_at" drop not null;
-alter table "public"."order_items" drop column "item_id";
-alter table "public"."order_items" drop column "item_name";
-alter table "public"."order_items" drop column "item_slug";
-alter table "public"."order_items" drop column "item_type";
-alter table "public"."order_items" drop column "preorder_batch_id";
-alter table "public"."order_items" add column "metadata" jsonb default '{}'::jsonb;
-alter table "public"."order_items" add column "name" text not null;
-alter table "public"."order_items" add column "product_id" uuid;
-alter table "public"."order_items" add column "upc" text not null;
+alter table "public"."order_items" drop column if exists "item_id";
+alter table "public"."order_items" drop column if exists "item_name";
+alter table "public"."order_items" drop column if exists "item_slug";
+alter table "public"."order_items" drop column if exists "item_type";
+alter table "public"."order_items" drop column if exists "preorder_batch_id";
+alter table "public"."order_items" add column if not exists "metadata" jsonb default '{}'::jsonb;
+alter table "public"."order_items" add column if not exists "name" text not null;
+alter table "public"."order_items" add column if not exists "product_id" uuid;
+alter table "public"."order_items" add column if not exists "upc" text not null;
 alter table "public"."order_items" alter column "quantity" drop default;
 alter table "public"."order_items" alter column "total_price" drop default;
 alter table "public"."order_items" alter column "total_price" set data type numeric(12,2) using "total_price"::numeric(12,2);
 alter table "public"."order_items" alter column "unit_price" drop default;
 alter table "public"."order_items" alter column "unit_price" set data type numeric(12,2) using "unit_price"::numeric(12,2);
-alter table "public"."order_payments" drop column "currency";
-alter table "public"."order_payments" drop column "error_message";
-alter table "public"."order_payments" drop column "metadata";
-alter table "public"."order_payments" drop column "payment_method";
-alter table "public"."order_payments" drop column "stripe_charge_id";
-alter table "public"."order_payments" drop column "stripe_event_id";
-alter table "public"."order_payments" drop column "stripe_payment_intent_id";
-alter table "public"."order_payments" add column "method" text not null;
-alter table "public"."order_payments" add column "raw_response" jsonb default '{}'::jsonb;
-alter table "public"."order_payments" add column "transaction_id" text;
+alter table "public"."order_payments" drop column if exists "currency";
+alter table "public"."order_payments" drop column if exists "error_message";
+alter table "public"."order_payments" drop column if exists "metadata";
+alter table "public"."order_payments" drop column if exists "payment_method";
+alter table "public"."order_payments" drop column if exists "stripe_charge_id";
+alter table "public"."order_payments" drop column if exists "stripe_event_id";
+alter table "public"."order_payments" drop column if exists "stripe_payment_intent_id";
+alter table "public"."order_payments" add column if not exists "method" text not null;
+alter table "public"."order_payments" add column if not exists "raw_response" jsonb default '{}'::jsonb;
+alter table "public"."order_payments" add column if not exists "transaction_id" text;
 alter table "public"."order_payments" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
 alter table "public"."order_payments" alter column "created_at" drop not null;
 alter table "public"."order_payments" alter column "status" drop default;
 alter table "public"."order_payments" alter column "updated_at" drop not null;
-alter table "public"."orders" drop column "delivery_address_id";
-alter table "public"."orders" drop column "delivery_distance_miles";
-alter table "public"."orders" drop column "delivery_fee";
-alter table "public"."orders" drop column "delivery_notes";
-alter table "public"."orders" drop column "delivery_services";
-alter table "public"."orders" drop column "discount_amount";
-alter table "public"."orders" drop column "paid_at";
-alter table "public"."orders" drop column "promo_code";
-alter table "public"."orders" drop column "promo_code_id";
-alter table "public"."orders" drop column "refunded_amount";
-alter table "public"."orders" drop column "stripe_customer_id";
-alter table "public"."orders" drop column "stripe_payment_intent_id";
-alter table "public"."orders" drop column "user_id";
-alter table "public"."orders" add column "customer_id" uuid;
-alter table "public"."orders" add column "metadata" jsonb default '{}'::jsonb;
+alter table "public"."orders" drop column if exists "delivery_address_id";
+alter table "public"."orders" drop column if exists "delivery_distance_miles";
+alter table "public"."orders" drop column if exists "delivery_fee";
+alter table "public"."orders" drop column if exists "delivery_notes";
+alter table "public"."orders" drop column if exists "delivery_services";
+alter table "public"."orders" drop column if exists "discount_amount";
+alter table "public"."orders" drop column if exists "paid_at";
+alter table "public"."orders" drop column if exists "promo_code";
+alter table "public"."orders" drop column if exists "promo_code_id";
+alter table "public"."orders" drop column if exists "refunded_amount";
+alter table "public"."orders" drop column if exists "stripe_customer_id";
+alter table "public"."orders" drop column if exists "stripe_payment_intent_id";
+alter table "public"."orders" drop column if exists "user_id";
+alter table "public"."orders" add column if not exists "customer_id" uuid;
+alter table "public"."orders" add column if not exists "metadata" jsonb default '{}'::jsonb;
 alter table "public"."orders" alter column "customer_email" drop not null;
 alter table "public"."orders" alter column "payment_method" drop default;
 alter table "public"."orders" alter column "payment_status" set not null;
@@ -476,94 +474,94 @@ alter table "public"."orders" alter column "tax" set not null;
 alter table "public"."orders" alter column "tax" set data type numeric(12,2) using "tax"::numeric(12,2);
 alter table "public"."orders" alter column "total" set default 0;
 alter table "public"."orders" alter column "total" set data type numeric(12,2) using "total"::numeric(12,2);
-alter table "public"."preorder_batches" drop column "arrival_date";
-alter table "public"."preorder_batches" drop column "capacity";
-alter table "public"."preorder_batches" drop column "display_order";
-alter table "public"."preorder_batches" drop column "is_active";
-alter table "public"."preorder_batches" drop column "ordering_deadline";
-alter table "public"."preorder_batches" drop column "preorder_group_id";
-alter table "public"."preorder_batches" add column "group_id" uuid;
-alter table "public"."preorder_batches" add column "name" text not null;
-alter table "public"."preorder_batches" add column "quantity_allocated" integer default 0;
-alter table "public"."preorder_batches" add column "quantity_limit" integer;
-alter table "public"."preorder_batches" add column "status" text not null default 'open'::text;
-alter table "public"."preorder_groups" drop column "description";
-alter table "public"."preorder_groups" drop column "display_copy";
-alter table "public"."preorder_groups" drop column "is_active";
-alter table "public"."preorder_groups" drop column "minimum_quantity";
-alter table "public"."preorder_groups" drop column "pickup_only";
-alter table "public"."preorder_groups" drop column "slug";
-alter table "public"."preorder_groups" add column "metadata" jsonb default '{}'::jsonb;
-alter table "public"."preorder_groups" add column "release_date" date;
-alter table "public"."preorder_groups" add column "status" text not null default 'active'::text;
-alter table "public"."product_preorder_groups" drop column "created_at";
-alter table "public"."product_preorder_groups" drop column "pickup_only_override";
-alter table "public"."product_preorder_groups" drop column "preorder_group_id";
-alter table "public"."product_preorder_groups" add column "group_id" uuid not null;
-alter table "public"."product_scraped_sites" drop column "sku";
-alter table "public"."product_scraped_sites" add column "upc" text not null;
+alter table "public"."preorder_batches" drop column if exists "arrival_date";
+alter table "public"."preorder_batches" drop column if exists "capacity";
+alter table "public"."preorder_batches" drop column if exists "display_order";
+alter table "public"."preorder_batches" drop column if exists "is_active";
+alter table "public"."preorder_batches" drop column if exists "ordering_deadline";
+alter table "public"."preorder_batches" drop column if exists "preorder_group_id";
+alter table "public"."preorder_batches" add column if not exists "group_id" uuid;
+alter table "public"."preorder_batches" add column if not exists "name" text not null;
+alter table "public"."preorder_batches" add column if not exists "quantity_allocated" integer default 0;
+alter table "public"."preorder_batches" add column if not exists "quantity_limit" integer;
+alter table "public"."preorder_batches" add column if not exists "status" text not null default 'open'::text;
+alter table "public"."preorder_groups" drop column if exists "description";
+alter table "public"."preorder_groups" drop column if exists "display_copy";
+alter table "public"."preorder_groups" drop column if exists "is_active";
+alter table "public"."preorder_groups" drop column if exists "minimum_quantity";
+alter table "public"."preorder_groups" drop column if exists "pickup_only";
+alter table "public"."preorder_groups" drop column if exists "slug";
+alter table "public"."preorder_groups" add column if not exists "metadata" jsonb default '{}'::jsonb;
+alter table "public"."preorder_groups" add column if not exists "release_date" date;
+alter table "public"."preorder_groups" add column if not exists "status" text not null default 'active'::text;
+alter table "public"."product_preorder_groups" drop column if exists "created_at";
+alter table "public"."product_preorder_groups" drop column if exists "pickup_only_override";
+alter table "public"."product_preorder_groups" drop column if exists "preorder_group_id";
+alter table "public"."product_preorder_groups" add column if not exists "group_id" uuid not null;
+alter table "public"."product_scraped_sites" drop column if exists "sku";
+alter table "public"."product_scraped_sites" add column if not exists "upc" text not null;
 alter table "public"."product_types" enable row level security;
-alter table "public"."product_variants" drop column "sku";
-alter table "public"."product_variants" add column "upc" text;
-alter table "public"."products" drop column "sku";
+alter table "public"."product_variants" drop column if exists "sku";
+alter table "public"."product_variants" add column if not exists "upc" text;
+alter table "public"."products" drop column if exists "sku";
 alter table "public"."products" alter column "upc" set not null;
-alter table "public"."products_ingestion" drop column "sku";
-alter table "public"."products_ingestion" add column "upc" text not null;
-alter table "public"."promo_codes" drop column "created_by";
-alter table "public"."promo_codes" drop column "current_uses";
-alter table "public"."promo_codes" drop column "expires_at";
-alter table "public"."promo_codes" drop column "first_order_only";
-alter table "public"."promo_codes" drop column "max_uses";
-alter table "public"."promo_codes" drop column "max_uses_per_user";
-alter table "public"."promo_codes" drop column "maximum_discount";
-alter table "public"."promo_codes" drop column "minimum_order";
-alter table "public"."promo_codes" drop column "requires_account";
-alter table "public"."promo_codes" drop column "updated_at";
-alter table "public"."promo_codes" add column "ends_at" timestamp with time zone;
-alter table "public"."promo_codes" add column "min_purchase_amount" numeric(12,2) default 0;
-alter table "public"."promo_codes" add column "usage_count" integer default 0;
-alter table "public"."promo_codes" add column "usage_limit" integer;
+alter table "public"."products_ingestion" drop column if exists "sku";
+alter table "public"."products_ingestion" add column if not exists "upc" text not null;
+alter table "public"."promo_codes" drop column if exists "created_by";
+alter table "public"."promo_codes" drop column if exists "current_uses";
+alter table "public"."promo_codes" drop column if exists "expires_at";
+alter table "public"."promo_codes" drop column if exists "first_order_only";
+alter table "public"."promo_codes" drop column if exists "max_uses";
+alter table "public"."promo_codes" drop column if exists "max_uses_per_user";
+alter table "public"."promo_codes" drop column if exists "maximum_discount";
+alter table "public"."promo_codes" drop column if exists "minimum_order";
+alter table "public"."promo_codes" drop column if exists "requires_account";
+alter table "public"."promo_codes" drop column if exists "updated_at";
+alter table "public"."promo_codes" add column if not exists "ends_at" timestamp with time zone;
+alter table "public"."promo_codes" add column if not exists "min_purchase_amount" numeric(12,2) default 0;
+alter table "public"."promo_codes" add column if not exists "usage_count" integer default 0;
+alter table "public"."promo_codes" add column if not exists "usage_limit" integer;
 alter table "public"."promo_codes" alter column "discount_value" set data type numeric(12,2) using "discount_value"::numeric(12,2);
 alter table "public"."promo_codes" alter column "starts_at" set not null;
-alter table "public"."promo_redemptions" drop column "discount_applied";
-alter table "public"."promo_redemptions" drop column "guest_email";
-alter table "public"."promo_redemptions" drop column "user_id";
-alter table "public"."promo_redemptions" add column "customer_id" uuid;
-alter table "public"."promo_redemptions" add column "discount_amount" numeric(12,2) not null;
+alter table "public"."promo_redemptions" drop column if exists "discount_applied";
+alter table "public"."promo_redemptions" drop column if exists "guest_email";
+alter table "public"."promo_redemptions" drop column if exists "user_id";
+alter table "public"."promo_redemptions" add column if not exists "customer_id" uuid;
+alter table "public"."promo_redemptions" add column if not exists "discount_amount" numeric(12,2) not null;
 alter table "public"."promo_redemptions" alter column "promo_code_id" drop not null;
-alter table "public"."scraper_config_test_skus" drop column "sku";
-alter table "public"."scraper_config_test_skus" drop column "sku_type";
-alter table "public"."scraper_config_test_skus" add column "upc" text not null;
-alter table "public"."scraper_config_test_skus" add column "upc_type" text not null;
-CREATE UNIQUE INDEX idx_pet_types_name_lower ON public.pet_types USING btree (lower(name));
-CREATE UNIQUE INDEX inventory_reconciliation_pkey ON public.inventory_reconciliation USING btree (id);
-CREATE UNIQUE INDEX products_upc_key ON public.products USING btree (upc);
-CREATE UNIQUE INDEX shopsite_credentials_pkey ON public.shopsite_credentials USING btree (id);
-CREATE UNIQUE INDEX batch_job_items_unique_batch_sku ON public.batch_job_items USING btree (batch_job_id, upc);
-CREATE UNIQUE INDEX cohort_members_pkey ON public.cohort_members USING btree (cohort_id, product_upc);
-CREATE UNIQUE INDEX enrichment_attempts_job_id_sku_attempt_number_key ON public.enrichment_attempts USING btree (job_id, upc, attempt_number);
-CREATE INDEX enrichment_attempts_sku_idx ON public.enrichment_attempts USING btree (upc);
-CREATE INDEX enrichment_targets_selected_idx ON public.enrichment_targets USING btree (upc, selected) WHERE (selected = true);
-CREATE INDEX enrichment_targets_sku_idx ON public.enrichment_targets USING btree (upc);
-CREATE UNIQUE INDEX enrichment_targets_sku_url_key ON public.enrichment_targets USING btree (upc, url);
-CREATE INDEX idx_batch_job_items_sku ON public.batch_job_items USING btree (upc);
-CREATE INDEX idx_cohort_members_sku ON public.cohort_members USING btree (product_upc);
-CREATE UNIQUE INDEX idx_consolidation_review_active_per_sku ON public.consolidation_review_requests USING btree (upc) WHERE (status = ANY (ARRAY['needs_input'::text, 'auto_resolved'::text]));
-CREATE INDEX idx_consolidation_review_sku_status ON public.consolidation_review_requests USING btree (upc, status);
-CREATE INDEX idx_image_retry_queue_sku ON public.image_retry_queue USING btree (upc);
-CREATE INDEX idx_official_brand_url_candidates_sku_status ON public.official_brand_url_candidates USING btree (upc, selection_status, updated_at DESC);
-CREATE INDEX idx_product_scraped_sites_sku ON public.product_scraped_sites USING btree (upc);
-CREATE INDEX idx_product_variants_sku ON public.product_variants USING btree (upc);
-CREATE INDEX idx_products_ingestion_sku ON public.products_ingestion USING btree (upc);
-CREATE INDEX idx_scraper_config_test_skus_type ON public.scraper_config_test_skus USING btree (config_id, upc_type);
-CREATE UNIQUE INDEX inventory_items_sku_key ON public.inventory_items USING btree (upc);
-CREATE UNIQUE INDEX official_brand_url_candidates_sku_normalized_url_key ON public.official_brand_url_candidates USING btree (upc, normalized_url);
-CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id);
-CREATE UNIQUE INDEX product_preorder_groups_pkey ON public.product_preorder_groups USING btree (product_id, group_id);
-CREATE UNIQUE INDEX product_scraped_sites_sku_scraper_name_key ON public.product_scraped_sites USING btree (upc, scraper_name);
-CREATE UNIQUE INDEX product_variants_sku_key ON public.product_variants USING btree (upc);
-CREATE UNIQUE INDEX products_pkey ON public.products_ingestion USING btree (upc);
-CREATE UNIQUE INDEX unique_config_sku ON public.scraper_config_test_skus USING btree (config_id, upc);
+alter table "public"."scraper_config_test_skus" drop column if exists "sku";
+alter table "public"."scraper_config_test_skus" drop column if exists "sku_type";
+alter table "public"."scraper_config_test_skus" add column if not exists "upc" text not null;
+alter table "public"."scraper_config_test_skus" add column if not exists "upc_type" text not null;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pet_types_name_lower ON public.pet_types USING btree (lower(name));
+CREATE UNIQUE INDEX IF NOT EXISTS inventory_reconciliation_pkey ON public.inventory_reconciliation USING btree (id);
+CREATE UNIQUE INDEX IF NOT EXISTS products_upc_key ON public.products USING btree (upc);
+CREATE UNIQUE INDEX IF NOT EXISTS shopsite_credentials_pkey ON public.shopsite_credentials USING btree (id);
+CREATE UNIQUE INDEX IF NOT EXISTS batch_job_items_unique_batch_sku ON public.batch_job_items USING btree (batch_job_id, upc);
+CREATE UNIQUE INDEX IF NOT EXISTS cohort_members_pkey ON public.cohort_members USING btree (cohort_id, product_upc);
+CREATE UNIQUE INDEX IF NOT EXISTS enrichment_attempts_job_id_sku_attempt_number_key ON public.enrichment_attempts USING btree (job_id, upc, attempt_number);
+CREATE INDEX IF NOT EXISTS enrichment_attempts_sku_idx ON public.enrichment_attempts USING btree (upc);
+CREATE INDEX IF NOT EXISTS enrichment_targets_selected_idx ON public.enrichment_targets USING btree (upc, selected) WHERE (selected = true);
+CREATE INDEX IF NOT EXISTS enrichment_targets_sku_idx ON public.enrichment_targets USING btree (upc);
+CREATE UNIQUE INDEX IF NOT EXISTS enrichment_targets_sku_url_key ON public.enrichment_targets USING btree (upc, url);
+CREATE INDEX IF NOT EXISTS idx_batch_job_items_sku ON public.batch_job_items USING btree (upc);
+CREATE INDEX IF NOT EXISTS idx_cohort_members_sku ON public.cohort_members USING btree (product_upc);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_consolidation_review_active_per_sku ON public.consolidation_review_requests USING btree (upc) WHERE (status = ANY (ARRAY['needs_input'::text, 'auto_resolved'::text]));
+CREATE INDEX IF NOT EXISTS idx_consolidation_review_sku_status ON public.consolidation_review_requests USING btree (upc, status);
+CREATE INDEX IF NOT EXISTS idx_image_retry_queue_sku ON public.image_retry_queue USING btree (upc);
+CREATE INDEX IF NOT EXISTS idx_official_brand_url_candidates_sku_status ON public.official_brand_url_candidates USING btree (upc, selection_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_product_scraped_sites_sku ON public.product_scraped_sites USING btree (upc);
+CREATE INDEX IF NOT EXISTS idx_product_variants_sku ON public.product_variants USING btree (upc);
+CREATE INDEX IF NOT EXISTS idx_products_ingestion_sku ON public.products_ingestion USING btree (upc);
+CREATE INDEX IF NOT EXISTS idx_scraper_config_test_skus_type ON public.scraper_config_test_skus USING btree (config_id, upc_type);
+CREATE UNIQUE INDEX IF NOT EXISTS inventory_items_sku_key ON public.inventory_items USING btree (upc);
+CREATE UNIQUE INDEX IF NOT EXISTS official_brand_url_candidates_sku_normalized_url_key ON public.official_brand_url_candidates USING btree (upc, normalized_url);
+CREATE UNIQUE INDEX IF NOT EXISTS orders_pkey ON public.orders USING btree (id);
+CREATE UNIQUE INDEX IF NOT EXISTS product_preorder_groups_pkey ON public.product_preorder_groups USING btree (product_id, group_id);
+CREATE UNIQUE INDEX IF NOT EXISTS product_scraped_sites_sku_scraper_name_key ON public.product_scraped_sites USING btree (upc, scraper_name);
+CREATE UNIQUE INDEX IF NOT EXISTS product_variants_sku_key ON public.product_variants USING btree (upc);
+CREATE UNIQUE INDEX IF NOT EXISTS products_pkey ON public.products_ingestion USING btree (upc);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_config_sku ON public.scraper_config_test_skus USING btree (config_id, upc);
 alter table "public"."inventory_reconciliation" add constraint "inventory_reconciliation_pkey" PRIMARY KEY using index "inventory_reconciliation_pkey";
 alter table "public"."orders" add constraint "orders_pkey" PRIMARY KEY using index "orders_pkey";
 alter table "public"."shopsite_credentials" add constraint "shopsite_credentials_pkey" PRIMARY KEY using index "shopsite_credentials_pkey";
@@ -584,7 +582,15 @@ alter table "public"."preorder_batches" add constraint "preorder_batches_group_i
 alter table "public"."preorder_batches" validate constraint "preorder_batches_group_id_fkey";
 alter table "public"."product_preorder_groups" add constraint "product_preorder_groups_group_id_fkey" FOREIGN KEY (group_id) REFERENCES public.preorder_groups(id) ON DELETE CASCADE not valid;
 alter table "public"."product_preorder_groups" validate constraint "product_preorder_groups_group_id_fkey";
-alter table "public"."products" add constraint "products_upc_key" UNIQUE using index "products_upc_key";
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'products_upc_key' AND table_name = 'products'
+    ) THEN
+        ALTER TABLE public.products ADD CONSTRAINT "products_upc_key" UNIQUE USING INDEX "products_upc_key";
+    END IF;
+END $$;
 alter table "public"."promo_redemptions" add constraint "promo_redemptions_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES auth.users(id) not valid;
 alter table "public"."promo_redemptions" validate constraint "promo_redemptions_customer_id_fkey";
 alter table "public"."promo_redemptions" add constraint "promo_redemptions_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE not valid;
@@ -949,152 +955,152 @@ grant select on table "public"."shopsite_credentials" to "service_role";
 grant trigger on table "public"."shopsite_credentials" to "service_role";
 grant truncate on table "public"."shopsite_credentials" to "service_role";
 grant update on table "public"."shopsite_credentials" to "service_role";
-create policy "Staff manage ai_provider_configs"
-  on "public"."ai_provider_configs"
+drop policy if exists "Staff manage ai_provider_configs" on "public"."ai_provider_configs";
+create policy "Staff manage ai_provider_configs" on "public"."ai_provider_configs"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff manage b2b_feeds"
-  on "public"."b2b_feeds"
+drop policy if exists "Staff manage b2b_feeds" on "public"."b2b_feeds";
+create policy "Staff manage b2b_feeds" on "public"."b2b_feeds"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Public read brand_sources"
-  on "public"."brand_sources"
+drop policy if exists "Public read brand_sources" on "public"."brand_sources";
+create policy "Public read brand_sources" on "public"."brand_sources"
   as permissive
   for select
   to public
 using (true);
-create policy "Staff manage brand_sources"
-  on "public"."brand_sources"
+drop policy if exists "Staff manage brand_sources" on "public"."brand_sources";
+create policy "Staff manage brand_sources" on "public"."brand_sources"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Public read inventory_items"
-  on "public"."inventory_items"
+drop policy if exists "Public read inventory_items" on "public"."inventory_items";
+create policy "Public read inventory_items" on "public"."inventory_items"
   as permissive
   for select
   to public
 using (true);
-create policy "Staff manage inventory_items"
-  on "public"."inventory_items"
+drop policy if exists "Staff manage inventory_items" on "public"."inventory_items";
+create policy "Staff manage inventory_items" on "public"."inventory_items"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff manage inventory_reconciliation"
-  on "public"."inventory_reconciliation"
+drop policy if exists "Staff manage inventory_reconciliation" on "public"."inventory_reconciliation";
+create policy "Staff manage inventory_reconciliation" on "public"."inventory_reconciliation"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff manage inventory_reconciliation_items"
-  on "public"."inventory_reconciliation_items"
+drop policy if exists "Staff manage inventory_reconciliation_items" on "public"."inventory_reconciliation_items";
+create policy "Staff manage inventory_reconciliation_items" on "public"."inventory_reconciliation_items"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff manage order_events"
-  on "public"."order_events"
+drop policy if exists "Staff manage order_events" on "public"."order_events";
+create policy "Staff manage order_events" on "public"."order_events"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff can manage order items"
-  on "public"."order_items"
+drop policy if exists "Staff can manage order items" on "public"."order_items";
+create policy "Staff can manage order items" on "public"."order_items"
   as permissive
   for all
   to public
 using ((EXISTS ( SELECT 1
    FROM public.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'staff'::text]))))));
-create policy "Staff can manage order payments"
-  on "public"."order_payments"
+drop policy if exists "Staff can manage order payments" on "public"."order_payments";
+create policy "Staff can manage order payments" on "public"."order_payments"
   as permissive
   for all
   to public
 using ((EXISTS ( SELECT 1
    FROM public.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'staff'::text]))))));
-create policy "Staff manage order_source_records"
-  on "public"."order_source_records"
+drop policy if exists "Staff manage order_source_records" on "public"."order_source_records";
+create policy "Staff manage order_source_records" on "public"."order_source_records"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff can manage orders"
-  on "public"."orders"
+drop policy if exists "Staff can manage orders" on "public"."orders";
+create policy "Staff can manage orders" on "public"."orders"
   as permissive
   for all
   to public
 using ((EXISTS ( SELECT 1
    FROM public.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'staff'::text]))))));
-create policy "Public read preorder_batches"
-  on "public"."preorder_batches"
+drop policy if exists "Public read preorder_batches" on "public"."preorder_batches";
+create policy "Public read preorder_batches" on "public"."preorder_batches"
   as permissive
   for select
   to public
 using (true);
-create policy "Staff manage preorder_batches"
-  on "public"."preorder_batches"
+drop policy if exists "Staff manage preorder_batches" on "public"."preorder_batches";
+create policy "Staff manage preorder_batches" on "public"."preorder_batches"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Public read preorder_groups"
-  on "public"."preorder_groups"
+drop policy if exists "Public read preorder_groups" on "public"."preorder_groups";
+create policy "Public read preorder_groups" on "public"."preorder_groups"
   as permissive
   for select
   to public
 using (true);
-create policy "Staff manage preorder_groups"
-  on "public"."preorder_groups"
+drop policy if exists "Staff manage preorder_groups" on "public"."preorder_groups";
+create policy "Staff manage preorder_groups" on "public"."preorder_groups"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Public read product_preorder_groups"
-  on "public"."product_preorder_groups"
+drop policy if exists "Public read product_preorder_groups" on "public"."product_preorder_groups";
+create policy "Public read product_preorder_groups" on "public"."product_preorder_groups"
   as permissive
   for select
   to public
 using (true);
-create policy "Staff manage product_preorder_groups"
-  on "public"."product_preorder_groups"
+drop policy if exists "Staff manage product_preorder_groups" on "public"."product_preorder_groups";
+create policy "Staff manage product_preorder_groups" on "public"."product_preorder_groups"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Public read product_types"
-  on "public"."product_types"
+drop policy if exists "Public read product_types" on "public"."product_types";
+create policy "Public read product_types" on "public"."product_types"
   as permissive
   for select
   to public
 using (true);
-create policy "Staff manage product_types"
-  on "public"."product_types"
+drop policy if exists "Staff manage product_types" on "public"."product_types";
+create policy "Staff manage product_types" on "public"."product_types"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff manage promo_codes"
-  on "public"."promo_codes"
+drop policy if exists "Staff manage promo_codes" on "public"."promo_codes";
+create policy "Staff manage promo_codes" on "public"."promo_codes"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Staff manage promo_redemptions"
-  on "public"."promo_redemptions"
+drop policy if exists "Staff manage promo_redemptions" on "public"."promo_redemptions";
+create policy "Staff manage promo_redemptions" on "public"."promo_redemptions"
   as permissive
   for all
   to authenticated
 using (public.is_staff());
-create policy "Admin manage shopsite_credentials"
-  on "public"."shopsite_credentials"
+drop policy if exists "Admin manage shopsite_credentials" on "public"."shopsite_credentials";
+create policy "Admin manage shopsite_credentials" on "public"."shopsite_credentials"
   as permissive
   for all
   to authenticated
@@ -1105,45 +1111,45 @@ CREATE TRIGGER update_preorder_batches_updated_at BEFORE UPDATE ON public.preord
 CREATE TRIGGER update_preorder_groups_updated_at BEFORE UPDATE ON public.preorder_groups FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE TRIGGER set_order_number BEFORE INSERT ON public.orders FOR EACH ROW EXECUTE FUNCTION public.generate_order_number();
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-create policy "authenticated_users_can_presence"
-  on "realtime"."messages"
+drop policy if exists "authenticated_users_can_presence" on "realtime"."messages";
+create policy "authenticated_users_can_presence" on "realtime"."messages"
   as permissive
   for insert
   to authenticated
 with check (true);
-create policy "authenticated_users_can_receive_broadcast"
-  on "realtime"."messages"
+drop policy if exists "authenticated_users_can_receive_broadcast" on "realtime"."messages";
+create policy "authenticated_users_can_receive_broadcast" on "realtime"."messages"
   as permissive
   for select
   to authenticated
 using (true);
-create policy "authenticated_users_can_send_broadcast"
-  on "realtime"."messages"
+drop policy if exists "authenticated_users_can_send_broadcast" on "realtime"."messages";
+create policy "authenticated_users_can_send_broadcast" on "realtime"."messages"
   as permissive
   for insert
   to authenticated
 with check (true);
-create policy "Public read access for product images"
-  on "storage"."objects"
+drop policy if exists "Public read access for product images" on "storage"."objects";
+create policy "Public read access for product images" on "storage"."objects"
   as permissive
   for select
   to public
 using ((bucket_id = 'product-images'::text));
-create policy "Staff can delete product images"
-  on "storage"."objects"
+drop policy if exists "Staff can delete product images" on "storage"."objects";
+create policy "Staff can delete product images" on "storage"."objects"
   as permissive
   for delete
   to authenticated
 using (((bucket_id = 'product-images'::text) AND public.is_staff()));
-create policy "Staff can update product images"
-  on "storage"."objects"
+drop policy if exists "Staff can update product images" on "storage"."objects";
+create policy "Staff can update product images" on "storage"."objects"
   as permissive
   for update
   to authenticated
 using (((bucket_id = 'product-images'::text) AND public.is_staff()))
 with check (((bucket_id = 'product-images'::text) AND public.is_staff()));
-create policy "Staff can upload product images"
-  on "storage"."objects"
+drop policy if exists "Staff can upload product images" on "storage"."objects";
+create policy "Staff can upload product images" on "storage"."objects"
   as permissive
   for insert
   to authenticated

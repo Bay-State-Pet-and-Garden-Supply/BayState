@@ -213,6 +213,72 @@ async function main() {
     }
   }
 
+  // --- 4. AI Provider Configs ---
+  const aiConfigs = [
+    { provider_type: 'deepseek', name: 'DeepSeek Cloud', base_url: 'https://api.deepseek.com/v1', default_model: 'deepseek-chat', envName: 'DEEPSEEK_API_KEY' },
+    { provider_type: 'openai', name: 'OpenAI Direct', base_url: 'https://api.openai.com/v1', default_model: 'gpt-4o-mini', envName: 'OPENAI_API_KEY' },
+    { provider_type: 'gemini', name: 'Gemini Direct', base_url: 'https://generativelanguage.googleapis.com/v1beta', default_model: 'gemini-3.5-flash', envName: 'GEMINI_API_KEY' },
+  ];
+
+  let hasSetExtractionActive = false;
+  let hasSetConsolidationActive = false;
+
+  for (const config of aiConfigs) {
+    const value = process.env[config.envName];
+    if (value && value.trim()) {
+      const trimmed = value.trim();
+      const encrypted = encrypt(trimmed);
+      
+      const isActive = !hasSetExtractionActive;
+      const isActiveCons = !hasSetConsolidationActive;
+      
+      if (isActive) hasSetExtractionActive = true;
+      if (isActiveCons) hasSetConsolidationActive = true;
+
+      console.log(`  🤖 Seeding AI provider config for '${config.name}' (from ${config.envName})...`);
+      
+      const { data: existing } = await supabase
+        .from('ai_provider_configs')
+        .select('id, is_active, is_active_for_consolidation')
+        .eq('provider_type', config.provider_type)
+        .maybeSingle();
+
+      const payload = {
+        name: config.name,
+        provider_type: config.provider_type,
+        base_url: config.base_url,
+        default_model: config.default_model,
+        encrypted_key: encrypted.encryptedValue,
+        iv: encrypted.iv,
+        auth_tag: encrypted.authTag,
+        key_version: 1,
+        is_active: existing ? (existing.is_active ?? isActive) : isActive,
+        is_active_for_consolidation: existing ? (existing.is_active_for_consolidation ?? isActiveCons) : isActiveCons,
+        updated_at: nowIso,
+      };
+
+      let error;
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('ai_provider_configs')
+          .update(payload)
+          .eq('id', existing.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('ai_provider_configs')
+          .insert(payload);
+        error = insertError;
+      }
+
+      if (error) {
+        console.error(`  ❌ Failed to seed AI provider config for '${config.name}':`, error.message);
+      } else {
+        console.log(`  ✅ Successfully seeded AI provider config for '${config.name}' (active: ${payload.is_active}, consolidation: ${payload.is_active_for_consolidation})`);
+      }
+    }
+  }
+
   console.log('🎉 Credentials seeding finished.');
 }
 

@@ -17,8 +17,6 @@ ALTER TABLE public.inventory_reconciliation_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promo_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promo_redemptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.b2b_feeds ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.inventory_reconciliation ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.shopsite_credentials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.preorder_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.preorder_batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_preorder_groups ENABLE ROW LEVEL SECURITY;
@@ -27,12 +25,10 @@ ALTER TABLE public.ai_provider_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_types ENABLE ROW LEVEL SECURITY;
 
 -- Admin Only ALL
-CREATE POLICY "Admin manage shopsite_credentials" ON public.shopsite_credentials FOR ALL TO authenticated USING (is_admin());
 
 -- Staff Only ALL
 CREATE POLICY "Staff manage order_events" ON public.order_events FOR ALL TO authenticated USING (is_staff());
 CREATE POLICY "Staff manage order_source_records" ON public.order_source_records FOR ALL TO authenticated USING (is_staff());
-CREATE POLICY "Staff manage inventory_reconciliation" ON public.inventory_reconciliation FOR ALL TO authenticated USING (is_staff());
 CREATE POLICY "Staff manage inventory_reconciliation_items" ON public.inventory_reconciliation_items FOR ALL TO authenticated USING (is_staff());
 CREATE POLICY "Staff manage promo_codes" ON public.promo_codes FOR ALL TO authenticated USING (is_staff());
 CREATE POLICY "Staff manage promo_redemptions" ON public.promo_redemptions FOR ALL TO authenticated USING (is_staff());
