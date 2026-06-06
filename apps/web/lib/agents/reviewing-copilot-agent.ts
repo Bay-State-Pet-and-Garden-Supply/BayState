@@ -5,7 +5,7 @@ import {
   stepCountIs,
 } from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
-import { createGoogle } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { getDeepSeekBaseURL } from "@/lib/ai-scraping/deepseek";
 import { getAIConsolidationRuntimeConfig } from "@/lib/ai-scraping/credentials";
@@ -26,7 +26,7 @@ const FINALIZATION_COPILOT_MISSING_KEY_ERROR =
 
 function buildFinalizationCopilotModel(provider: string, apiKey: string, modelId: string, baseURL?: string) {
   if (provider === "gemini") {
-    return createGoogle({
+    return createGoogleGenerativeAI({
       apiKey,
     })(modelId);
   }
