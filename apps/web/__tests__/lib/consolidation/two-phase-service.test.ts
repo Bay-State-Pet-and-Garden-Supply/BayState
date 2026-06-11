@@ -186,7 +186,7 @@ describe('TwoPhaseConsolidationService', () => {
                 upc: 'UPC-3',
                 name: 'Seed Blend',
                 brand: 'Unknown Brand',
-                category: 'Bird > Seed',
+                category: 'Wrong Category',
             },
         ]);
 
@@ -201,15 +201,24 @@ describe('TwoPhaseConsolidationService', () => {
         });
 
         expect(response.consistencyReport.flaggedProducts).toBe(1);
-        expect(response.consistencyReport.totalIssues).toBe(1);
-        expect(response.consistencyReport.issues[0]).toEqual(
-            expect.objectContaining({
-                upc: 'UPC-3',
-                ruleId: 'brand_matches_expected_product_line',
-                field: 'brand',
-                observedValue: 'Unknown Brand',
-                expectedValue: 'GardenPro',
-            })
+        expect(response.consistencyReport.totalIssues).toBe(2);
+        expect(response.consistencyReport.issues).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    upc: 'UPC-3',
+                    ruleId: 'brand_matches_expected_product_line',
+                    field: 'brand',
+                    observedValue: 'Unknown Brand',
+                    expectedValue: 'GardenPro',
+                }),
+                expect.objectContaining({
+                    upc: 'UPC-3',
+                    ruleId: 'category_matches_expected_product_line',
+                    field: 'category',
+                    observedValue: 'Wrong Category',
+                    expectedValue: 'Bird > Seed',
+                }),
+            ])
         );
         expect(response.products[0]).toEqual(
             expect.objectContaining({

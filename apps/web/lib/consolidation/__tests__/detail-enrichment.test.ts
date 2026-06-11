@@ -485,4 +485,56 @@ describe('distributor-sourced facet extraction', () => {
         expect(result.fields.primary_protein).toBe('Salmon');
         expect(result.populatedFields).toContain('primary_protein');
     });
+
+    describe('suspicious package count filtering', () => {
+        const SUSPICIOUS_SOURCES = {
+            central_pet: {
+                title: 'Dog Food',
+                extracted: {
+                    core: { name: 'Dog Food' },
+                    facets: [
+                        { definition_slug: 'package_count', value: '48' }
+                    ]
+                }
+            }
+        } as unknown as Record<string, unknown>;
+
+        const VALID_MULTI_PACK_SOURCES = {
+            central_pet: {
+                title: 'Dog Food 12 pk',
+                extracted: {
+                    core: { name: 'Dog Food 12 pk' },
+                    facets: [
+                        { definition_slug: 'package_count', value: '12' }
+                    ]
+                }
+            }
+        } as unknown as Record<string, unknown>;
+
+        it('filters out package_count: 48 if name does not suggest a multi-pack', () => {
+            const result = enrichProductDetails(
+                makeInput(
+                    {
+                        category: 'Dog > Dog Food > Dry Food',
+                        name: 'Dog Food',
+                    },
+                    SUSPICIOUS_SOURCES,
+                ),
+            );
+            expect(result.fields).not.toHaveProperty('package_count');
+        });
+
+        it('preserves package_count: 12 if name suggests a 12 pk', () => {
+            const result = enrichProductDetails(
+                makeInput(
+                    {
+                        category: 'Dog > Dog Food > Dry Food',
+                        name: 'Dog Food 12 pk',
+                    },
+                    VALID_MULTI_PACK_SOURCES,
+                ),
+            );
+            expect(result.fields.package_count).toBe('12');
+        });
+    });
 });

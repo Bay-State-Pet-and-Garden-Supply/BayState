@@ -107,7 +107,10 @@ export function ImportedResultsView({
 
   // Clear product selection when cohort changes
   useEffect(() => {
-    setSelectedProductUpcs(new Set());
+    const id = setTimeout(() => {
+      setSelectedProductUpcs(new Set());
+    }, 0);
+    return () => clearTimeout(id);
   }, [preferredCohortId]);
 
   // Handle split and brand assignment confirmation

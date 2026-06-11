@@ -20,22 +20,73 @@ export async function GET(
   const { id } = await params;
   const supabase = await createAdminClient();
 
+  const url = new URL(request.url);
+  const statusFilter = url.searchParams.get("status");
+
+  // Helper to fetch names by UPC
+  const fetchProductNames = async (upcList: string[]) => {
+    const upcToName = new Map<string, string>();
+    if (upcList.length === 0) return upcToName;
+
+    try {
+      const { data: ingestionRows } = await supabase
+        .from("products_ingestion")
+        .select("upc, input")
+        .in("upc", upcList);
+
+      for (const row of ingestionRows || []) {
+        const input = row.input as { name?: string; title?: string } | null;
+        const name = input?.name || input?.title || "";
+        if (name) {
+          upcToName.set(row.upc, name);
+        }
+      }
+
+      const missingUpcs = upcList.filter((upc) => !upcToName.has(upc));
+      if (missingUpcs.length > 0) {
+        const { data: productRows } = await supabase
+          .from("products")
+          .select("upc, name")
+          .in("upc", missingUpcs);
+
+        for (const row of productRows || []) {
+          if (row.name) {
+            upcToName.set(row.upc, row.name);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[Pipeline Run Items] Failed to fetch product names:", err);
+    }
+    return upcToName;
+  };
+
   // ---------------------------------------------------------------
   // 1. Try batch_job_items first (consolidation runs)
   // ---------------------------------------------------------------
-  const { data: batchItems, error: batchItemsError } = await supabase
+  let batchQuery = supabase
     .from("batch_job_items")
     .select(
       "upc, status, error_message, started_at, completed_at, attempt_count, created_at",
     )
-    .eq("batch_job_id", id)
+    .eq("batch_job_id", id);
+
+  if (statusFilter) {
+    batchQuery = batchQuery.eq("status", statusFilter);
+  }
+
+  const { data: batchItems, error: batchItemsError } = await batchQuery
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(100);
 
   if (!batchItemsError && batchItems && batchItems.length > 0) {
+    const upcList = Array.from(new Set(batchItems.map((item) => item.upc).filter(Boolean)));
+    const nameMap = await fetchProductNames(upcList);
+
     return NextResponse.json({
       items: batchItems.map((item) => ({
         upc: item.upc,
+        name: nameMap.get(item.upc) || null,
         status: item.status,
         errorMessage: item.error_message,
         startedAt: item.started_at,
@@ -48,11 +99,16 @@ export async function GET(
   // ---------------------------------------------------------------
   // 2. Fall back to scrape_job_chunks (scrape runs)
   // ---------------------------------------------------------------
-  const { data: chunks, error: chunksError } = await supabase
+  let chunkQuery = supabase
     .from("scrape_job_chunks")
     .select("status, upcs, error_message, started_at, completed_at")
-    .eq("job_id", id)
-    .limit(50);
+    .eq("job_id", id);
+
+  if (statusFilter) {
+    chunkQuery = chunkQuery.eq("status", statusFilter);
+  }
+
+  const { data: chunks, error: chunksError } = await chunkQuery.limit(50);
 
   if (chunksError) {
     console.error("[Pipeline Run Items] Failed to fetch chunks:", chunksError);
@@ -65,7 +121,7 @@ export async function GET(
   if (chunks && chunks.length > 0) {
     // Expand chunks into per-UPC items
     const items: Array<{
-      upc: string | null;
+      upc: string;
       status: string;
       errorMessage: string | null;
       startedAt: string | null;
@@ -74,7 +130,7 @@ export async function GET(
     }> = [];
     for (const chunk of chunks) {
       const upcs = (chunk.upcs as string[]) || [];
-      if (upcs.length === 0) continue; // skip chunks without UPC lists
+      if (upcs.length === 0) continue;
       for (const upc of upcs) {
         items.push({
           upc,
@@ -87,7 +143,15 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ items });
+    const upcList = Array.from(new Set(items.map((item) => item.upc).filter(Boolean)));
+    const nameMap = await fetchProductNames(upcList);
+
+    return NextResponse.json({
+      items: items.map((item) => ({
+        ...item,
+        name: nameMap.get(item.upc) || null,
+      })),
+    });
   }
 
   // ---------------------------------------------------------------

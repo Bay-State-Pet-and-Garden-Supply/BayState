@@ -1077,6 +1077,15 @@ const FIELD_EXTRACTORS: Record<
 // Main Enrichment Function
 // =============================================================================
 
+function isSuspiciousPackageCount(value: string, name?: string): boolean {
+    const count = parseInt(value, 10);
+    if (isNaN(count) || count < 12) return false;
+    if (!name) return true;
+    // Check if name contains the count as a pack size, e.g. "12 pk", "24-pack", "48 count"
+    const regex = new RegExp(`\\b${count}\\s*(?:pk|pack|count|ct|pc|piece|bag|box|can|toy|chew)s?\\b`, 'i');
+    return !regex.test(name);
+}
+
 /**
  * Enrich a consolidated product record with detail fields based on its
  * facet profile (determined from the assigned category).
@@ -1132,10 +1141,16 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
     const populatedFields: string[] = [];
     const missingFields: string[] = [];
 
+    const productName = (input.consolidated.name as string) || (input.input.name as string) || '';
+
     for (const field of applicableFields) {
         // Skip fields that already have a value in consolidated
         const existingValue = input.consolidated[field];
         if (typeof existingValue === 'string' && existingValue.trim().length > 0) {
+            if (field === 'package_count' && isSuspiciousPackageCount(existingValue, productName)) {
+                missingFields.push(field);
+                continue;
+            }
             fields[field] = existingValue.trim();
             populatedFields.push(field);
             continue;
@@ -1144,6 +1159,10 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
         // Also check input record for pre-existing values
         const inputValue = input.input[field];
         if (typeof inputValue === 'string' && inputValue.trim().length > 0) {
+            if (field === 'package_count' && isSuspiciousPackageCount(inputValue, productName)) {
+                missingFields.push(field);
+                continue;
+            }
             fields[field] = inputValue.trim();
             populatedFields.push(field);
             continue;
@@ -1157,6 +1176,10 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
 
         const extracted = extractor(input.sources, searchText);
         if (extracted) {
+            if (field === 'package_count' && isSuspiciousPackageCount(extracted, productName)) {
+                missingFields.push(field);
+                continue;
+            }
             fields[field] = extracted;
             populatedFields.push(field);
         } else {

@@ -41,6 +41,58 @@ export interface FacetAssemblyResult {
     facetProfile: string | null;
 }
 
+function isSuspiciousPackageCount(value: string, name?: string): boolean {
+    const count = parseInt(value, 10);
+    if (isNaN(count) || count < 12) return false;
+    if (!name) return true;
+    // Check if name contains the count as a pack size, e.g. "12 pk", "24-pack", "48 count"
+    const regex = new RegExp(`\\b${count}\\s*(?:pk|pack|count|ct|pc|piece|bag|box|can|toy|chew)s?\\b`, 'i');
+    return !regex.test(name);
+}
+
+function normalizeFacetValue(slug: string, value: string): string {
+    const val = value.trim();
+    if (val.includes(',')) {
+        return val
+            .split(',')
+            .map((part) => normalizeSingleFacetValue(slug, part))
+            .join(', ');
+    }
+    return normalizeSingleFacetValue(slug, val);
+}
+
+function normalizeSingleFacetValue(slug: string, value: string): string {
+    const val = value.trim();
+    if (!val) return val;
+
+    // Standardize known boolean-like values
+    if (val.toLowerCase() === 'true' || val.toLowerCase() === 'yes') return 'Yes';
+    if (val.toLowerCase() === 'false' || val.toLowerCase() === 'no') return 'No';
+
+    const lower = val.toLowerCase();
+    if (slug === 'animal-type' || slug === 'pet-type' || slug === 'animal_type') {
+        if (lower === 'dog' || lower === 'dogs') return 'Dog';
+        if (lower === 'cat' || lower === 'cats') return 'Cat';
+    }
+
+    // Standardize casing (Title Case)
+    // Avoid title-casing all-caps codes/acronyms if they are short (e.g. USA, FDA, NPK)
+    if (val === val.toUpperCase() && val.length <= 4) {
+        return val;
+    }
+
+    return val
+        .split(/(\s+|-)/)
+        .map((part) => {
+            if (/^(\s+|-)$/.test(part)) return part;
+            if (part === part.toUpperCase() && part.length > 1 && !/^[0-9]+$/.test(part)) {
+                return part;
+            }
+            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        })
+        .join('');
+}
+
 /**
  * Unpacks LLM result, VLM packaging facets, runs heuristic enrichment,
  * preserves existing facets, and returns a compiled list of facets and the resolved profile.
@@ -61,13 +113,30 @@ export function assembleProductFacets(
     }
 ): FacetAssemblyResult {
     const candidateFacetsMap = new Map<string, { value: string; confidence: number; source: string }>();
+    const productName = nextCore.name || result.name || (existingCore.name as string) || '';
 
     const addFacet = (key: string, value: unknown, confidence: number = 0.9, source: string = 'llm') => {
         if (value === undefined || value === null || value === '') return;
-        const strValue = typeof value === 'string' ? value.trim() : String(value).trim();
+        let strValue = typeof value === 'string' ? value.trim() : String(value).trim();
         if (strValue.length === 0) return;
 
         const canonicalKey = (LEGACY_TO_CANONICAL_FACETS[key] || key).replace(/_/g, '-');
+
+        // Filter out excessively long paragraph values (Issue 9)
+        if (strValue.length > 80 || (strValue.length > 40 && /\b(?:designed|perfect|ideal|featuring|great|love|cuddle|comfort|companionship)\b/i.test(strValue))) {
+            return;
+        }
+
+        // Filter out suspiciously high package-count values (Issue 6)
+        if (canonicalKey === 'package-count') {
+            if (isSuspiciousPackageCount(strValue, productName)) {
+                return;
+            }
+        }
+
+        // Normalize facet value (Issue 3)
+        strValue = normalizeFacetValue(canonicalKey, strValue);
+
         if (!candidateFacetsMap.has(canonicalKey)) {
             candidateFacetsMap.set(canonicalKey, {
                 value: strValue,

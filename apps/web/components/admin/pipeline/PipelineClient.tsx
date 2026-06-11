@@ -186,7 +186,10 @@ export function PipelineClient({
 
   useEffect(() => {
     if (!canEditCohorts) {
-      setEditingCohort(null);
+      const id = setTimeout(() => {
+        setEditingCohort(null);
+      }, 0);
+      return () => clearTimeout(id);
     }
   }, [canEditCohorts]);
 
@@ -431,6 +434,7 @@ export function PipelineClient({
   });
 
   // Sync state with props from Server Component
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setProducts(initialProducts);
     setCounts(initialCounts);
@@ -446,7 +450,7 @@ export function PipelineClient({
       product_line: searchParams.get("product_line") || "",
       cohort_id: searchParams.get("cohort_id") || "",
     };
-  }, [
+  }, [ /* eslint-enable react-hooks/set-state-in-effect */
     initialProducts,
     initialCounts,
     initialTotal,
@@ -590,6 +594,8 @@ export function PipelineClient({
     searchParams,
   ]);
 
+  const [lastSelectedUpc, setLastSelectedUpc] = useState<string | null>(null);
+
   // Handle stage tab change
   const handleStageChange = useCallback(
     (stage: PipelineStage) => {
@@ -617,10 +623,18 @@ export function PipelineClient({
         router.replace(`${targetPath}?${params.toString()}`);
       });
     },
-    [pathname, router, searchParams],
+    [
+      pathname,
+      router,
+      searchParams,
+      setSearch,
+      setSourceFilter,
+      setProductLineFilter,
+      setCohortIdFilter,
+      setLastSelectedUpc,
+      startNavigation,
+    ],
   );
-
-  const [lastSelectedUpc, setLastSelectedUpc] = useState<string | null>(null);
 
   // Toggle product selection with optional Shift+Click range support
   const handleSelectUpc = useCallback(

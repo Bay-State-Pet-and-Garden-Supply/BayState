@@ -55,6 +55,7 @@ import {
   buildInitialFinalizationDraft,
   createPersistedFinalizationDraftSnapshot,
   EMPTY_FINALIZATION_DRAFT,
+  extractSelectedImageUrls,
   toFinalizationImageArray,
   type FinalizationDraft,
 } from "@/lib/pipeline/reviewing-draft";
@@ -83,7 +84,17 @@ import type {
 import type { Brand } from "@/lib/types";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
 import { adminFetch } from '@/lib/admin/api-client';
-import { normalizeProductSourcesForReview } from "@/lib/product-sources";
+import {
+  normalizeProductSourcesForReview,
+  extractImageCandidatesFromSourcePayload,
+} from "@/lib/product-sources";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ReviewingResultsViewProps {
   products: PipelineProduct[];
@@ -478,6 +489,77 @@ export function ReviewingResultsView({
     [draftsByUpc, savedDraftsByUpc, sortedProducts],
   );
   const isDirty = selectedUpc ? dirtyUpcs.includes(selectedUpc) : false;
+
+  // Get image options for the selected product
+  const imageSourceOptions = useMemo(() => {
+    if (!selectedProduct) return [];
+
+    const sources = normalizeProductSourcesForReview(selectedProduct.sources || {});
+
+    // 1. AI Consolidated images
+    let consolidatedImages: string[] = [];
+    const consolidated = selectedProduct.consolidated || {};
+    if (Array.isArray(consolidated.media)) {
+      consolidatedImages = toFinalizationImageArray(consolidated.media.map((m: any) => m?.url));
+    } else {
+      consolidatedImages = toFinalizationImageArray(consolidated.images);
+    }
+
+    // 2. Metadata / Selected images (if any exist)
+    const metadataSelectedImages = extractSelectedImageUrls(selectedProduct.selected_images);
+
+    // 3. Raw sources images
+    const rawOptions = Object.entries(sources).map(([sourceKey, sourcePayload]) => {
+      const images = extractImageCandidatesFromSourcePayload(sourcePayload);
+      return {
+        key: sourceKey,
+        label: formatPipelineSourceSlug(sourceKey),
+        images,
+      };
+    }).filter(s => s.images.length > 0);
+
+    return [
+      ...(consolidatedImages.length > 0 ? [{ key: "consolidated", label: "AI Consolidated", images: consolidatedImages }] : []),
+      ...(metadataSelectedImages.length > 0 ? [{ key: "metadata", label: "Current Storefront (Selected)", images: metadataSelectedImages }] : []),
+      ...rawOptions,
+    ];
+  }, [selectedProduct]);
+
+  // Determine which source currently matches selectedImages
+  const currentImageSource = useMemo(() => {
+    if (!selectedProduct || !formData.selectedImages) return "custom";
+
+    const sortedSelected = [...formData.selectedImages].sort().join(",");
+
+    for (const opt of imageSourceOptions) {
+      const sortedOpt = [...opt.images].sort().join(",");
+      if (sortedOpt === sortedSelected) {
+        return opt.key;
+      }
+    }
+
+    return "custom";
+  }, [formData.selectedImages, imageSourceOptions, selectedProduct]);
+
+  const selectOptions = useMemo(() => {
+    const opts = [...imageSourceOptions];
+    if (currentImageSource === "custom" && formData.selectedImages?.length > 0) {
+      opts.push({
+        key: "custom",
+        label: "Custom Selection (Modified)",
+        images: formData.selectedImages,
+      });
+    }
+    return opts;
+  }, [imageSourceOptions, currentImageSource, formData.selectedImages]);
+
+  const handleImageSourceChange = (val: string) => {
+    const matched = imageSourceOptions.find((opt) => opt.key === val);
+    if (matched) {
+      handleInputChange("selectedImages", matched.images);
+      toast.success(`Imported images from ${matched.label}`);
+    }
+  };
 
   const updateDraftForUpc = useCallback(
     (upc: string, value: SetStateAction<FinalizationDraft>) => {
@@ -1716,6 +1798,30 @@ export function ReviewingResultsView({
                         handleInputChange("selectedImages", newImages)
                       }
                     />
+
+                    {imageSourceOptions.length > 0 && (
+                      <div className="flex flex-col gap-1.5 p-2 border border-border bg-muted/20">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Import Images from Source
+                        </label>
+                        <Select
+                          value={currentImageSource}
+                          onValueChange={handleImageSourceChange}
+                        >
+                          <SelectTrigger className="w-full h-8 text-xs font-semibold rounded-none border border-border bg-card">
+                            <SelectValue placeholder="Choose image source..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-none border border-border">
+                            {selectOptions.map((opt) => (
+                              <SelectItem key={opt.key} value={opt.key} className="rounded-none text-xs font-semibold">
+                                {opt.label} ({opt.images.length} image{opt.images.length === 1 ? "" : "s"})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                     <div className="flex gap-2">
                       <Input
                         value={formData.customImageUrl}

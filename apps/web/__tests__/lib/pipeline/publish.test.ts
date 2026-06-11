@@ -31,6 +31,7 @@ describe('publishToStorefront', () => {
                         name: 'Test Product',
                         price: 12.99,
                         canonical_category_breadcrumb: 'Cat / Food',
+                        brand_id: 'brand-1',
                     },
                     facets: [
                         { definition_slug: 'animal_type', value: 'Cat' },

@@ -41,6 +41,21 @@ function expandAbbreviations(text: string): string {
     // Tighten spaces around hyphens/slashes
     return expanded.replace(/\s+([-\/])\s+/g, '$1').replace(/\s+/g, ' ');
 }
+
+/**
+ * Normalize common abbreviations in product names for consistency.
+ * W/ → With, w/ → with, ensure space before units (18in. → 18 in.)
+ */
+function normalizeNameAbbreviations(text: string): string {
+    let result = text;
+    // W/ → With (case-sensitive: W/ at word boundary)
+    result = result.replace(/\bW\//g, 'With');
+    result = result.replace(/\bw\//g, 'with');
+    // Ensure space before unit abbreviations when preceded by a digit
+    // e.g. "18in." → "18 in.", "7oz." → "7 oz."
+    result = result.replace(/(\d)(in|oz|lb|ct|ft|gal|qt|pt|pk)\b/gi, '$1 $2');
+    return result;
+}
 function toTitleCasePreserveBrand(text: string): string {
     return text
         .split(' ')
@@ -151,7 +166,23 @@ function normalizePlainText(text: string): string {
     return text.replace(/\s+/g, ' ').trim();
 }
 
-function normalizeSearchKeywords(value: string): string {
+/**
+ * Title-case a single keyword segment, preserving known ALL-CAPS tokens.
+ */
+function titleCaseKeyword(segment: string): string {
+    return segment
+        .split(' ')
+        .map((word) => {
+            if (!word) return word;
+            // Preserve known brand/sub-brand all-caps tokens
+            const upper = word.toUpperCase();
+            if (upper === word && word.length > 1) return word;
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        })
+        .join(' ');
+}
+
+function normalizeSearchKeywords(value: string, brand?: string): string {
     const segments = value
         .split(/[\n,;|]+/)
         .map((segment) => normalizePlainText(segment))
@@ -161,15 +192,33 @@ function normalizeSearchKeywords(value: string): string {
         return normalizePlainText(value);
     }
 
+    // Title-case each segment for consistency
+    const titleCased = segments.map((seg) => titleCaseKeyword(seg));
+
     const deduped: string[] = [];
     const seen = new Set<string>();
-    for (const segment of segments) {
+    for (const segment of titleCased) {
         const key = segment.toLowerCase();
         if (seen.has(key)) {
             continue;
         }
         seen.add(key);
         deduped.push(segment);
+    }
+
+    // Ensure brand is the first keyword if provided and not already present
+    if (brand) {
+        const brandNormalized = normalizePlainText(brand);
+        const brandLower = brandNormalized.toLowerCase();
+        const existingBrandIdx = deduped.findIndex((kw) => kw.toLowerCase() === brandLower);
+        if (existingBrandIdx > 0) {
+            // Brand exists but not first — move it to front
+            deduped.splice(existingBrandIdx, 1);
+            deduped.unshift(brandNormalized);
+        } else if (existingBrandIdx === -1) {
+            // Brand missing entirely — prepend it
+            deduped.unshift(brandNormalized);
+        }
     }
 
     return deduped.join(', ');
@@ -200,6 +249,7 @@ export function normalizeConsolidationResult(
 
     if (typeof normalized.name === 'string') {
         let name = normalized.name;
+        name = normalizeNameAbbreviations(name);
         name = expandAbbreviations(name);
         name = normalizeDimensions(name);
         name = normalizeStringUnits(name);
@@ -227,7 +277,8 @@ export function normalizeConsolidationResult(
     }
 
     if (typeof normalized.search_keywords === 'string') {
-        normalized.search_keywords = normalizeSearchKeywords(normalized.search_keywords);
+        const brand = typeof normalized.brand === 'string' ? normalized.brand : undefined;
+        normalized.search_keywords = normalizeSearchKeywords(normalized.search_keywords, brand);
     }
 
     // Normalize weight field - convert to pounds

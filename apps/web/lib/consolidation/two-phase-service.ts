@@ -11,7 +11,7 @@ interface TwoPhaseConsistencyRule {
     type: ConsistencyRuleType;
     description?: string;
     severity?: 'low' | 'medium' | 'high';
-    expectedValueSource?: 'expectedBrand';
+    expectedValueSource?: 'expectedBrand' | 'expectedCategory';
 }
 
 interface TwoPhaseConsolidationConfig {
@@ -373,6 +373,14 @@ export function buildDefaultConsistencyRules(): TwoPhaseConsistencyRule[] {
             expectedValueSource: 'expectedBrand',
             severity: 'high',
             description: 'Brand should match the expected brand for the product line',
+        },
+        {
+            id: 'category_matches_expected_product_line',
+            field: 'category',
+            type: 'expected_value',
+            expectedValueSource: 'expectedCategory',
+            severity: 'high',
+            description: 'Category should match the expected category for the product line',
         },
     ];
 }

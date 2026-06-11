@@ -12,10 +12,11 @@ import {
 } from '@/lib/scraper-callback/products-ingestion';
 import { getBatchStatus, retrieveResults, submitBatch } from '@/lib/consolidation/batch-service';
 import { syncProductCategoryLinks } from '@/lib/product-category-sync';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 jest.mock('@/lib/supabase/server', () => ({
     createClient: jest.fn(),
+    createAdminClient: jest.fn(),
 }));
 
 jest.mock('@/lib/consolidation/batch-service', () => ({
@@ -69,6 +70,7 @@ const NOW = '2026-04-08T15:00:00.000Z';
 const NOW_NUM = new Date(NOW).getTime();
 
 const mockedCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockedCreateAdminClient = createAdminClient as jest.MockedFunction<typeof createAdminClient>;
 const mockedSubmitBatch = submitBatch as jest.MockedFunction<typeof submitBatch>;
 const mockedGetBatchStatus = getBatchStatus as jest.MockedFunction<typeof getBatchStatus>;
 const mockedRetrieveResults = retrieveResults as jest.MockedFunction<typeof retrieveResults>;
@@ -262,6 +264,58 @@ function createMockSupabase(initialRows: IngestionRow[]): MockSupabaseBundle {
         }),
     };
 
+    const categoriesTable = {
+        select: async () => ({
+            data: [
+                { id: 'cat-dog-food', name: 'Food', slug: 'dog-food', breadcrumb: 'Dog > Food' },
+                { id: 'cat-bird-seed', name: 'Seed', slug: 'bird-seed', breadcrumb: 'Bird > Seed' },
+            ],
+            error: null,
+        }),
+    };
+
+    const facetDefinitionsTable = {
+        select: () => ({
+            in: async () => ({
+                data: [
+                    { id: 'def-1', slug: 'animal-type', name: 'Animal Type' },
+                    { id: 'def-2', slug: 'food-form', name: 'Food Form' },
+                ],
+                error: null,
+            }),
+        }),
+    };
+
+    const facetValuesTable = {
+        upsert: () => ({
+            select: () => ({
+                single: async () => ({
+                    data: { id: 'val-1' },
+                    error: null,
+                }),
+            }),
+        }),
+    };
+
+    const productFacetsTable = {
+        delete: () => ({
+            eq: async () => ({ error: null }),
+        }),
+        insert: async () => ({ error: null }),
+    };
+
+    const shopsiteProductSyncTable = {
+        upsert: async () => ({ error: null }),
+    };
+
+    const externalSourcesTable = {
+        select: () => ({
+            eq: () => ({
+                maybeSingle: async () => ({ data: { id: 'ext-1' }, error: null }),
+            }),
+        }),
+    };
+
     const supabase = {
         from: (table: string) => {
             if (table === 'products_ingestion') {
@@ -270,6 +324,30 @@ function createMockSupabase(initialRows: IngestionRow[]): MockSupabaseBundle {
 
             if (table === 'products') {
                 return productsTable;
+            }
+
+            if (table === 'categories') {
+                return categoriesTable;
+            }
+
+            if (table === 'facet_definitions') {
+                return facetDefinitionsTable;
+            }
+
+            if (table === 'facet_values') {
+                return facetValuesTable;
+            }
+
+            if (table === 'product_facets') {
+                return productFacetsTable;
+            }
+
+            if (table === 'shopsite_product_sync') {
+                return shopsiteProductSyncTable;
+            }
+
+            if (table === 'external_sources') {
+                return externalSourcesTable;
             }
 
             throw new Error(`Unexpected table ${table}`);
@@ -356,6 +434,7 @@ function moveConsistencyPassedRowsToFinalized(
                 search_keywords: result.search_keywords ?? String(row.input.search_keywords ?? ''),
                 weight: result.weight,
                 confidence_score: result.confidence_score,
+                brand_id: 'brand-1',
             },
             pipeline_status: result.consistencyStatus === 'passed' ? 'reviewing' : 'processed',
             updated_at: NOW,
@@ -409,6 +488,7 @@ describe('cohort processing pipeline integration', () => {
         ]);
 
         mockedCreateClient.mockResolvedValue(supabase);
+        mockedCreateAdminClient.mockResolvedValue(supabase);
         mockedSubmitBatch.mockResolvedValue({
             success: true,
             batch_id: 'batch-cohort-1',
@@ -578,6 +658,7 @@ describe('cohort processing pipeline integration', () => {
         ]);
 
         mockedCreateClient.mockResolvedValue(supabase);
+        mockedCreateAdminClient.mockResolvedValue(supabase);
 
         await expect(
             persistProductsIngestionSourcesStrict(

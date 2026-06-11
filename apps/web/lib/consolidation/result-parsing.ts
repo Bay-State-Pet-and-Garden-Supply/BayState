@@ -20,7 +20,28 @@ export const RawConsolidationSchema = z.object({
     category: z.string().min(1, 'Category is required'),
     description: z.string().min(1, 'Description is required'),
     search_keywords: z.string().min(1, 'Search keywords are required'),
-    packaging_facets: z.record(z.string(), z.string()).optional(),
+    packaging_facets: z.preprocess(
+        (val) => {
+            // Coerce boolean values to "Yes"/"No" strings — the LLM sometimes
+            // returns true/false for fields like has_squeaker.
+            if (val && typeof val === 'object' && !Array.isArray(val)) {
+                const coerced: Record<string, string> = {};
+                for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+                    if (typeof v === 'boolean') {
+                        coerced[k] = v ? 'Yes' : 'No';
+                    } else if (typeof v === 'number') {
+                        coerced[k] = String(v);
+                    } else if (typeof v === 'string') {
+                        coerced[k] = v;
+                    }
+                    // Skip null/undefined/object values
+                }
+                return coerced;
+            }
+            return val;
+        },
+        z.record(z.string(), z.string()).optional(),
+    ),
     price: z.union([z.string(), z.number()]).nullable().optional(),
 });
 

@@ -10,7 +10,7 @@ describe('normalizeConsolidationResult', () => {
         expect(result).toEqual(
             expect.objectContaining({
                 brand: 'Bubbacare',
-                search_keywords: 'horse treats, flax seed, horse snacks',
+                search_keywords: 'Bubbacare, Horse Treats, Flax Seed, Horse Snacks',
             })
         );
     });

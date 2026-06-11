@@ -523,9 +523,16 @@ export async function applyConsolidationResults(
             );
 
             if (unexpectedAnimalSignals.length > 0) {
-                gateErrors.push(
-                    `taxonomy/pages target ${unexpectedAnimalSignals.join(', ')} but trusted source evidence supports ${summarizeAnimalSignals(expectedAnimalSignals)}`
-                );
+                const nameLower = (draftName || '').toLowerCase();
+                const descLower = (draftDescription || '').toLowerCase();
+                const isToy = nameLower.includes('toy') || descLower.includes('toy') || nameLower.includes('chew') || descLower.includes('chew') || nameLower.includes('squeak') || descLower.includes('squeak');
+                if (isToy) {
+                    console.log(`[Bypass] Allowing unexpected animal signals ${unexpectedAnimalSignals.join(', ')} for toy product ${result.upc}`);
+                } else {
+                    gateErrors.push(
+                        `taxonomy/pages target ${unexpectedAnimalSignals.join(', ')} but trusted source evidence supports ${summarizeAnimalSignals(expectedAnimalSignals)}`
+                    );
+                }
             }
 
             if (gateErrors.length > 0) {

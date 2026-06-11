@@ -53,6 +53,7 @@ interface ProductLinePromptContext {
     sibling_products: SiblingProductPromptSummary[];
     consistency_rules: string[];
     expected_brand?: string;
+    expected_category?: string;
     consistency_examples?: string[];
 }
 
@@ -138,20 +139,27 @@ function buildProductLinePromptContext(product: ProductSource): ProductLinePromp
         .slice(0, MAX_SIBLING_PRODUCTS)
         .map((sibling) => buildSiblingProductSummary(sibling));
     const expectedBrand = trimString(context.expectedBrand);
+    const expectedCategory = trimString(context.expectedCategory);
     const consistencyExamples = siblingProducts
         .map((sibling) => sibling.name)
         .filter((name) => name.trim().length > 0)
         .slice(0, 3);
 
-    if (siblingProducts.length === 0 && !expectedBrand) {
+    if (siblingProducts.length === 0 && !expectedBrand && !expectedCategory) {
         return undefined;
     }
 
     return {
         product_line: trimString(context.productLine) || product.upc,
         sibling_products: siblingProducts,
-        consistency_rules: [...CONSISTENCY_RULES],
+        consistency_rules: [
+            ...CONSISTENCY_RULES,
+            expectedCategory 
+                ? `Prefer the expected_category "${expectedCategory}" for this product to keep category consistency across the product line.`
+                : 'Keep category categorization consistent across sibling products.'
+        ],
         ...(expectedBrand ? { expected_brand: expectedBrand } : {}),
+        ...(expectedCategory ? { expected_category: expectedCategory } : {}),
         ...(consistencyExamples.length >= 2 ? { consistency_examples: consistencyExamples } : {}),
     };
 }

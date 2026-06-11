@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import {
   Loader2,
   XCircle,
@@ -11,10 +12,13 @@ import {
   Fingerprint,
   CheckCircle2,
   Play,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { adminFetch } from "@/lib/admin/api-client";
 import {
   StatusBadge,
   formatTimestamp,
@@ -23,7 +27,6 @@ import {
   getProviderLabel,
 } from "./shared";
 import type { ConsolidationJob, ConsolidationJobItemActivity } from "./shared";
-import { useMemo } from "react";
 
 // ============================================================================
 // Types
@@ -45,18 +48,29 @@ interface DirectConsolidationJobViewProps {
 // ItemRow — per-item processing row
 // ============================================================================
 
+interface DirectJobItemActivity extends ConsolidationJobItemActivity {
+  name?: string | null;
+  errorMessage?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+}
+
 function ItemRow({
   item,
   isActive,
 }: {
-  item: ConsolidationJobItemActivity;
+  item: DirectJobItemActivity;
   isActive: boolean;
 }) {
   const statusText = (() => {
-    if (item.completed_at) return `Completed ${formatTimestamp(item.completed_at)}`;
-    if (item.started_at) return `Started ${formatTimestamp(item.started_at)}`;
+    const timeVal = item.completedAt || item.completed_at;
+    if (timeVal) return `Completed ${formatTimestamp(timeVal)}`;
+    const startTimeVal = item.startedAt || item.started_at;
+    if (startTimeVal) return `Started ${formatTimestamp(startTimeVal)}`;
     return "Waiting";
   })();
+
+  const errMsg = item.errorMessage || item.error_message;
 
   return (
     <div
@@ -76,13 +90,18 @@ function ItemRow({
         ) : (
           <div className="h-3 w-3 rounded-full border border-muted-foreground/30 shrink-0" />
         )}
-        <span className="font-mono text-foreground">{item.upc}</span>
+        <span className="font-mono text-foreground shrink-0">{item.upc}</span>
+        {item.name && (
+          <span className="text-muted-foreground truncate max-w-[24ch]" title={item.name}>
+            {item.name}
+          </span>
+        )}
         <StatusBadge status={item.status} />
       </div>
       <div className="flex items-center gap-2 shrink-0 ml-2">
-        {item.error_message ? (
-          <span className="max-w-[40ch] truncate text-destructive" title={item.error_message}>
-            {item.error_message}
+        {errMsg ? (
+          <span className="max-w-[40ch] truncate text-destructive" title={errMsg}>
+            {errMsg}
           </span>
         ) : (
           <span className="text-muted-foreground">{statusText}</span>
@@ -107,17 +126,54 @@ export function DirectConsolidationJobView({
   deletingId,
   refreshingId,
 }: DirectConsolidationJobViewProps) {
+  const [localItems, setLocalItems] = useState<DirectJobItemActivity[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const loadItems = async () => {
+      setLoadingItems(true);
+      try {
+        const res = await adminFetch(`/api/admin/pipeline/runs/${job.id}/items`);
+        if (res.ok && active) {
+          const data = await res.json();
+          setLocalItems(data.items || []);
+        }
+      } catch (err) {
+        console.warn("Failed to load run items:", err);
+      } finally {
+        if (active) setLoadingItems(false);
+      }
+    };
+
+    void loadItems();
+
+    // Poll every 5 seconds if the job is running (direct chat is fast)
+    let intervalId: NodeJS.Timeout | null = null;
+    const isActive = !isTerminalStatus(job.status);
+    if (isActive) {
+      intervalId = setInterval(() => {
+        void loadItems();
+      }, 5000);
+    }
+
+    return () => {
+      active = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [job.id, job.status, job.processedCount]);
+
   const llmModel = job.metadata?.llm_model as string | undefined;
   const providerLabel = getProviderLabel(job.provider);
   const pendingCount = job.pendingCount ?? Math.max(job.totalProducts - job.processedCount, 0);
-  const runningCount = job.runningCount ?? 0;
   const isRunning = job.status === "running" || job.status === "in_progress";
   const processedCount = job.successCount + job.errorCount;
 
   // Sort items: running first, then failed, completed, pending
   const sortedItems = useMemo(() => {
-    if (!job.recentItems || job.recentItems.length === 0) return [];
-    const items = [...job.recentItems];
+    if (localItems.length === 0) return [];
+    const items = [...localItems];
     items.sort((a, b) => {
       const statusOrder = (s: string) => {
         if (s === "running" || s === "in_progress") return 0;
@@ -127,11 +183,13 @@ export function DirectConsolidationJobView({
       };
       const diff = statusOrder(a.status) - statusOrder(b.status);
       if (diff !== 0) return diff;
-      // Most recent first within same status
-      return (b.started_at || b.created_at || "").localeCompare(a.started_at || a.created_at || "");
+      
+      const aTime = a.startedAt || a.started_at || a.created_at || "";
+      const bTime = b.startedAt || b.started_at || b.created_at || "";
+      return bTime.localeCompare(aTime);
     });
     return items;
-  }, [job.recentItems]);
+  }, [localItems]);
 
   return (
     <div className="rounded-none border border-border bg-card p-5 transition-colors hover:bg-accent/5">
@@ -300,18 +358,74 @@ export function DirectConsolidationJobView({
         </div>
       </div>
 
-      {/* Error Warning */}
+      {/* Error Warning & Collapsible details */}
       {job.errorCount > 0 && (
-        <div className="mt-3 flex items-center gap-2 rounded-none border border-destructive bg-destructive/5 px-3 py-2 text-[10px] font-semibold text-destructive tracking-widest">
-          <AlertTriangle className="h-3.5 w-3.5" />
-          {job.errorCount} product{job.errorCount !== 1 ? "s" : ""} failed during merging
+        <div className="mt-3 space-y-2">
+          <div 
+            onClick={() => setShowErrors(!showErrors)}
+            className="flex items-center justify-between rounded-none border border-destructive bg-destructive/5 px-3 py-2 text-[10px] font-semibold text-destructive tracking-widest cursor-pointer hover:bg-destructive/10 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>{job.errorCount} product{job.errorCount !== 1 ? "s" : ""} failed during merging</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-destructive/80 font-bold">
+                {showErrors ? "Hide Details" : "Show Details"}
+              </span>
+              {showErrors ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </div>
+          </div>
+
+          {showErrors && (
+            <div className="rounded-none border border-destructive/20 bg-card p-3 space-y-2 max-h-[300px] overflow-y-auto">
+              <div className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase pb-1 border-b border-border flex items-center justify-between">
+                <span>Failed Products List ({localItems.filter(i => i.status === 'failed').length})</span>
+                {loadingItems && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+              </div>
+              {localItems.filter(i => i.status === 'failed').length === 0 ? (
+                <div className="flex items-center justify-center py-4 text-muted-foreground text-[10px]">
+                  {loadingItems ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading failed product details...
+                    </div>
+                  ) : (
+                    "No failed item details found."
+                  )}
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {localItems.filter(i => i.status === 'failed').map((item) => (
+                    <div key={item.upc} className="py-2.5 first:pt-0 last:pb-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold">
+                        <span className="font-mono bg-destructive/10 text-destructive px-1.5 py-0.5 border border-destructive/20 shrink-0">
+                          {item.upc}
+                        </span>
+                        {item.name ? (
+                          <span className="text-foreground font-bold">{item.name}</span>
+                        ) : (
+                          <span className="text-muted-foreground italic">Unknown product name</span>
+                        )}
+                      </div>
+                      {item.errorMessage && (
+                        <div className="text-[10px] text-destructive bg-destructive/[0.02] border border-destructive/10 p-2 font-medium break-words whitespace-pre-wrap select-text font-mono leading-relaxed">
+                          {item.errorMessage}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {/* Per-Item Processing Table */}
       {sortedItems.length > 0 && (
         <div className="mt-4 rounded-none border border-border bg-background">
-          <div className="border-b border-border px-3 py-2">
+          <div className="border-b border-border px-3 py-2 flex items-center justify-between">
             <p className="text-[10px] font-semibold tracking-widest text-muted-foreground">
               ITEM ACTIVITY
               {isRunning && (
@@ -320,11 +434,12 @@ export function DirectConsolidationJobView({
                 </span>
               )}
             </p>
+            {loadingItems && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
           </div>
           <div>
             {sortedItems.map((item) => (
               <ItemRow
-                key={`${item.upc}-${item.updated_at || item.created_at || item.status}`}
+                key={`${item.upc}-${item.status}`}
                 item={item}
                 isActive={item.status === "running" || item.status === "in_progress"}
               />
