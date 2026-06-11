@@ -29,4 +29,12 @@ describe('normalizeConsolidationResult', () => {
         expect(result.name).toBe('Tomato Jubilee Seed Packets 5 pk.');
         expect(result.description).toBe('Made in USA with 10 in. and 5 gal. info');
     });
+
+    it('correctly normalizes all-caps names to Title Case while preserving SPOT brand and units', () => {
+        const result = normalizeConsolidationResult({
+            brand: 'SPOT',
+            name: 'SPOT CAPYBARA WITH ORANGE 8 in.',
+        });
+        expect(result.name).toBe('SPOT Capybara With Orange 8 in.');
+    });
 });

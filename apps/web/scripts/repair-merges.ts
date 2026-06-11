@@ -15,7 +15,10 @@ async function main() {
                     k = k.replace(/^export\s+/, '').trim();
                 }
                 const v = parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
-                process.env[k] = v;
+                // Only load if not already defined in environment to allow shell overrides
+                if (!process.env[k] || process.env[k].trim() === '') {
+                    process.env[k] = v;
+                }
             }
         });
         console.log('Loaded env variables from .env.production.local');
@@ -63,23 +66,22 @@ async function main() {
         .filter((b): b is string => typeof b === 'string');
     console.log(`Fetched ${categories.length} categories.`);
 
-    // 2. Fetch failed batch job items
-    console.log(`Fetching failed items for batch ${batchId}...`);
-    const { data: failedItems, error: itemsErr } = await supabase
+    // 2. Fetch all batch job items
+    console.log(`Fetching all items for batch ${batchId}...`);
+    const { data: allItems, error: itemsErr } = await supabase
         .from('batch_job_items')
         .select('*')
-        .eq('batch_job_id', batchId)
-        .eq('status', 'failed');
+        .eq('batch_job_id', batchId);
 
     if (itemsErr) {
         console.error('Failed to fetch items:', itemsErr);
         process.exit(1);
     }
 
-    console.log(`Found ${failedItems.length} failed items.`);
+    console.log(`Found ${allItems.length} total items in batch.`);
 
     let repairedCount = 0;
-    for (const item of failedItems) {
+    for (const item of allItems) {
         const payload = item.response_payload as any;
         const rawResponse = payload?.raw_response;
         if (!rawResponse) {
@@ -87,7 +89,7 @@ async function main() {
             continue;
         }
 
-        console.log(`Re-parsing item ${item.upc}...`);
+        console.log(`Re-parsing and normalizing item ${item.upc}...`);
         const parsed = parseStructuredConsolidationText(item.upc, rawResponse, categories);
 
         if (parsed.error) {
@@ -127,13 +129,13 @@ async function main() {
 
     // 3. Update parent batch job request counts
     console.log('Updating parent batch_jobs counts...');
-    const { data: allItems } = await supabase
+    const { data: allItemsStatus } = await supabase
         .from('batch_job_items')
         .select('status')
         .eq('batch_job_id', batchId);
     
-    const completedCount = (allItems || []).filter((i: any) => i.status === 'completed').length;
-    const failedCount = (allItems || []).filter((i: any) => i.status === 'failed').length;
+    const completedCount = (allItemsStatus || []).filter((i: any) => i.status === 'completed').length;
+    const failedCount = (allItemsStatus || []).filter((i: any) => i.status === 'failed').length;
 
     const { error: parentUpdateErr } = await supabase
         .from('batch_jobs')
