@@ -15,7 +15,8 @@ import {
   Archive,
   RefreshCw,
   AlertCircle,
-  Search
+  Search,
+  RotateCcw
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { PreparedShopSiteExportProduct } from "@/lib/shopsite/mapping";
@@ -78,6 +79,7 @@ export function PublishingResultsView({
   const [selectedUpc, setSelectedUpc] = useState<string | null>(null);
   const [exportActionState, setExportActionState] = useState<"idle" | "upload" | "zip" | "xml" | "excel">("idle");
   const [filterType, setFilterType] = useState<"all" | "ready" | "warnings" | "errors">("all");
+  const [isReturning, setIsReturning] = useState(false);
 
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
@@ -427,6 +429,53 @@ export function PublishingResultsView({
     }
   };
 
+  // Action: Return to Reviewing stage (single or bulk)
+  const handleReturnToReviewing = async (upcsToReturn?: string[]) => {
+    const targetUpcs = upcsToReturn || (selectedUpcs.size > 0 ? Array.from(selectedUpcs) : (selectedProduct ? [selectedProduct.upc] : []));
+    if (targetUpcs.length === 0) {
+      toast.error("No products selected to return to reviewing");
+      return;
+    }
+
+    setIsReturning(true);
+    try {
+      const res =
+        targetUpcs.length === 1
+          ? await adminFetch(`/api/admin/pipeline/${encodeURIComponent(targetUpcs[0])}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pipeline_status: "reviewing" }),
+            })
+          : await adminFetch(`/api/admin/pipeline/bulk`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                upcs: targetUpcs,
+                toStatus: "reviewing",
+              }),
+            });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || "Failed to return products to reviewing");
+      }
+
+      toast.success(
+        targetUpcs.length === 1
+          ? "Returned product to the reviewing stage."
+          : `Returned ${targetUpcs.length} products to the reviewing stage.`
+      );
+
+      onClearSelection();
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Failed to return products to reviewing");
+    } finally {
+      setIsReturning(false);
+    }
+  };
+
   // Toggle selection for all filtered products
   const handleToggleSelectAll = () => {
     const allFilteredUpcs = filteredProducts.map(p => p.upc);
@@ -462,6 +511,23 @@ export function PublishingResultsView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Return Selected to Reviewing */}
+          {selectedUpcs.size > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => handleReturnToReviewing()}
+              disabled={exportActionState !== "idle" || isLoading || isReturning}
+              className="border-amber-200 hover:bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:hover:bg-amber-950/20 dark:text-amber-300 h-9 px-3"
+            >
+              {isReturning ? (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" />
+              )}
+              Return Selected to Reviewing
+            </Button>
+          )}
+
           {/* ShopSite Direct Upload */}
           <Button 
             onClick={handleShopSiteUpload}
@@ -740,6 +806,20 @@ export function PublishingResultsView({
                       <AlertTriangle className="h-3 w-3" /> Needs Review
                     </Badge>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleReturnToReviewing([selectedProduct.upc])}
+                    disabled={exportActionState !== "idle" || isLoading || isReturning}
+                    className="mt-2 h-7 text-xs px-2 border-amber-200 hover:bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:hover:bg-amber-950/20 dark:text-amber-300 font-semibold"
+                  >
+                    {isReturning ? (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Return to Reviewing
+                  </Button>
                 </div>
               </div>
 
