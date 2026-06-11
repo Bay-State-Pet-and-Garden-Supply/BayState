@@ -1,8 +1,8 @@
-const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
+export const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
     'Barn Supplies': {
         'Buckets & Feeders': 'farm-livestock-feeders-waterers',
         'Chicken Supplies|Shavings & Bedding': 'chicken-poultry-bedding',
-        'De-Icers': 'home-heating-heating-fuel',
+        'De-Icers': 'home-heating-fuel',
         'Electric Fence Supplies': 'farm-livestock-handling-fencing',
         'Farm Gates & Fencing': 'farm-livestock-handling-fencing',
         'Fencing': 'farm-livestock-handling-fencing',
@@ -30,8 +30,8 @@ const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
     'Cat Food': {
         'Food': 'cat-food',
         'food': 'cat-food',
-        'Wet Food': 'cat-food-wet-food',
-        'Dry Food': 'cat-food-dry-food',
+        'Wet Food': 'cat-food-wet',
+        'Dry Food': 'cat-food-dry',
         'Toppers': 'cat-food',
         '*': 'cat-food',
     },
@@ -72,8 +72,8 @@ const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
     'Dog Food': {
         'Food': 'dog-food',
         'food': 'dog-food',
-        'Wet Food': 'dog-food-wet-food',
-        'Dry Food': 'dog-food-dry-food',
+        'Wet Food': 'dog-food-wet',
+        'Dry Food': 'dog-food-dry',
         'Toppers': 'dog-food',
         'Healthcare': 'dog-health-wellness',
         '*': 'dog-food',
@@ -144,12 +144,12 @@ const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
         '*': 'farm-livestock',
     },
     'Fish Food': {
-        'Food': 'fish-aquarium-fish-food',
-        '*': 'fish-aquarium-fish-food',
+        'Food': 'fish-aquarium-food',
+        '*': 'fish-aquarium-food',
     },
     'Fish Supplies': {
         'Water Treatsments & Test Kits': 'fish-aquarium-water-care',
-        'aquarium': 'fish-aquarium-aquariums-tanks',
+        'aquarium': 'fish-aquarium-tanks',
         '*': 'fish-aquarium',
     },
     'Horse Feed & Treats': {
@@ -167,24 +167,24 @@ const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
         '*': 'horse',
     },
     'Lawn & Garden': {
-        'Animal Repellents': 'lawn-garden-pest-weed-control',
+        'Animal Repellents': 'lawn-garden-weed-pest-control',
         'Fertilizer': 'lawn-garden-fertilizer',
-        'Gardening Tools & Supplies': 'lawn-garden-garden-tools',
+        'Gardening Tools & Supplies': 'lawn-garden-tools',
         'Grass Seed': 'lawn-garden-grass-seed',
-        'Pest Control': 'lawn-garden-pest-weed-control',
+        'Pest Control': 'lawn-garden-weed-pest-control',
         'Soils & Mulches': 'lawn-garden-soil-mulch-compost',
-        'Vegetable & Herb Seeds': 'lawn-garden-garden-seeds-plants',
-        'Weed Control': 'lawn-garden-pest-weed-control',
+        'Vegetable & Herb Seeds': 'lawn-garden-seeds-plants',
+        'Weed Control': 'lawn-garden-weed-pest-control',
         '*': 'lawn-garden',
     },
     'lawn & garden': {
-        'gardening tools & supplies': 'lawn-garden-garden-tools',
+        'gardening tools & supplies': 'lawn-garden-tools',
         'planters': 'lawn-garden-planters-supplies',
-        'seeds': 'lawn-garden-garden-seeds-plants',
+        'seeds': 'lawn-garden-seeds-plants',
         '*': 'lawn-garden',
     },
     'Reptile Food & Supplies': {
-        'Food': 'reptile-amphibian-food-treats',
+        'Food': 'reptile-amphibian-food',
         'Lamps': 'reptile-amphibian-heating-lighting',
         '*': 'reptile-amphibian',
     },
@@ -200,20 +200,20 @@ const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
         '*': 'small-pet',
     },
     'Wild Bird Food': {
-        'Food': 'wild-bird-wildlife-wild-bird-food',
-        'Seeds & Seed Mixes': 'wild-bird-wildlife-wild-bird-food',
+        'Food': 'wild-bird-wildlife-food',
+        'Seeds & Seed Mixes': 'wild-bird-wildlife-food',
         'Suet': 'wild-bird-wildlife-suet',
-        '*': 'wild-bird-wildlife-wild-bird-food',
+        '*': 'wild-bird-wildlife-food',
     },
     'Wild Bird Supplies': {
         'Bird Feeders': 'wild-bird-wildlife-feeders',
-        'Bird Houses': 'wild-bird-wildlife-bird-houses-nesting',
+        'Bird Houses': 'wild-bird-wildlife-houses-nesting',
         'Feeders': 'wild-bird-wildlife-feeders',
         '*': 'wild-bird-wildlife',
     },
     'Household': {
         'Cleaning': 'home-heating-cleaning-supplies',
-        'Heating': 'home-heating-heating-fuel',
+        'Heating': 'home-heating-fuel',
         'Pest Control': 'home-heating-pest-control',
         'Trash Bags': 'home-heating-storage-utility',
         '*': 'home-heating',
@@ -228,7 +228,7 @@ const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
         '*': 'farm-livestock',
     },
     'Household Supplies': {
-        'Heating': 'home-heating-heating-fuel',
+        'Heating': 'home-heating-fuel',
         '*': 'home-heating',
     },
     'Wildlife Food': {
@@ -244,8 +244,40 @@ const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
         '*': 'horse-grooming',
     },
     'outdoors': {
-        'hand warmers': 'home-heating-heating-fuel',
+        'hand warmers': 'home-heating-fuel',
         '*': 'home-heating',
+    },
+    'dog leashes, collars & harnesses': {
+        '*': 'dog-collars-leashes-harnesses',
+    },
+    'Dog Leashes, Collars & Harnesses': {
+        '*': 'dog-collars-leashes-harnesses',
+    },
+    'cat treats': {
+        '*': 'cat-treats',
+    },
+    'Cat Supples': {
+        'Toys': 'cat-toys',
+        '*': 'cat',
+    },
+    'cat leashes, collars, & harnesses': {
+        '*': 'cat-collars-harnesses',
+    },
+    'Seeds & Seed Starting': {
+        '*': 'lawn-garden-seeds-plants',
+    },
+    'Gardening Supplies': {
+        'Fertilizer': 'lawn-garden-fertilizer',
+        '*': 'lawn-garden',
+    },
+    'Lawn Care': {
+        '*': 'lawn-garden',
+    },
+    'pet tags': {
+        '*': 'dog-collars-leashes-harnesses',
+    },
+    'farm animal supplies': {
+        '*': 'farm-livestock',
     },
 };
 
