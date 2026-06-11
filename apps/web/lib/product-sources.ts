@@ -361,7 +361,7 @@ function collectImageCandidates(value: unknown, max: number): string[] {
 
         if (isRecord(entry)) {
             Object.entries(entry).forEach(([key, nestedEntry]) => {
-                if (isIgnoredDataKey(key)) {
+                if (isIgnoredDataKey(key) || key === 'source_results' || key === 'approved_sources') {
                     return;
                 }
                 visit(nestedEntry, [...keyPath, key], depth + 1);

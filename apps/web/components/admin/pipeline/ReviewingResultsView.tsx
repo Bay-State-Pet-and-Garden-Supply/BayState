@@ -278,6 +278,7 @@ export function ReviewingResultsView({
     {},
   );
   const draftsRef = useRef<Record<string, FinalizationDraft>>({});
+  const [selectedSourceByUpc, setSelectedSourceByUpc] = useState<Record<string, string>>({});
   const setDrafts = useCallback(
     (value: SetStateAction<Record<string, FinalizationDraft>>) => {
       if (typeof value !== "function") {
@@ -496,19 +497,10 @@ export function ReviewingResultsView({
 
     const sources = normalizeProductSourcesForReview(selectedProduct.sources || {});
 
-    // 1. AI Consolidated images
-    let consolidatedImages: string[] = [];
-    const consolidated = selectedProduct.consolidated || {};
-    if (Array.isArray(consolidated.media)) {
-      consolidatedImages = toFinalizationImageArray(consolidated.media.map((m: any) => m?.url));
-    } else {
-      consolidatedImages = toFinalizationImageArray(consolidated.images);
-    }
-
-    // 2. Metadata / Selected images (if any exist)
+    // 1. Metadata / Selected images (if any exist)
     const metadataSelectedImages = extractSelectedImageUrls(selectedProduct.selected_images);
 
-    // 3. Raw sources images
+    // 2. Raw sources images
     const rawOptions = Object.entries(sources).map(([sourceKey, sourcePayload]) => {
       const images = extractImageCandidatesFromSourcePayload(sourcePayload);
       return {
@@ -519,7 +511,6 @@ export function ReviewingResultsView({
     }).filter(s => s.images.length > 0);
 
     return [
-      ...(consolidatedImages.length > 0 ? [{ key: "consolidated", label: "AI Consolidated", images: consolidatedImages }] : []),
       ...(metadataSelectedImages.length > 0 ? [{ key: "metadata", label: "Current Storefront (Selected)", images: metadataSelectedImages }] : []),
       ...rawOptions,
     ];
@@ -541,9 +532,15 @@ export function ReviewingResultsView({
     return "custom";
   }, [formData.selectedImages, imageSourceOptions, selectedProduct]);
 
+  // Determine active select dropdown value (preferring manual selection if set)
+  const activeImageSource = useMemo(() => {
+    if (!selectedUpc) return "custom";
+    return selectedSourceByUpc[selectedUpc] || currentImageSource;
+  }, [selectedUpc, selectedSourceByUpc, currentImageSource]);
+
   const selectOptions = useMemo(() => {
     const opts = [...imageSourceOptions];
-    if (currentImageSource === "custom" && formData.selectedImages?.length > 0) {
+    if (activeImageSource === "custom" && formData.selectedImages?.length > 0) {
       opts.push({
         key: "custom",
         label: "Custom Selection (Modified)",
@@ -551,9 +548,12 @@ export function ReviewingResultsView({
       });
     }
     return opts;
-  }, [imageSourceOptions, currentImageSource, formData.selectedImages]);
+  }, [imageSourceOptions, activeImageSource, formData.selectedImages]);
 
   const handleImageSourceChange = (val: string) => {
+    if (selectedUpc) {
+      setSelectedSourceByUpc((prev) => ({ ...prev, [selectedUpc]: val }));
+    }
     const matched = imageSourceOptions.find((opt) => opt.key === val);
     if (matched) {
       handleInputChange("selectedImages", matched.images);
@@ -653,6 +653,8 @@ export function ReviewingResultsView({
       return;
     }
 
+    setSelectedSourceByUpc((prev) => ({ ...prev, [selectedUpc]: "custom" }));
+
     updateDraftForUpc(selectedUpc, (prev) => {
       const isSelected = prev.selectedImages.includes(url);
       if (isSelected) {
@@ -675,6 +677,8 @@ export function ReviewingResultsView({
       toast.error("Enter a valid image URL");
       return;
     }
+
+    setSelectedSourceByUpc((prev) => ({ ...prev, [selectedUpc]: "custom" }));
 
     if (!formData.selectedImages.includes(url)) {
       updateDraftForUpc(selectedUpc, (prev) => ({
@@ -1794,9 +1798,12 @@ export function ReviewingResultsView({
                     <ImageCarousel
                       selectedImages={formData.selectedImages}
                       onToggleImage={toggleImage}
-                      onReorderImages={(newImages) =>
-                        handleInputChange("selectedImages", newImages)
-                      }
+                      onReorderImages={(newImages) => {
+                        handleInputChange("selectedImages", newImages);
+                        if (selectedUpc) {
+                          setSelectedSourceByUpc((prev) => ({ ...prev, [selectedUpc]: "custom" }));
+                        }
+                      }}
                     />
 
                     {imageSourceOptions.length > 0 && (
@@ -1805,7 +1812,7 @@ export function ReviewingResultsView({
                           Import Images from Source
                         </label>
                         <Select
-                          value={currentImageSource}
+                          value={activeImageSource}
                           onValueChange={handleImageSourceChange}
                         >
                           <SelectTrigger className="w-full h-8 text-xs font-semibold rounded-none border border-border bg-card">
