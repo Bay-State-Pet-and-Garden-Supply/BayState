@@ -22,6 +22,7 @@ import { ProductTable } from "./ProductTable";
 import { ProcessedResultsView } from "./ProcessedResultsView";
 import { ActiveEnrichmentsTab } from "./ActiveEnrichmentsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
+import { NeedsAttentionView } from "./NeedsAttentionView";
 import { ReviewingResultsView } from "./ReviewingResultsView";
 import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ImportedResultsView } from "./ImportedResultsView";
@@ -51,10 +52,6 @@ import type {
 import { normalizePipelineStage, STAGE_CONFIG } from "@/lib/pipeline/types";
 import { adminFetch } from '@/lib/admin/api-client';
 
-const ScraperSelectDialog = dynamic(
-  () => import("./ScraperSelectDialog").then((mod) => mod.ScraperSelectDialog),
-  { ssr: false },
-);
 const CohortEditDialog = dynamic(
   () => import("./CohortEditDialog").then((mod) => mod.CohortEditDialog),
   { ssr: false },
@@ -118,7 +115,6 @@ export function PipelineClient({
   const [totalCount, setTotalCount] = useState(initialTotal);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isBulkAssignBrandOpen, setIsBulkAssignBrandOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
@@ -276,52 +272,6 @@ export function PipelineClient({
     return groupedProducts.brands[cohortId] || firstSelectedProduct.input?.brand || null;
   }, [selectedUpcs, products, groupedProducts.brands]);
 
-  const scrapeSelectionValidation = useMemo(() => {
-    if (
-      (currentStage !== "imported" && currentStage !== "processed") ||
-      selectedUpcs.size === 0
-    ) {
-      return { allowed: true, reason: null };
-    }
-
-    const selectedProducts = filteredProducts.filter((p) => selectedUpcs.has(p.upc));
-    const unreadyCohorts: string[] = [];
-    const missingUrlCohorts: string[] = [];
-
-    const selectedCohortIds = new Set(selectedProducts.map(p => p.cohort_id || "ungrouped"));
-
-    selectedCohortIds.forEach(cohortId => {
-      if (cohortId === "ungrouped") {
-        unreadyCohorts.push("Ungrouped Products");
-        return;
-      }
-
-      const brand = groupedProducts.brandObjects[cohortId];
-      const brandName = groupedProducts.brands[cohortId] || `Batch ${cohortId.slice(0, 8)}`;
-
-      if (!brand?.id) {
-        unreadyCohorts.push(brandName);
-      } else if (!brand.official_domains || brand.official_domains.length === 0) {
-        missingUrlCohorts.push(brandName);
-      }
-    });
-
-    if (unreadyCohorts.length > 0) {
-      return {
-        allowed: false,
-        reason: `Missing Brand: ${unreadyCohorts.join(", ")}`,
-      };
-    }
-
-    if (missingUrlCohorts.length > 0) {
-      return {
-        allowed: false,
-        reason: `Missing Brand Domains: ${missingUrlCohorts.join(", ")}`,
-      };
-    }
-
-    return { allowed: true, reason: null };
-  }, [currentStage, selectedUpcs, filteredProducts, groupedProducts.brandObjects, groupedProducts.brands]);
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
@@ -1025,12 +975,7 @@ export function PipelineClient({
         e.preventDefault();
         refreshAll();
       } else if (selectedUpcs.size > 0) {
-        if (e.key.toLowerCase() === "s" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          if (currentStage === "imported") {
-            e.preventDefault();
-            setIsScrapeDialogOpen(true);
-          }
-        } else if (e.key.toLowerCase() === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key.toLowerCase() === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (currentStage === "processed") {
             e.preventDefault();
             handleConsolidate(Array.from(selectedUpcs));
@@ -1133,47 +1078,7 @@ export function PipelineClient({
     }
   };
 
-  // Handle scrape dialog confirm — creates static scraper jobs only
-  const handleScrapeConfirm = async (scrapers: string[]) => {
-    const upcs = Array.from(selectedUpcs);
-    if (upcs.length === 0) return;
 
-    const isAdditionalScrape = currentStage === "processed";
-
-    try {
-      const res = await adminFetch("/api/admin/pipeline/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          upcs,
-          scrapers,
-          cohort_id: cohortIdFilter || undefined,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(
-          isAdditionalScrape
-            ? `Started additional scrape for ${upcs.length} product${upcs.length > 1 ? "s" : ""}`
-            : `Created scrape job for ${upcs.length} product${upcs.length > 1 ? "s" : ""} with ${scrapers.length} scraper${scrapers.length !== 1 ? "s" : ""}`,
-          {
-            description: `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`,
-          },
-        );
-
-        setIsScrapeDialogOpen(false);
-        setSelectedUpcs(new Set());
-        setSearch("");
-        handleStageChange("extracting");
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to create scrape jobs");
-      }
-    } catch {
-      toast.error("Failed to create scrape jobs");
-    }
-  };
 
   const stageConfig = STAGE_CONFIG[currentStage];
   const shellControlsBelongToRoute =
@@ -1359,10 +1264,6 @@ export function PipelineClient({
                   : undefined
               }
               isSearching={isSearching}
-              onOpenScrapeDialog={(upc) => {
-                setSelectedUpcs(new Set([upc]));
-                setIsScrapeDialogOpen(true);
-              }}
             />
           ) : currentStage === "reviewing" ? (
             <div data-testid="reviewing-results" className="contents">
@@ -1394,6 +1295,10 @@ export function PipelineClient({
                 isSearching={isSearching}
               />
             </div>
+          ) : currentStage === "needs_attention" ? (
+            <NeedsAttentionView
+              onRefresh={refreshAll}
+            />
           ) : currentStage === "imported" || hideTabs ? (
             <ImportedResultsView
               products={filteredProducts}
@@ -1642,17 +1547,10 @@ export function PipelineClient({
         )}
       </div>
 
-      {/* Scraper Selection Dialog */}
-      <ScraperSelectDialog
-        open={isScrapeDialogOpen}
-        onOpenChange={setIsScrapeDialogOpen}
-        selectedUpcCount={selectedUpcs.size}
-        onConfirm={handleScrapeConfirm}
-        brandName={selectedBrandName}
-      />
+
 
       {/* Floating Bulk Actions Bar */}
-      {!isLiveOperationalTab(currentStage) && currentStage !== "imported" && currentStage !== "publishing" && (
+      {!isLiveOperationalTab(currentStage) && currentStage !== "imported" && currentStage !== "publishing" && currentStage !== "needs_attention" && (
         <FloatingActionsBar
           selectedCount={selectedUpcs.size}
           totalCount={totalCount}
@@ -1664,10 +1562,7 @@ export function PipelineClient({
           onResetStage={handleResetStage}
           onConsolidate={() => handleConsolidate(Array.from(selectedUpcs))}
           consolidationInfo={consolidationConfig}
-          onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
-          scrapeSelectionValidation={scrapeSelectionValidation}
-
           onDelete={handleDelete}
           actionState={(currentStage as PipelineStage) === "publishing" ? exportActionState : null}
           onUploadShopSite={

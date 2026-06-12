@@ -585,6 +585,8 @@ export type Database = {
           official_domains: string[]
           preferred_domains: string[]
           slug: string
+          source_cascade_configured_at: string | null
+          source_cascade_configured_by: string | null
         }
         Insert: {
           created_at?: string | null
@@ -595,6 +597,8 @@ export type Database = {
           official_domains?: string[]
           preferred_domains?: string[]
           slug: string
+          source_cascade_configured_at?: string | null
+          source_cascade_configured_by?: string | null
         }
         Update: {
           created_at?: string | null
@@ -605,6 +609,8 @@ export type Database = {
           official_domains?: string[]
           preferred_domains?: string[]
           slug?: string
+          source_cascade_configured_at?: string | null
+          source_cascade_configured_by?: string | null
         }
         Relationships: []
       }
@@ -1041,6 +1047,80 @@ export type Database = {
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "enrichment_targets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrichment_source_attempts: {
+        Row: {
+          id: string
+          job_id: string
+          attempt_id: string | null
+          upc: string
+          brand_id: string | null
+          source_type: string
+          source_slug: string
+          display_name: string | null
+          priority: number
+          outcome: string
+          confidence: number | null
+          matched_fields: string[] | null
+          evidence_url: string | null
+          error_code: string | null
+          error_message: string | null
+          raw_result: Json | null
+          attempted_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          attempt_id?: string | null
+          upc: string
+          brand_id?: string | null
+          source_type: string
+          source_slug: string
+          display_name?: string | null
+          priority?: number
+          outcome: string
+          confidence?: number | null
+          matched_fields?: string[] | null
+          evidence_url?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          raw_result?: Json | null
+          attempted_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          attempt_id?: string | null
+          upc?: string
+          brand_id?: string | null
+          source_type?: string
+          source_slug?: string
+          display_name?: string | null
+          priority?: number
+          outcome?: string
+          confidence?: number | null
+          matched_fields?: string[] | null
+          evidence_url?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          raw_result?: Json | null
+          attempted_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_source_attempts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -5025,6 +5105,7 @@ export type Database = {
         | "merging"
         | "reviewing"
         | "publishing"
+        | "needs_attention"
         | "failed"
       pipeline_status_five_legacy:
         | "imported"
@@ -5227,6 +5308,7 @@ const Constants = {
         "merging",
         "reviewing",
         "publishing",
+        "needs_attention",
         "failed",
       ],
       pipeline_status_five_legacy: [

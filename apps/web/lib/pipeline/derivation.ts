@@ -14,6 +14,7 @@ export const WORKFLOW_PIPELINE_TABS = [
   'merging',
   'reviewing',
   'publishing',
+  'needs_attention',
   'failed',
 ] as const;
 
@@ -131,6 +132,8 @@ export function deriveTabFromProduct(
       return 'reviewing';
     case 'publishing':
       return 'publishing';
+    case 'needs_attention':
+      return 'needs_attention';
     case 'failed':
       return 'imported'; // failed products show in the first tab for retry
     default:

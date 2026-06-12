@@ -21,6 +21,7 @@ import {
     type DetailField,
     type FacetProfile,
 } from './category-domain';
+import { getCachedVocabularySync, validateFacetValue } from './facet-vocabulary';
 
 // =============================================================================
 // Types
@@ -1100,7 +1101,10 @@ function isSuspiciousPackageCount(value: string, name?: string): boolean {
  * @param input - The consolidated fields, raw sources, and input record
  * @returns The enrichment result with populated fields and gap report
  */
-export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
+export function enrichProductDetails(
+    input: EnrichmentInput,
+    vocabulary?: Map<string, string[]>
+): EnrichmentResult {
     const category = typeof input.consolidated.category === 'string'
         ? input.consolidated.category
         : typeof (input.consolidated.core as any)?.canonical_category_breadcrumb === 'string'
@@ -1143,15 +1147,20 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
 
     const productName = (input.consolidated.name as string) || (input.input.name as string) || '';
 
+    // Load vocabulary synchronously if cached and not passed explicitly
+    const activeVocabulary = vocabulary || getCachedVocabularySync() || new Map<string, string[]>();
+
     for (const field of applicableFields) {
         // Skip fields that already have a value in consolidated
         const existingValue = input.consolidated[field];
         if (typeof existingValue === 'string' && existingValue.trim().length > 0) {
-            if (field === 'package_count' && isSuspiciousPackageCount(existingValue, productName)) {
+            const validated = validateFacetValue(field, existingValue, activeVocabulary);
+            const finalValue = validated || existingValue.trim();
+            if (field === 'package_count' && isSuspiciousPackageCount(finalValue, productName)) {
                 missingFields.push(field);
                 continue;
             }
-            fields[field] = existingValue.trim();
+            fields[field] = finalValue;
             populatedFields.push(field);
             continue;
         }
@@ -1159,11 +1168,13 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
         // Also check input record for pre-existing values
         const inputValue = input.input[field];
         if (typeof inputValue === 'string' && inputValue.trim().length > 0) {
-            if (field === 'package_count' && isSuspiciousPackageCount(inputValue, productName)) {
+            const validated = validateFacetValue(field, inputValue, activeVocabulary);
+            const finalValue = validated || inputValue.trim();
+            if (field === 'package_count' && isSuspiciousPackageCount(finalValue, productName)) {
                 missingFields.push(field);
                 continue;
             }
-            fields[field] = inputValue.trim();
+            fields[field] = finalValue;
             populatedFields.push(field);
             continue;
         }
@@ -1176,11 +1187,13 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
 
         const extracted = extractor(input.sources, searchText);
         if (extracted) {
-            if (field === 'package_count' && isSuspiciousPackageCount(extracted, productName)) {
+            const validated = validateFacetValue(field, extracted, activeVocabulary);
+            const finalValue = validated || extracted;
+            if (field === 'package_count' && isSuspiciousPackageCount(finalValue, productName)) {
                 missingFields.push(field);
                 continue;
             }
-            fields[field] = extracted;
+            fields[field] = finalValue;
             populatedFields.push(field);
         } else {
             missingFields.push(field);

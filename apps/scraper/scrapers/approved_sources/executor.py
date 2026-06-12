@@ -57,17 +57,12 @@ class ApprovedSourceExecutor:
 
         upc = self.plan.upc
         logger.info(
-            "[Executor] Starting execution for UPC=%s with %d source(s)",
+            "[Executor] Starting cascade execution for UPC=%s with %d source(s)",
             upc,
             len(self.plan.priority),
         )
 
-        entries = sorted(
-            self.plan.priority,
-            key=lambda entry: (not entry.runFirst, entry.priority),
-        )
-
-        result = await self._try_source_entries(entries)
+        result = await self._try_source_entries(self.plan.priority)
 
         if result:
             result.requested_extraction_mode = self.plan.extractionMode
@@ -77,7 +72,7 @@ class ApprovedSourceExecutor:
                 return result
 
             error_message = "All sources failed"
-            if len(entries) == 0:
+            if len(self.plan.priority) == 0:
                 error_message = "No sources provided in the plan"
 
             return build_failed_result(
@@ -86,226 +81,105 @@ class ApprovedSourceExecutor:
                 requested_extraction_mode=self.plan.extractionMode,
             )
 
-        # Run OCR Vision processing if enabled in config
-        await self._run_ocr_if_enabled(result)
-
         return result
-
-    async def _run_ocr_if_enabled(self, result: EnrichmentResultV1) -> None:
-        """Run OCR on the best product image if enabled in job config."""
-        if not result or not result.product:
-            return
-
-        job_config = self.job_config or {}
-        ocr_config = job_config.get("ocr")
-        
-        # Check if OCR is enabled (default to True unless explicitly disabled)
-        ocr_enabled = True
-        ocr_model = "gpt-4o-mini"
-        ocr_prompt = None
-        ocr_max_tokens = 500
-
-        if ocr_config is not None:
-            if isinstance(ocr_config, bool):
-                ocr_enabled = ocr_config
-            elif isinstance(ocr_config, dict):
-                ocr_enabled = ocr_config.get("enabled", True)
-                ocr_model = ocr_config.get("model", ocr_model)
-                ocr_prompt = ocr_config.get("prompt", ocr_prompt)
-                ocr_max_tokens = ocr_config.get("max_tokens", ocr_max_tokens)
-
-        if not ocr_enabled:
-            logger.info("[Executor] OCR is disabled in job configuration.")
-            return
-
-        image_urls = result.product.image_urls
-        if not image_urls:
-            logger.info("[Executor] OCR enabled but no images found on product.")
-            return
-
-        # Select the best image
-        from src.ocr.image_selector import select_ocr_images
-        best_images = select_ocr_images(image_urls, max_images=1, upc=self.plan.upc)
-        if not best_images:
-            logger.info("[Executor] OCR enabled but no suitable image selected by heuristics.")
-            return
-
-        best_image = best_images[0]
-        logger.info("[Executor] Selected image for OCR: %s (UPC=%s)", best_image, self.plan.upc)
-
-        # Resolve credentials:
-        import os
-        credentials = self.ai_credentials or {}
-        
-        # 1. Prefer explicit openai_api_key from coordinator
-        api_key = credentials.get("openai_api_key")
-        base_url = None
-        
-        # 2. Check for process environment OPENAI_API_KEY
-        if not api_key:
-            api_key = os.getenv("OPENAI_API_KEY")
-            
-        # 3. Fallback to llm_api_key if the provider is openai or openai_compatible
-        if not api_key:
-            llm_provider = credentials.get("llm_provider")
-            if llm_provider in ("openai", "openai_compatible"):
-                api_key = credentials.get("llm_api_key")
-                base_url = credentials.get("llm_base_url")
-                
-        # 4. Fallback to default LLM_API_KEY if model/provider is openai
-        if not api_key:
-            if os.getenv("LLM_MODEL", "").startswith("gpt-"):
-                api_key = os.getenv("LLM_API_KEY")
-                base_url = os.getenv("LLM_BASE_URL")
-
-        # Run vision service
-        from src.ocr.vision_service import extract_text_from_image_urls
-        try:
-            ocr_text = await extract_text_from_image_urls(
-                [best_image],
-                api_key=api_key,
-                base_url=base_url,
-                model=ocr_model,
-                prompt=ocr_prompt,
-                max_tokens=ocr_max_tokens,
-            )
-            
-            if ocr_text:
-                # 1. Update the top-level product evidence
-                if result.product.evidence:
-                    result.product.evidence.image_text = ocr_text
-                else:
-                    from scrapers.ai_search.enrichment_models import EvidenceData
-                    result.product.evidence = EvidenceData(
-                        selected_images=[best_image],
-                        image_text=ocr_text,
-                    )
-
-                # 2. Update the source-specific product inside source_results
-                source_slug = result.source.source_slug
-                updated_source = False
-                for sr in (result.source_results or []):
-                    if not sr.product:
-                        continue
-
-                    # Match by source slug or if the image belongs to this source's media list
-                    is_match = (source_slug and sr.sourceSlug == source_slug) or \
-                               (best_image in [m.url for m in (sr.product.media or [])])
-
-                    if is_match:
-                        if sr.product.evidence:
-                            sr.product.evidence.image_text = ocr_text
-                        else:
-                            from scrapers.ai_search.enrichment_models import EvidenceData
-                            sr.product.evidence = EvidenceData(
-                                selected_images=[best_image],
-                                image_text=ocr_text,
-                            )
-                        logger.info(
-                            "[Executor] Copied OCR text to source result: %s (UPC=%s)",
-                            sr.sourceSlug,
-                            self.plan.upc,
-                        )
-                        updated_source = True
-
-                if not updated_source:
-                    logger.warning(
-                        "[Executor] Could not associate OCR text with any specific source in source_results for UPC=%s",
-                        self.plan.upc,
-                    )
-
-                logger.info(
-                    "[Executor] OCR extraction succeeded for UPC=%s (%d characters)",
-                    self.plan.upc,
-                    len(ocr_text),
-                )
-            else:
-                logger.warning("[Executor] OCR extraction returned empty result for UPC=%s", self.plan.upc)
-        except Exception as exc:
-            logger.error("[Executor] OCR extraction failed: %s", exc, exc_info=True)
 
     async def _try_source_entries(
         self,
         entries: list[ApprovedSourcePlanEntry],
     ) -> EnrichmentResultV1 | None:
-        """Try all entries in order and return the best combined result."""
-        from scrapers.approved_sources.result_builder import build_failed_result
+        """
+        Execute sources in cascade order.
 
+        Phase 1: Run ALL distributor entries (run all, keep all).
+        Phase 2: Classify outcomes — errors block SERP, success skips SERP.
+        Phase 3: Conditionally run non-distributor entries (SERP/official brand)
+                 only when ALL distributors were clean not_stocked.
+        """
         upc = self.plan.upc
+
+        # Separate distributors from other entries
+        distributor_entries = [
+            e for e in entries if e.sourceType == "distributor"
+        ]
+        other_entries = [
+            e for e in entries if e.sourceType != "distributor"
+        ]
+
+        # Sort each group by priority only (runFirst is no longer used)
+        distributor_entries.sort(key=lambda e: e.priority)
+        other_entries.sort(key=lambda e: e.priority)
+
         all_results: list[EnrichmentResultV1] = []
 
-        for entry in entries:
+        # ---- Phase 1: Execute ALL distributors ----
+        for entry in distributor_entries:
+            result = await self._execute_single_entry(entry)
+            if result:
+                result.requested_extraction_mode = self.plan.extractionMode
+                all_results.append(result)
+
+        # ---- Phase 2: Classify distributor outcomes ----
+        distributor_outcomes = self._collect_source_outcomes(all_results)
+        has_source_error = any(o == "source_error" for o in distributor_outcomes)
+        has_found = any(o == "found" for o in distributor_outcomes)
+
+        # ---- Phase 3: Conditionally run SERP/official brand ----
+        # SERP runs when:
+        #   - Distributors exist, all clean not_stocked, none found (standard cascade)
+        #   - No distributors in plan (run non-distributor entries directly)
+        run_serp = (
+            (not has_source_error and not has_found and len(distributor_entries) > 0)
+            or len(distributor_entries) == 0
+        )
+
+        if run_serp:
+            if len(distributor_entries) > 0:
+                logger.info(
+                    "[Executor] All distributors clean (not_stocked), "
+                    "running SERP/official brand fallback for UPC=%s",
+                    upc,
+                )
+            else:
+                logger.info(
+                    "[Executor] No distributors in plan, "
+                    "running non-distributor source(s) for UPC=%s",
+                    upc,
+                )
+            for entry in other_entries:
+                result = await self._execute_single_entry(entry)
+                if result:
+                    result.requested_extraction_mode = self.plan.extractionMode
+                    all_results.append(result)
+        elif other_entries:
+            reason = (
+                "source error" if has_source_error
+                else "product found" if has_found
+                else "no distributors in plan"
+            )
             logger.info(
-                "[Executor] Trying source: %s (%s, adapter=%s)",
-                entry.displayName,
-                entry.sourceSlug,
-                entry.adapterSlug,
+                "[Executor] Skipping %d non-distributor source(s) "
+                "due to %s for UPC=%s",
+                len(other_entries),
+                reason,
+                upc,
             )
 
-            if not self._entry_policy_allowed(entry):
-                logger.warning(
-                    "[Executor] Entry %s blocked by policy",
-                    entry.sourceSlug,
-                )
-                continue
-
-            adapter_cls = get_adapter_class(entry.adapterSlug)
-            if not adapter_cls:
-                logger.warning(
-                    "[Executor] No adapter for slug: %s",
-                    entry.adapterSlug,
-                )
-                continue
-
-            try:
-                adapter = adapter_cls(entry, self.plan)
-                adapter.ai_credentials = getattr(self, "ai_credentials", None)
-                result = await adapter.extract(self.extractor)
-            except Exception as exc:  # pragma: no cover - defensive logging branch
-                logger.error(
-                    "[Executor] Adapter %s failed with exception: %s",
-                    entry.sourceSlug,
-                    exc,
-                )
-                result = build_failed_result(
-                    upc=upc,
-                    source_slug=entry.sourceSlug,
-                    source_type=entry.sourceType,
-                    error_message=str(exc),
-                    requested_extraction_mode=self.plan.extractionMode,
-                )
-
-            if not result:
-                logger.info(
-                    "[Executor] Source %s returned no result",
-                    entry.sourceSlug,
-                )
-                result = build_failed_result(
-                    upc=upc,
-                    source_slug=entry.sourceSlug,
-                    source_type=entry.sourceType,
-                    error_message="No result returned from adapter",
-                    requested_extraction_mode=self.plan.extractionMode,
-                )
-
-            result.requested_extraction_mode = self.plan.extractionMode
-            all_results.append(result)
-
+        # ---- Phase 4: Combine all results ----
         if not all_results:
             return None
 
-        successes = [result for result in all_results if result.status == "success"]
-        partials = [result for result in all_results if result.status == "partial"]
+        successes = [r for r in all_results if r.status == "success"]
+        partials = [r for r in all_results if r.status == "partial"]
 
         if successes:
             best_result = max(
                 successes,
-                key=lambda result: result.confidence.overall if result.confidence else 0.0,
+                key=lambda r: r.confidence.overall if r.confidence else 0.0,
             )
         elif partials:
             best_result = max(
                 partials,
-                key=lambda result: result.confidence.overall if result.confidence else 0.0,
+                key=lambda r: r.confidence.overall if r.confidence else 0.0,
             )
         else:
             best_result = all_results[0]
@@ -323,10 +197,120 @@ class ApprovedSourceExecutor:
 
         best_result.source_results = combined_source_results
         best_result.attempts = combined_attempts
-        best_result.llm_used = any(bool(result.llm_used) for result in all_results)
+        best_result.llm_used = any(bool(r.llm_used) for r in all_results)
         best_result.requested_extraction_mode = self.plan.extractionMode
 
         return best_result
+
+    async def _execute_single_entry(
+        self,
+        entry: ApprovedSourcePlanEntry,
+    ) -> EnrichmentResultV1 | None:
+        """Execute a single plan entry and return the result."""
+        from scrapers.approved_sources.result_builder import build_failed_result
+
+        logger.info(
+            "[Executor] Trying source: %s (%s, adapter=%s)",
+            entry.displayName,
+            entry.sourceSlug,
+            entry.adapterSlug,
+        )
+
+        if not self._entry_policy_allowed(entry):
+            from scrapers.approved_sources.result_builder import build_policy_blocked_result
+            logger.warning(
+                "[Executor] Entry %s blocked by policy",
+                entry.sourceSlug,
+            )
+            return build_policy_blocked_result(
+                upc=self.plan.upc,
+                source_slug=entry.sourceSlug,
+                blocked_url=entry.domains[0] if entry.domains else "",
+                reason="Domain is not allowed by source policy",
+                requested_extraction_mode=self.plan.extractionMode,
+            )
+
+        adapter_cls = get_adapter_class(entry.adapterSlug)
+        if not adapter_cls:
+            logger.warning(
+                "[Executor] No adapter for slug: %s",
+                entry.adapterSlug,
+            )
+            return build_failed_result(
+                upc=self.plan.upc,
+                source_slug=entry.sourceSlug,
+                source_type=entry.sourceType,
+                error_message=f"No adapter found for slug: {entry.adapterSlug}",
+                requested_extraction_mode=self.plan.extractionMode,
+            )
+
+        try:
+            adapter = adapter_cls(entry, self.plan)
+            adapter.ai_credentials = getattr(self, "ai_credentials", None)
+            result = await adapter.extract(self.extractor)
+        except Exception as exc:
+            logger.error(
+                "[Executor] Adapter %s failed with exception: %s",
+                entry.sourceSlug,
+                exc,
+            )
+            result = build_failed_result(
+                upc=self.plan.upc,
+                source_slug=entry.sourceSlug,
+                source_type=entry.sourceType,
+                error_message=str(exc),
+                requested_extraction_mode=self.plan.extractionMode,
+            )
+
+        if not result:
+            logger.info(
+                "[Executor] Source %s returned no result",
+                entry.sourceSlug,
+            )
+            result = build_failed_result(
+                upc=self.plan.upc,
+                source_slug=entry.sourceSlug,
+                source_type=entry.sourceType,
+                error_message="No result returned from adapter",
+                requested_extraction_mode=self.plan.extractionMode,
+            )
+
+        result.requested_extraction_mode = self.plan.extractionMode
+        return result
+
+    def _collect_source_outcomes(
+        self,
+        results: list[EnrichmentResultV1],
+    ) -> list[str]:
+        """Collect source-level outcome classifications from results.
+
+        Falls back to inferring outcome from result status when
+        individual source_results don't have explicit outcome set.
+        """
+        outcomes: list[str] = []
+        for result in results:
+            if result.source_results:
+                for sr in result.source_results:
+                    if sr.outcome:
+                        outcomes.append(sr.outcome)
+                    else:
+                        # Infer from result status
+                        if result.status in ("success", "partial"):
+                            outcomes.append("found")
+                        elif result.status == "failed":
+                            # Check if this was a clean no-match vs error
+                            has_warnings = (
+                                result.validation
+                                and result.validation.warnings
+                            )
+                            is_no_match = any(
+                                "No match" in (w or "")
+                                for w in (has_warnings or [])
+                            )
+                            outcomes.append(
+                                "not_stocked" if is_no_match else "source_error"
+                            )
+        return outcomes
 
     def _entry_policy_allowed(self, entry: ApprovedSourcePlanEntry) -> bool:
         """Check if an entry is allowed by the source policy."""

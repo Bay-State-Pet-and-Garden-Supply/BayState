@@ -403,3 +403,115 @@ def test_fixture_with_empty_html() -> None:
     result = adapter.extract_from_html("", "001135", "https://fixture.local/product")
     assert result is not None
     assert not result.success
+
+
+# =============================================================================
+# Image URL normalization tests
+# =============================================================================
+
+
+def test_orgill_normalize_images_cleans_backslashes() -> None:
+    """Orgill normalize_images() should convert backslashes to forward slashes
+    before applying quality upgrades.
+    """
+    adapter_cls = get_adapter_class("orgill_crawl4ai")
+    assert adapter_cls is not None
+
+    plan = _make_minimal_plan(upc="755625321923")
+    entry = _make_entry("orgill_crawl4ai", "orgill")
+    adapter = adapter_cls(entry, plan)
+
+    urls = [
+        # Backslash corruption (the real bug)
+        "https://images1.orgill.com/web/10031\\7618085_thumb.jpg",
+        # Normal URL, no backslash
+        "https://images1.orgill.com/web/10031/7618085.jpg",
+        # Backslash + websmall combo
+        "https://images1.orgill.com/websmall/10031\\7618085.jpg",
+    ]
+
+    result = adapter.normalize_images(urls)
+
+    assert len(result) == 3, f"Expected 3 URLs, got {len(result)}"
+
+    # 1. Backslash should be forward slash, _thumb. stripped
+    assert "\\\\" not in result[0], f"Backslash still present: {result[0]}"
+    assert "/10031/7618085.jpg" in result[0], f"Expected cleaned path, got: {result[0]}"
+    assert "_thumb" not in result[0], f"_thumb should be removed: {result[0]}"
+
+    # 2. Normal URL unchanged (no backslash to clean)
+    assert result[1] == "https://images1.orgill.com/web/10031/7618085.jpg", \
+        f"Normal URL changed: {result[1]}"
+
+    # 3. Backslash + websmall → both fixed
+    assert "\\\\" not in result[2], f"Backslash still present in websmall URL: {result[2]}"
+    assert "/web/10031/7618085.jpg" in result[2], \
+        f"Expected websmall→web + backslash fix, got: {result[2]}"
+
+
+def test_base_normalize_images_cleans_backslashes() -> None:
+    """BaseDistributorCrawl4AIAdapter.normalize_images() should clean backslashes.
+    This is the safety net for adapters that don't override normalize_images().
+    """
+    from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapter
+    from scrapers.approved_sources.types import (
+        ApprovedSourceExtractionResult,
+        ApprovedSourcePlanEntry,
+        ApprovedSourcePlan,
+        ApprovedSourcePolicy,
+    )
+
+    class _BaseTestAdapter(BaseDistributorCrawl4AIAdapter):
+        """Minimal concrete subclass for testing base methods."""
+        adapter_slug = "test_base"
+        source_slug = "test"
+        source_type = "distributor"
+        base_url = "https://example.com"
+
+        def build_search_url(self, upc: str) -> str:
+            return f"https://example.com/search?q={upc}"
+
+        def extract_from_html(self, html: str, upc: str, url: str) -> ApprovedSourceExtractionResult:
+            return ApprovedSourceExtractionResult(
+                source_slug=self.source_slug,
+                source_type=self.source_type,
+            )
+
+        def get_login_config_class(self):
+            return None
+
+    plan = ApprovedSourcePlan(
+        upc="12345",
+        sourcePolicy=ApprovedSourcePolicy(
+            allowedDomains=["example.com"],
+            allowedAssetDomains=["example.com"],
+        ),
+    )
+    entry = ApprovedSourcePlanEntry(
+        sourceType="distributor",
+        sourceSlug="test",
+        displayName="Test",
+        adapterSlug="test_base",
+        requiresAuth=False,
+        searchMode="sku_search",
+    )
+    adapter = _BaseTestAdapter(entry, plan)
+
+    urls = [
+        "https://images.example.com/path\\subfolder\\image.jpg",
+        "https://images.example.com/clean/path/image.jpg",
+        "",
+    ]
+
+    result = adapter.normalize_images(urls)
+
+    # Backslash cleaned
+    assert "\\\\" not in result[0], f"Backslash still present: {result[0]}"
+    assert "/path/subfolder/image.jpg" in result[0], f"Backslash not fixed: {result[0]}"
+
+    # Clean URL stays clean
+    assert result[1] == "https://images.example.com/clean/path/image.jpg", \
+        f"Clean URL changed: {result[1]}"
+
+    # Empty string filtered out
+    assert len(result) == 2, f"Expected 2 URLs (empty filtered), got {len(result)}: {result}"

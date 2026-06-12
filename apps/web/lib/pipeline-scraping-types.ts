@@ -9,8 +9,6 @@ export interface ScrapeOptions {
     maxWorkers?: number;
     /** Run in test mode */
     testMode?: boolean;
-    /** Specific scrapers to use (empty = all) */
-    scrapers?: string[];
     maxRunners?: number;
     /** Maximum retry attempts before terminal failure (default: 3) */
     maxAttempts?: number;

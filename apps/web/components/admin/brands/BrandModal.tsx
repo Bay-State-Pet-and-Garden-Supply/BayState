@@ -16,6 +16,7 @@ import {
 } from '@/app/admin/brands/actions';
 import type { Brand } from '@/components/admin/brands/types';
 import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
+import { BrandSourceCascadeEditor } from './BrandSourceCascadeEditor';
 import {
     Dialog,
     DialogContent,
@@ -234,6 +235,22 @@ export function BrandModal({
                             </div>
                         </div>
                     </div>
+
+                    {/* Source Cascade Section — only for existing brands */}
+                    {brand && (
+                      <div className="p-4 border-2 border-border bg-muted shadow-sm">
+                        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                          <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 20h4" /><path d="M14 20h4" /><path d="M6 16l2-2" /><path d="M16 16l2-2" /><path d="M8 4l2 2" /><path d="M16 4l2 2" />
+                          </svg>
+                          Source Cascade
+                        </h3>
+                        <BrandSourceCascadeEditor
+                          brandId={brand.id}
+                          brandSlug={brand.slug}
+                        />
+                      </div>
+                    )}
 
                     <DialogFooter className="flex-col sm:flex-row gap-4 pt-6 border-t-2 border-border">
                         <div className="flex-1 text-[10px] font-semibold text-muted-foreground flex items-center">

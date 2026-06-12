@@ -16,7 +16,6 @@ describe("FloatingActionsBar", () => {
         onClearSelection={() => {}}
         onSelectAll={() => {}}
         onBulkAction={() => {}}
-        onOpenScrapeDialog={() => {}}
         onDelete={() => {}}
       />,
     );

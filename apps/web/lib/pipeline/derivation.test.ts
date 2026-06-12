@@ -96,6 +96,7 @@ describe("WORKFLOW_PIPELINE_TABS", () => {
       "merging",
       "reviewing",
       "publishing",
+      "needs_attention",
       "failed",
     ]);
   });

@@ -189,11 +189,6 @@ export function ImportedResultsView({
       // 2. Update the products batch
       const productResult = await updateProductsBatch(upcs, {
         brand_id: brand?.id || null,
-        enrichment_config: {
-          official_domains: brand?.official_domains || [],
-          // preserve existing enabled sources
-          enabled_sources: cohortProducts[0]?.enrichment_config?.enabled_sources || [],
-        },
       });
       if (!productResult.success) throw new Error(productResult.error);
 

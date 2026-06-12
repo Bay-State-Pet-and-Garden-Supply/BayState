@@ -178,6 +178,7 @@ describe("pipeline queries", () => {
       "merging",
       "reviewing",
       "publishing",
+      "needs_attention",
       "failed",
     ];
     const plans: QueryPlan[] = workflowTabs.map(status =>
@@ -197,6 +198,7 @@ describe("pipeline queries", () => {
       merging: "merging".length,
       reviewing: "reviewing".length,
       publishing: "publishing".length,
+      needs_attention: "needs_attention".length,
       failed: "failed".length,
     });
   });

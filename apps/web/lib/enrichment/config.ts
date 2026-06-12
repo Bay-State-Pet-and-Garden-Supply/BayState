@@ -13,8 +13,7 @@ import type {
   EnrichableField,
   SourceEnrichmentData 
 } from './types';
-import { validateEnrichmentConfig, ENRICHABLE_FIELDS } from './types';
-import { getAllSources } from './sources';
+import { ENRICHABLE_FIELDS } from './types';
 
 /**
  * Gets the enrichment config for a product.
@@ -34,122 +33,6 @@ async function getEnrichmentConfig(upc: string): Promise<EnrichmentConfig | null
   }
 
   return (data.enrichment_config as EnrichmentConfig) ?? {};
-}
-
-/**
- * Updates the enrichment config for a product.
- */
-async function updateEnrichmentConfig(
-  upc: string,
-  config: Partial<EnrichmentConfig>
-): Promise<{ success: boolean; error?: string }> {
-  // Validate the config
-  const fullConfig: EnrichmentConfig = {
-    ...config,
-    last_manual_edit: new Date().toISOString(),
-  };
-
-  const validation = validateEnrichmentConfig(fullConfig);
-  if (!validation.valid) {
-    return { success: false, error: validation.errors.join('; ') };
-  }
-
-  const supabase = await createClient();
-
-  // Get existing config and merge
-  const { data: existing } = await supabase
-    .from('products_ingestion')
-    .select('enrichment_config')
-    .eq('upc', upc)
-    .single();
-
-  const mergedConfig: EnrichmentConfig = {
-    ...(existing?.enrichment_config as EnrichmentConfig ?? {}),
-    ...fullConfig,
-  };
-
-  const { error } = await supabase
-    .from('products_ingestion')
-    .update({
-      enrichment_config: mergedConfig,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('upc', upc);
-
-  if (error) {
-    console.error('[Enrichment] Failed to update config:', error);
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
-}
-
-/**
- * Enables or disables specific sources for a product.
- */
-export async function toggleSourcesForProduct(
-  upc: string,
-  sourceIds: string[],
-  enabled: boolean
-): Promise<{ success: boolean; error?: string }> {
-  const currentConfig = await getEnrichmentConfig(upc);
-  const enabledSources = new Set(currentConfig?.enabled_sources ?? []);
-
-  // Get all available sources to determine the full list
-  const allSources = await getAllSources();
-  const allSourceIds = allSources.map((s) => s.id);
-
-  // If no enabled_sources set, start with all sources enabled
-  if (!currentConfig?.enabled_sources) {
-    allSourceIds.forEach((id) => enabledSources.add(id));
-  }
-
-  // Toggle the specified sources
-  for (const sourceId of sourceIds) {
-    if (enabled) {
-      enabledSources.add(sourceId);
-    } else {
-      enabledSources.delete(sourceId);
-    }
-  }
-
-  return updateEnrichmentConfig(upc, {
-    enabled_sources: Array.from(enabledSources),
-  });
-}
-
-/**
- * Sets the preferred source for a specific field.
- */
-export async function setFieldSourceOverride(
-  upc: string,
-  field: EnrichableField,
-  sourceId: string
-): Promise<{ success: boolean; error?: string }> {
-  const currentConfig = await getEnrichmentConfig(upc);
-
-  return updateEnrichmentConfig(upc, {
-    field_overrides: {
-      ...(currentConfig?.field_overrides ?? {}),
-      [field]: sourceId,
-    },
-  });
-}
-
-/**
- * Clears the source override for a specific field.
- */
-async function clearFieldSourceOverride(
-  upc: string,
-  field: EnrichableField
-): Promise<{ success: boolean; error?: string }> {
-  const currentConfig = await getEnrichmentConfig(upc);
-  const overrides = { ...(currentConfig?.field_overrides ?? {}) };
-  delete overrides[field];
-
-  return updateEnrichmentConfig(upc, {
-    field_overrides: overrides,
-  });
 }
 
 /**
@@ -255,7 +138,6 @@ function resolveEnrichmentData(
 ): Partial<Record<EnrichableField, { value: unknown; source: string }>> {
   const resolved: Partial<Record<EnrichableField, { value: unknown; source: string }>> = {};
   const allSources = scraperSources;
-  const enabledSources = config.enabled_sources;
 
   for (const field of ENRICHABLE_FIELDS) {
     // Check for explicit override
@@ -270,11 +152,6 @@ function resolveEnrichmentData(
 
     // Find first available source with data for this field
     for (const [sourceId, sourceData] of Object.entries(allSources)) {
-      // Skip disabled sources
-      if (enabledSources && !enabledSources.includes(sourceId)) {
-        continue;
-      }
-
       const fieldValue = sourceData.data[field];
       if (fieldValue !== undefined && fieldValue !== null) {
         resolved[field] = { value: fieldValue, source: sourceId };
@@ -284,27 +161,4 @@ function resolveEnrichmentData(
   }
 
   return resolved;
-}
-
-/**
- * Gets enrichment summaries for multiple products.
- */
-async function getProductEnrichmentSummaries(
-  upcs: string[]
-): Promise<Map<string, ProductEnrichmentSummary>> {
-  const results = new Map<string, ProductEnrichmentSummary>();
-
-  // Fetch in parallel for performance
-  const summaries = await Promise.all(
-    upcs.map((upc) => getProductEnrichmentSummary(upc))
-  );
-
-  for (let i = 0; i < upcs.length; i++) {
-    const summary = summaries[i];
-    if (summary) {
-      results.set(upcs[i], summary);
-    }
-  }
-
-  return results;
 }

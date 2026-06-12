@@ -23,17 +23,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient();
 
     const body = await request.json();
-    const {
-      upcs,
-      targetIds,
-      mode,
-      model,
-      config,
-      selectedDistributorSlug,
-      extractionMode: rawExtractionMode,
-    } = body;
-
-    const extractionMode = rawExtractionMode ?? "mixed";
+    const { upcs, retryMode } = body;
 
     if (!Array.isArray(upcs) || upcs.length === 0) {
       return NextResponse.json(
@@ -49,18 +39,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate extractionMode
-    const VALID_EXTRACTION_MODES = ["mixed", "distributor_only", "ai_only"];
-    if (!VALID_EXTRACTION_MODES.includes(extractionMode)) {
+    if (retryMode && retryMode !== "all" && retryMode !== "failed_or_untried") {
       return NextResponse.json(
-        {
-          error: `Invalid extractionMode "${extractionMode}". Must be one of: ${VALID_EXTRACTION_MODES.join(", ")}`,
-        },
+        { error: `Invalid retryMode "${retryMode}". Must be "all" or "failed_or_untried".` },
         { status: 400 }
       );
     }
 
-    // Validate UPCs exist with valid pipeline status
+    // Validate UPCs exist with valid pipeline status.
+    // Accept extracted, extracting, processed, and needs_attention for re-extraction.
     const { data: products, error: fetchError } = await supabase
       .from("products_ingestion")
       .select("upc, pipeline_status")
@@ -73,7 +60,9 @@ export async function POST(request: NextRequest) {
     const validUpcs = (products || [])
       .filter((p: { upc: string; pipeline_status: string }) =>
         p.pipeline_status === "imported" ||
-        p.pipeline_status === "extracting"
+        p.pipeline_status === "extracting" ||
+        p.pipeline_status === "processed" ||
+        p.pipeline_status === "needs_attention"
       )
       .map((p: { upc: string }) => p.upc);
 
@@ -81,195 +70,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "None of the selected UPCs are in Imported or Extracting status",
+            "None of the selected UPCs are in Imported, Extracting, Processed, or Needs Attention status",
         },
         { status: 400 }
       );
     }
 
     // ------------------------------------------------------------------
-    // Approved Source Extraction: build source plans if selectedDistributorSlug
-    // is provided, or if we detect approved-source mode.
+    // Always use Approved Source Extraction. Build source plans with
+    // optional retryMode for incremental re-extraction.
     // ------------------------------------------------------------------
-    const useApprovedSources =
-      config?.source_type === "approved_source_extraction" ||
-      selectedDistributorSlug !== undefined;
+    const plans = await buildApprovedSourcePlans(
+      supabase,
+      validUpcs,
+      { retryMode },
+    );
 
-    let sourcePlansByUpc: Record<string, unknown> | undefined;
+    const sourcePlansByUpc: Record<string, unknown> = {};
     const skippedUpcs: string[] = [];
-    let brandedUpcs: string[] = [...validUpcs];
 
-    if (useApprovedSources) {
-      const plans = await buildApprovedSourcePlans(
-        supabase,
-        validUpcs,
-        {
-          selectedDistributorSlug,
-          extractionMode,
-        },
-      );
-
-      sourcePlansByUpc = {};
-      const requiredCredentialSlugs = new Set<string>();
-
-      for (const [upc, result] of Object.entries(plans)) {
-        if (result.ok) {
-          sourcePlansByUpc[upc] = result.plan;
-          
-          // Collect required credentials from the plan priority list
-          const plan = result.plan as any;
-          if (plan.priority && Array.isArray(plan.priority)) {
-            for (const entry of plan.priority) {
-              if (entry.requiresAuth) {
-                const credRef = entry.credentialRef || entry.sourceSlug;
-                if (credRef) {
-                  requiredCredentialSlugs.add(credRef);
-                }
-              }
-            }
-          }
-        } else {
-          skippedUpcs.push(upc);
-        }
-      }
-
-      brandedUpcs = Object.keys(sourcePlansByUpc);
-
-        // Branded UPCs length check moved down to after source plan building
-        if (brandedUpcs.length === 0) {
-          const errorMessages = new Set<string>();
-        for (const [upc, result] of Object.entries(plans)) {
-          if (!result.ok && result.error) {
-            errorMessages.add(result.error);
-          }
-        }
-        const detailedError = errorMessages.size > 0
-          ? Array.from(errorMessages).join("; ")
-          : "None of the selected UPCs have an assigned brand. Assign a brand before starting approved source extraction.";
-
-        return NextResponse.json(
-          {
-            error: detailedError,
-            skipped_upcs: skippedUpcs,
-          },
-          { status: 400 }
-        );
-      }
-
-      // Check if credentials are set for all required sources
-      if (requiredCredentialSlugs.size > 0) {
-        const slugs = Array.from(requiredCredentialSlugs);
-        const { data: dbCreds, error: dbCredsError } = await supabase
-          .from("scraper_credentials")
-          .select("scraper_slug, credential_type")
-          .in("scraper_slug", slugs);
-
-        if (dbCredsError) {
-          return NextResponse.json(
-            { error: `Database error checking credentials: ${dbCredsError.message}` },
-            { status: 500 }
-          );
-        }
-
-        const missingMap: Record<string, string[]> = {};
-        for (const slug of slugs) {
-          const matchingCreds = (dbCreds || []).filter(
-            (c: { scraper_slug: string }) => c.scraper_slug === slug
-          );
-          
-          const hasLogin = matchingCreds.some(
-            (c: { credential_type: string }) => c.credential_type === "login"
-          );
-          const hasPassword = matchingCreds.some(
-            (c: { credential_type: string }) => c.credential_type === "password"
-          );
-          
-          const missingTypes: string[] = [];
-          if (!hasLogin) missingTypes.push("Username");
-          if (!hasPassword) missingTypes.push("Password");
-          
-          if (missingTypes.length > 0) {
-            missingMap[slug] = missingTypes;
-          }
-        }
-
-        if (Object.keys(missingMap).length > 0) {
-          const friendlyNames: Record<string, string> = {
-            phillips: "Phillips Pet",
-            orgill: "Orgill",
-            petfoodex: "Pet Food Experts",
-          };
-          
-          const errorDetails = Object.entries(missingMap)
-            .map(([slug, missing]) => {
-              const name = friendlyNames[slug] || slug;
-              return `${name} (missing: ${missing.join(" and ")})`;
-            })
-            .join(", ");
-
-          return NextResponse.json(
-            {
-              error: `Scrape cannot be started. Credentials are not configured in Settings for: ${errorDetails}. Please go to Settings to configure them before starting a scrape.`,
-            },
-            { status: 400 }
-          );
-        }
-      }
-    }
-
-    // Resolve targets for non-approved-source path
-    const targetMap: Record<string, string | null> = {};
-
-    if (!useApprovedSources) {
-      if (Array.isArray(targetIds) && targetIds.length > 0) {
-        const { data: targets } = await supabase
-          .from("enrichment_targets")
-          .select("upc, url")
-          .in("id", targetIds)
-          .in("upc", brandedUpcs);
-
-        if (targets) {
-          for (const t of targets) {
-            targetMap[t.upc] = t.url;
-          }
-        }
+    for (const [upc, result] of Object.entries(plans)) {
+      if (result.ok) {
+        sourcePlansByUpc[upc] = result.plan;
       } else {
-        // Use selected targets
-        const { data: selectedTargets } = await supabase
-          .from("enrichment_targets")
-          .select("upc, url")
-          .in("upc", brandedUpcs)
-          .eq("selected", true)
-          .eq("status", "selected");
-
-        if (selectedTargets) {
-          for (const t of selectedTargets) {
-            targetMap[t.upc] = t.url;
-          }
-        }
-
-        // For UPCs without a selected target, mark them as needing URL review
-        const upcsWithoutTargets = brandedUpcs.filter(
-          (upc: string) => !targetMap[upc],
-        );
-        if (upcsWithoutTargets.length > 0) {
-          for (const upc of upcsWithoutTargets) {
-            targetMap[upc] = null;
-          }
-        }
+        skippedUpcs.push(upc);
       }
     }
 
-    // Build job config with optional source plans
-    const jobConfig: Record<string, unknown> = config ?? {};
-    if (sourcePlansByUpc && Object.keys(sourcePlansByUpc).length > 0) {
-      jobConfig.source_plans_by_upc = sourcePlansByUpc;
-      jobConfig.source_type = "approved_source_extraction";
-      jobConfig.extraction_mode = extractionMode;
+    const brandedUpcs = Object.keys(sourcePlansByUpc);
+
+    if (brandedUpcs.length === 0) {
+      const errorMessages = new Set<string>();
+      for (const result of Object.values(plans)) {
+        if (!result.ok && result.error) {
+          errorMessages.add(result.error);
+        }
+      }
+      const detailedError = errorMessages.size > 0
+        ? Array.from(errorMessages).join("; ")
+        : "None of the selected UPCs have an assigned brand with a configured source cascade. Configure brand sources in brand settings before extraction.";
+
+      return NextResponse.json(
+        {
+          error: detailedError,
+          skipped_upcs: skippedUpcs,
+        },
+        { status: 400 }
+      );
     }
-    if (!jobConfig.ocr) {
-      jobConfig.ocr = { enabled: true };
-    }
+
+    // Credential preflight removed — the runner emits source_error outcomes
+    // for missing or expired credentials, which route to Needs Attention.
+
+    // Build job config with source plans
+    const jobConfig: Record<string, unknown> = {
+      source_plans_by_upc: sourcePlansByUpc,
+      source_type: "approved_source_extraction",
+      cascade_version: "v1",
+      serp_fallback_policy: "run_when_all_distributors_clean_not_stocked",
+    };
 
     // Resolve the active AI runtime once at enqueue time so the job model
     // and config trace match the profile that will be used by the runner.
@@ -277,8 +136,8 @@ export async function POST(request: NextRequest) {
     const aiConfigId = aiRuntimeCreds.config_id ?? null;
 
     // Create enrichment_jobs row
-    const jobMode = mode ?? extractionMode ?? "mixed";
-    const jobModel = jobMode === "distributor_only" ? null : (model ?? aiRuntimeCreds.llm_model);
+    const jobMode = "mixed";
+    const jobModel = aiRuntimeCreds.llm_model;
 
     const { data: job, error: jobError } = await supabase
       .from("enrichment_jobs")
@@ -312,7 +171,6 @@ export async function POST(request: NextRequest) {
       status: "queued",
       mode: jobMode,
       model: jobModel,
-      source_url: useApprovedSources ? null : targetMap[upc],
       config_id: aiConfigId,
     }));
 
@@ -329,18 +187,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Transition products to extracting
-    const { error: updateError } = await supabase
-      .from("products_ingestion")
-      .update({
-        pipeline_status: "extracting",
-        updated_at: new Date().toISOString(),
-      })
-      .in("upc", brandedUpcs);
+    // Transition products to extracting (or keep processed/needs_attention
+    // for re-extraction — the callback finalizes the status)
+    const transitioningUpcs = brandedUpcs.filter((upc) => {
+      const product = products?.find((p) => p.upc === upc);
+      return product?.pipeline_status === "imported";
+    });
 
-    if (updateError) {
-      console.error("Failed to update product statuses:", updateError);
-      // Non-fatal: enrichment job still created
+    if (transitioningUpcs.length > 0) {
+      const { error: updateError } = await supabase
+        .from("products_ingestion")
+        .update({
+          pipeline_status: "extracting",
+          updated_at: new Date().toISOString(),
+        })
+        .in("upc", transitioningUpcs);
+
+      if (updateError) {
+        console.error("Failed to update product statuses:", updateError);
+      }
     }
 
     return NextResponse.json({

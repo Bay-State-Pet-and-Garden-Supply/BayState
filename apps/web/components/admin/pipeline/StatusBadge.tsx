@@ -37,6 +37,7 @@ const statusConfig: Record<
   merging: { variant: "warning", icon: Sparkles },
   reviewing: { variant: "warning", icon: CheckCircle2 },
   publishing: { variant: "success", icon: Globe },
+  needs_attention: { variant: "warning", icon: AlertCircle },
   failed: { variant: "destructive", icon: AlertCircle },
 };
 

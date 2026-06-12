@@ -11,6 +11,8 @@ export interface Brand {
   description?: string | null;
   official_domains?: string[];
   preferred_domains?: string[];
+  source_cascade_configured_at?: string | null;
+  source_cascade_configured_by?: string | null;
   created_at?: string;
 }
 

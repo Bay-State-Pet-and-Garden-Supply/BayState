@@ -31,9 +31,9 @@ TEST_SKUS = {
         "brand": "KONG",
     },
     "orgill": {
-        "upc": "037193347322",
-        "name": "Premium Chicken Feed",
-        "brand": "Purina",
+        "upc": "755625321923",
+        "name": "Landscapers Select 34609 PCL-P Shovel, 16 ga, Hardwood Handle, 45 in L Handle",
+        "brand": "LANDSCAPERS SELECT",
     },
     "phillips": {
         "upc": "072705115310",

@@ -11,7 +11,8 @@ import type { PersistedPipelineStatus } from './types';
  * State machine:
  *   awaiting_brand → imported, failed
  *   imported → extracting, failed
- *   extracting → processed, failed
+ *   extracting → processed, needs_attention, imported, failed
+ *   needs_attention → imported, extracting, processed, failed
  *   processed → merging, reviewing, imported, failed
  *   merging → reviewing, processed, failed
  *   reviewing → publishing, processed, failed
@@ -24,8 +25,9 @@ export const STATUS_TRANSITIONS: Record<
 > = {
   awaiting_brand: ['imported', 'failed'],
   imported: ['extracting', 'awaiting_brand', 'failed'],
-  extracting: ['processed', 'imported', 'failed'],
-  processed: ['merging', 'reviewing', 'imported', 'failed'],
+  extracting: ['processed', 'needs_attention', 'imported', 'failed'],
+  needs_attention: ['imported', 'extracting', 'processed', 'failed'],
+  processed: ['extracting', 'merging', 'reviewing', 'imported', 'failed'],
   merging: ['reviewing', 'processed', 'failed'],
   reviewing: ['publishing', 'processed', 'failed'],
   publishing: ['reviewing', 'failed'],

@@ -62,7 +62,7 @@ const { createAdminClient } = require('@/lib/supabase/server');
 const { buildApprovedSourcePlans } = require('@/lib/approved-sources/source-plan');
 const { getAIScrapingRuntimeCredentials } = require('@/lib/ai-scraping/credentials');
 
-describe('/api/admin/enrichment/jobs route', () => {
+describe('/api/admin/enrichment/jobs route — automated cascade', () => {
     let mockSupabase: any;
 
     beforeEach(() => {
@@ -89,152 +89,279 @@ describe('/api/admin/enrichment/jobs route', () => {
         (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
+    // ===========================================================================
+    // Validation
+    // ===========================================================================
+
     it('rejects requests with empty UPCs array', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
-                body: JSON.stringify({
-                    upcs: [],
-                }),
+                body: JSON.stringify({ upcs: [] }),
             } as any),
         );
         const payload = await response.json();
-
         expect(response.status).toBe(400);
         expect(payload).toEqual({
             error: 'upcs array is required and must not be empty',
         });
     });
 
-    it('rejects approved source extraction if no products found in imported/extracting status', async () => {
-        // Mock products_ingestion search to return empty array
+    it('rejects requests without upcs field', async () => {
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({}),
+            } as any),
+        );
+        const payload = await response.json();
+        expect(response.status).toBe(400);
+        expect(payload).toEqual({
+            error: 'upcs array is required and must not be empty',
+        });
+    });
+
+    it('rejects invalid retryMode', async () => {
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({
+                    upcs: ['UPC-1'],
+                    retryMode: 'invalid_mode',
+                }),
+            } as any),
+        );
+        const payload = await response.json();
+        expect(response.status).toBe(400);
+        expect(payload.error).toContain('Invalid retryMode');
+    });
+
+    it('accepts retryMode "all"', async () => {
+        // Products query returns empty — we only test that validation passes
         mockSupabase.in.mockResolvedValue({ data: [], error: null });
 
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
                     upcs: ['UPC-1'],
-                    config: {
-                        source_type: 'approved_source_extraction',
-                    },
+                    retryMode: 'all',
                 }),
             } as any),
         );
         const payload = await response.json();
-
+        // Should reach the "no valid UPCs" check, not the retryMode validation
         expect(response.status).toBe(400);
-        expect(payload).toEqual({
-            error: 'None of the selected UPCs are in Imported or Extracting status',
-        });
+        expect(payload.error).toContain('None of the selected UPCs are in Imported, Extracting, Processed, or Needs Attention status');
     });
 
-    it('rejects approved source extraction if required credentials are not configured', async () => {
-        // 1. Mock products_ingestion search to find UPC
-        mockSupabase.in.mockResolvedValueOnce({
-            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
-            error: null,
-        });
-
-        // 2. Mock source plan building to return a plan requiring auth for phillips
-        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'UPC-1': {
-                ok: true,
-                plan: {
-                    upc: 'UPC-1',
-                    priority: [
-                        {
-                            sourceType: 'distributor',
-                            sourceSlug: 'phillips',
-                            requiresAuth: true,
-                            credentialRef: 'phillips',
-                        },
-                    ],
-                },
-            },
-        });
-
-        // 3. Mock scraper_credentials query to return empty (missing credentials)
-        mockSupabase.in.mockResolvedValueOnce({
-            data: [],
-            error: null,
-        });
+    it('accepts retryMode "failed_or_untried"', async () => {
+        mockSupabase.in.mockResolvedValue({ data: [], error: null });
 
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
                     upcs: ['UPC-1'],
-                    config: {
-                        source_type: 'approved_source_extraction',
-                    },
+                    retryMode: 'failed_or_untried',
                 }),
             } as any),
         );
         const payload = await response.json();
-
         expect(response.status).toBe(400);
-        expect(payload.error).toContain('Scrape cannot be started. Credentials are not configured in Settings for: Phillips Pet (missing: Username and Password)');
+        expect(payload.error).toContain('None of the selected UPCs are in Imported');
     });
 
-    it('succeeds and creates enrichment job when credentials are configured', async () => {
-        // 1. Mock products_ingestion search to find UPC
+    // ===========================================================================
+    // Pipeline status filtering
+    // ===========================================================================
+
+    it('accepts imported products', async () => {
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' as string }],
             error: null,
         });
 
-        // 2. Mock source plan building to return a plan requiring auth for phillips
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'UPC-1': { ok: true, plan: { upc: 'UPC-1', brand: { id: 'brand-1', name: 'Test', slug: 'test' }, priority: [] } },
+        });
+
+        mockSupabase.insert = jest.fn().mockImplementation((arg: any) => {
+            if (Array.isArray(arg)) return Promise.resolve({ error: null });
+            return mockSupabase;
+        });
+        mockSupabase.single.mockResolvedValue({ data: { id: 'job-1' }, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ error: null });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
+            } as any),
+        );
+        expect(response.status).toBe(200);
+    });
+
+    it('accepts processed products (re-extraction)', async () => {
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ upc: 'UPC-1', pipeline_status: 'processed' as string }],
+            error: null,
+        });
+
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'UPC-1': { ok: true, plan: { upc: 'UPC-1', brand: { id: 'brand-1', name: 'Test', slug: 'test' }, priority: [] } },
+        });
+
+        mockSupabase.insert = jest.fn().mockImplementation((arg: any) => {
+            if (Array.isArray(arg)) return Promise.resolve({ error: null });
+            return mockSupabase;
+        });
+        mockSupabase.single.mockResolvedValue({ data: { id: 'job-1' }, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ error: null });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
+            } as any),
+        );
+        expect(response.status).toBe(200);
+    });
+
+    it('accepts needs_attention products (re-extraction)', async () => {
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ upc: 'UPC-1', pipeline_status: 'needs_attention' as string }],
+            error: null,
+        });
+
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'UPC-1': { ok: true, plan: { upc: 'UPC-1', brand: { id: 'brand-1', name: 'Test', slug: 'test' }, priority: [] } },
+        });
+
+        mockSupabase.insert = jest.fn().mockImplementation((arg: any) => {
+            if (Array.isArray(arg)) return Promise.resolve({ error: null });
+            return mockSupabase;
+        });
+        mockSupabase.single.mockResolvedValue({ data: { id: 'job-1' }, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ error: null });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
+            } as any),
+        );
+        expect(response.status).toBe(200);
+    });
+
+    it('rejects products in failed status', async () => {
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ upc: 'UPC-1', pipeline_status: 'failed' as string }],
+            error: null,
+        });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
+            } as any),
+        );
+        const payload = await response.json();
+        expect(response.status).toBe(400);
+        expect(payload.error).toContain('None of the selected UPCs are in Imported');
+    });
+
+    // ===========================================================================
+    // Source plan building
+    // ===========================================================================
+
+    it('rejects when no source plans can be built (unconfigured cascade)', async () => {
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' as string }],
+            error: null,
+        });
+
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
             'UPC-1': {
-                ok: true,
-                plan: {
-                    upc: 'UPC-1',
-                    priority: [
-                        {
-                            sourceType: 'distributor',
-                            sourceSlug: 'phillips',
-                            requiresAuth: true,
-                            credentialRef: 'phillips',
-                        },
-                    ],
-                },
+                ok: false,
+                upc: 'UPC-1',
+                error: 'Source cascade not configured for brand "TestBrand" (testbrand). Configure distributor priorities in brand settings before extraction.',
+                code: 'source_cascade_not_configured',
             },
         });
 
-        // 3. Mock scraper_credentials query to return both credentials configured
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
+            } as any),
+        );
+        const payload = await response.json();
+        expect(response.status).toBe(400);
+        expect(payload.error).toContain('Source cascade not configured');
+    });
+
+    it('rejects when all plans fail with mixed errors', async () => {
         mockSupabase.in.mockResolvedValueOnce({
             data: [
-                { scraper_slug: 'phillips', credential_type: 'login' },
-                { scraper_slug: 'phillips', credential_type: 'password' },
+                { upc: 'UPC-1', pipeline_status: 'imported' as string },
+                { upc: 'UPC-2', pipeline_status: 'imported' as string },
             ],
             error: null,
         });
 
-        // 4. Mock enrichment_jobs insert to return mockSupabase for chaining,
-        // and mock enrichment_attempts insert to return resolved promise.
-        mockSupabase.insert = jest.fn().mockImplementation((arg) => {
-            if (Array.isArray(arg)) {
-                return Promise.resolve({ error: null });
-            }
-            return mockSupabase;
-        });
-
-        mockSupabase.single.mockResolvedValue({
-            data: { id: 'job-1' },
-            error: null,
-        });
-
-        // 6. Mock products_ingestion status transition update
-        mockSupabase.in.mockResolvedValueOnce({
-            error: null,
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'UPC-1': {
+                ok: false,
+                upc: 'UPC-1',
+                error: 'Product has no assigned brand. Assign a brand before extraction.',
+                code: 'missing_brand',
+            },
+            'UPC-2': {
+                ok: false,
+                upc: 'UPC-2',
+                error: 'Source cascade not configured for brand "TestBrand" (testbrand).',
+                code: 'source_cascade_not_configured',
+            },
         });
 
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    config: {
-                        source_type: 'approved_source_extraction',
-                    },
-                }),
+                body: JSON.stringify({ upcs: ['UPC-1', 'UPC-2'] }),
+            } as any),
+        );
+        const payload = await response.json();
+        expect(response.status).toBe(400);
+        expect(payload.error).toContain('has no assigned brand');
+    });
+
+    // ===========================================================================
+    // Successful job creation
+    // ===========================================================================
+
+    it('creates enrichment job and attempts successfully', async () => {
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' as string }],
+            error: null,
+        });
+
+        const mockPlan = {
+            upc: 'UPC-1',
+            brand: { id: 'brand-1', name: 'TestBrand', slug: 'testbrand' },
+            input: { name: 'Test', price: 10 },
+            priority: [
+                { sourceType: 'distributor', sourceSlug: 'phillips', domains: ['phillips.com'], runFirst: false, priority: 10 },
+            ],
+            sourcePolicy: { allowedDomains: ['phillips.com'], allowedAssetDomains: [], disallowedDomains: [], approvedSourcesOnly: true },
+            extractionMode: 'mixed',
+            selectedDistributorSlug: null,
+            schemaVersion: 'v1',
+        };
+
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'UPC-1': { ok: true, plan: mockPlan },
+        });
+
+        mockSupabase.insert = jest.fn().mockImplementation((arg: any) => {
+            if (Array.isArray(arg)) return Promise.resolve({ error: null });
+            return mockSupabase;
+        });
+        mockSupabase.single.mockResolvedValue({ data: { id: 'job-1' }, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ error: null });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
             } as any),
         );
         const payload = await response.json();
@@ -246,162 +373,133 @@ describe('/api/admin/enrichment/jobs route', () => {
             upcCount: 1,
             attemptCount: 1,
         });
+
+        // Verify job was created with cascade config, not old fields
         expect(mockSupabase.insert).toHaveBeenCalledWith(
             expect.objectContaining({
+                mode: 'mixed',
                 config_id: 'config-1',
                 model: 'deepseek-chat',
             }),
         );
-        expect(mockSupabase.insert).not.toHaveBeenCalledWith(
-            expect.objectContaining({ ai_credentials: expect.anything() }),
+
+        // Verify job config has cascade fields
+        const jobInsertCall = mockSupabase.insert.mock.calls.find(
+            (args: any[]) => !Array.isArray(args[0])
         );
+        if (jobInsertCall) {
+            const jobConfig = jobInsertCall[0].config;
+            expect(jobConfig.source_type).toBe('approved_source_extraction');
+            expect(jobConfig.cascade_version).toBe('v1');
+        }
     });
 
-    it('sets model to null when extractionMode is distributor_only', async () => {
-        // 1. Mock products_ingestion search to find UPC
+    it('forwards retryMode to buildApprovedSourcePlans', async () => {
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' as string }],
             error: null,
         });
 
-        // 2. Mock source plan building
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'UPC-1': { ok: true, plan: { upc: 'UPC-1', brand: { id: 'brand-1', name: 'Test', slug: 'test' }, priority: [] } },
+        });
+
+        mockSupabase.insert = jest.fn().mockImplementation((arg: any) => {
+            if (Array.isArray(arg)) return Promise.resolve({ error: null });
+            return mockSupabase;
+        });
+        mockSupabase.single.mockResolvedValue({ data: { id: 'job-1' }, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ error: null });
+
+        await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({
+                    upcs: ['UPC-1'],
+                    retryMode: 'failed_or_untried',
+                }),
+            } as any),
+        );
+
+        expect(buildApprovedSourcePlans).toHaveBeenCalledWith(
+            expect.anything(),
+            ['UPC-1'],
+            { retryMode: 'failed_or_untried' },
+        );
+    });
+
+    // ===========================================================================
+    // Deprecated fields are ignored (not rejected)
+    // ===========================================================================
+
+    it('ignores deprecated extractionMode field', async () => {
+        // Should not error — just ignore the field
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' as string }],
+            error: null,
+        });
+
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'UPC-1': { ok: true, plan: { upc: 'UPC-1', brand: { id: 'brand-1', name: 'Test', slug: 'test' }, priority: [] } },
+        });
+
+        mockSupabase.insert = jest.fn().mockImplementation((arg: any) => {
+            if (Array.isArray(arg)) return Promise.resolve({ error: null });
+            return mockSupabase;
+        });
+        mockSupabase.single.mockResolvedValue({ data: { id: 'job-1' }, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ error: null });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({
+                    upcs: ['UPC-1'],
+                    extractionMode: 'distributor_only',
+                    selectedDistributorSlug: 'phillips',
+                }),
+            } as any),
+        );
+        expect(response.status).toBe(200);
+    });
+
+    // ===========================================================================
+    // No credential preflight
+    // ===========================================================================
+
+    it('does not check credentials before creating the job', async () => {
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' as string }],
+            error: null,
+        });
+
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
             'UPC-1': {
                 ok: true,
                 plan: {
                     upc: 'UPC-1',
-                    priority: [
-                        {
-                            sourceType: 'distributor',
-                            sourceSlug: 'phillips',
-                            requiresAuth: true,
-                            credentialRef: 'phillips',
-                        },
-                    ],
+                    priority: [{ requiresAuth: true, credentialRef: 'phillips' }],
                 },
             },
         });
 
-        // 3. Mock scraper_credentials query
-        mockSupabase.in.mockResolvedValueOnce({
-            data: [
-                { scraper_slug: 'phillips', credential_type: 'login' },
-                { scraper_slug: 'phillips', credential_type: 'password' },
-            ],
-            error: null,
-        });
-
-        mockSupabase.insert = jest.fn().mockImplementation((arg) => {
-            if (Array.isArray(arg)) {
-                return Promise.resolve({ error: null });
-            }
+        mockSupabase.insert = jest.fn().mockImplementation((arg: any) => {
+            if (Array.isArray(arg)) return Promise.resolve({ error: null });
             return mockSupabase;
         });
-
-        mockSupabase.single.mockResolvedValue({
-            data: { id: 'job-1' },
-            error: null,
-        });
-
-        mockSupabase.in.mockResolvedValueOnce({
-            error: null,
-        });
+        mockSupabase.single.mockResolvedValue({ data: { id: 'job-1' }, error: null });
+        mockSupabase.in.mockResolvedValueOnce({ error: null });
 
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    extractionMode: 'distributor_only',
-                    config: {
-                        source_type: 'approved_source_extraction',
-                    },
-                }),
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
             } as any),
         );
-        const payload = await response.json();
-
         expect(response.status).toBe(200);
-        expect(mockSupabase.insert).toHaveBeenCalledWith(
-            expect.objectContaining({
-                model: null,
-            }),
+
+        // Should NOT have called scraper_credentials table
+        mockSupabase.from.mockReturnThis();
+        const credentialCalls = mockSupabase.from.mock.calls.filter(
+            (args: string[]) => args[0] === 'scraper_credentials'
         );
-    });
-
-    it('rejects invalid extractionMode', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    extractionMode: 'invalid_mode',
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(payload.error).toContain('Invalid extractionMode');
-    });
-
-    it('returns specific error for ai_only when all plans fail', async () => {
-        mockSupabase.in.mockResolvedValueOnce({
-            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
-            error: null,
-        });
-
-        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'UPC-1': {
-                ok: false,
-                upc: 'UPC-1',
-                error: 'AI-only extraction requires official domains to be configured for brand TestBrand. Please configure official domains in the admin panel.',
-            },
-        });
-
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    extractionMode: 'ai_only',
-                    config: {
-                        source_type: 'approved_source_extraction',
-                    },
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(payload.error).toContain('AI-only extraction requires official domains to be configured');
-    });
-
-    it('returns specific error for distributor_only when all plans fail', async () => {
-        mockSupabase.in.mockResolvedValueOnce({
-            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
-            error: null,
-        });
-
-        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'UPC-1': {
-                ok: false,
-                upc: 'UPC-1',
-                error: 'No approved sources configured for brand TestBrand (testbrand). Configure brand sources in the admin panel before extraction.',
-            },
-        });
-
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    extractionMode: 'distributor_only',
-                    config: {
-                        source_type: 'approved_source_extraction',
-                    },
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(payload.error).toContain('No approved sources configured for brand TestBrand');
+        expect(credentialCalls.length).toBe(0);
     });
 });

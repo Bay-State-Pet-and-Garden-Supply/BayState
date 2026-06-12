@@ -49,27 +49,13 @@ jest.mock('@/lib/pipeline-scraping', () => ({
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
 const { scrapeProducts } = require('@/lib/pipeline-scraping');
 
-describe('/api/admin/pipeline/scrape route (static-only)', () => {
+describe('/api/admin/pipeline/scrape route (deprecated)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (requireAdminAuth as jest.Mock).mockResolvedValue({ authorized: true, user: { id: 'admin-1' } });
-        (scrapeProducts as jest.Mock).mockResolvedValue({ success: true, jobIds: ['job-1'] });
     });
 
-    it('rejects requests without upcs', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({ scrapers: ['amazon'] }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(payload).toEqual({ error: 'UPCs array is required' });
-        expect(scrapeProducts).not.toHaveBeenCalled();
-    });
-
-    it('rejects requests without scrapers', async () => {
+    it('returns 410 Gone for any request', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({ upcs: ['UPC-1'] }),
@@ -77,169 +63,32 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         );
         const payload = await response.json();
 
-        expect(response.status).toBe(400);
-        expect(payload).toEqual({ error: 'Scrapers array is required' });
+        expect(response.status).toBe(410);
+        expect(payload.error).toContain('deprecated');
         expect(scrapeProducts).not.toHaveBeenCalled();
     });
 
-    it('rejects legacy enrichment_method field', async () => {
+    it('returns 410 Gone even for empty body', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    scrapers: [],
-                    enrichment_method: 'official_brand',
-                }),
+                body: JSON.stringify({}),
             } as any),
         );
-        const payload = await response.json();
 
-        expect(response.status).toBe(400);
-        expect(payload).toMatchObject({ error: expect.stringContaining('enrichment_method') });
+        expect(response.status).toBe(410);
         expect(scrapeProducts).not.toHaveBeenCalled();
     });
 
-    it('rejects legacy cohort_id field', async () => {
+    it('returns 401 when not authorized (before deprecation check)', async () => {
+        (requireAdminAuth as jest.Mock).mockResolvedValue({ authorized: false, response: new (require('next/server').NextResponse)(null, { status: 401 }) });
+
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    scrapers: [],
-                    cohort_id: 'cohort-1',
-                }),
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
             } as any),
         );
-        const payload = await response.json();
 
-        expect(response.status).toBe(400);
-        expect(payload).toMatchObject({ error: expect.stringContaining('cohort_id') });
+        expect(response.status).toBe(401);
         expect(scrapeProducts).not.toHaveBeenCalled();
-    });
-
-    it('rejects legacy deep_research field', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    scrapers: [],
-                    deep_research: true,
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(payload).toMatchObject({ error: expect.stringContaining('deep_research') });
-        expect(scrapeProducts).not.toHaveBeenCalled();
-    });
-
-    it('rejects legacy urls_by_upc field', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    scrapers: [],
-                    urls_by_upc: { 'UPC-1': 'https://example.com' },
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(payload).toMatchObject({ error: expect.stringContaining('urls_by_upc') });
-        expect(scrapeProducts).not.toHaveBeenCalled();
-    });
-
-    it('creates static scraper jobs with valid parameters', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1', 'UPC-2'],
-                    scrapers: ['amazon', 'chewy'],
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(payload).toMatchObject({
-            success: true,
-            jobIds: ['job-1'],
-            upcCount: 2,
-            scraperCount: 2,
-        });
-        expect(scrapeProducts).toHaveBeenCalledWith(['UPC-1', 'UPC-2'], {
-            scrapers: ['amazon', 'chewy'],
-            testMode: false,
-        });
-    });
-
-    it('creates static scraper jobs with empty scrapers array (all scrapers)', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    scrapers: [],
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(payload).toMatchObject({ success: true, jobIds: ['job-1'] });
-        expect(scrapeProducts).toHaveBeenCalledWith(['UPC-1'], {
-            scrapers: [],
-            testMode: false,
-        });
-    });
-
-    it('passes testMode when set to true', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    scrapers: ['amazon'],
-                    testMode: true,
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(scrapeProducts).toHaveBeenCalledWith(['UPC-1'], {
-            scrapers: ['amazon'],
-            testMode: true,
-        });
-    });
-
-    it('handles scrapeProducts failure', async () => {
-        (scrapeProducts as jest.Mock).mockResolvedValue({
-            success: false,
-            error: 'No valid scrapers found',
-        });
-
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({
-                    upcs: ['UPC-1'],
-                    scrapers: ['nonexistent'],
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(500);
-        expect(payload).toMatchObject({ error: expect.stringContaining('No valid scrapers found') });
-    });
-
-    it('rejects invalid request body', async () => {
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: 'not-json' as any,
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
     });
 });

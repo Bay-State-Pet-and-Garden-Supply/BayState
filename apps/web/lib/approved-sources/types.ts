@@ -121,7 +121,8 @@ export type SourcePlanFailureCode =
   | "missing_brand"
   | "no_sources_configured"
   | "ai_only_no_official_domains"
-  | "database_error";
+  | "database_error"
+  | "source_cascade_not_configured";
 
 // =============================================================================
 // Build result (per UPC — either a plan or an error)

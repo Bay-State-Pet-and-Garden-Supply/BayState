@@ -153,6 +153,23 @@ export function AdminBrandsClient({ initialBrands }: AdminBrandsClientProps) {
             ),
         },
         {
+            key: 'source_cascade_configured_at',
+            header: 'Cascade',
+            sortable: true,
+            render: (value) => {
+                const configuredAt = value as string | null | undefined;
+                return configuredAt ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 border border-green-200">
+                        Configured
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200">
+                        Not Configured
+                    </span>
+                );
+            },
+        },
+        {
             key: 'created_at',
             header: 'Created',
             sortable: true,

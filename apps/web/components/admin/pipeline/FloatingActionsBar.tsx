@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Loader2, Plus, Tag, Trash2, Upload, Cpu, RefreshCw } from 'lucide-react';
+import { Loader2, Tag, Trash2, Upload, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
@@ -24,7 +24,6 @@ const BULK_ACTIONS: Record<
     nextStage: 'merging',
     resetLabel: 'Return to Imported',
     previousStage: 'imported',
-    secondaryAction: 'Re-run Extraction',
   },
   merging: { label: '', nextStage: null },
   reviewing: {
@@ -34,6 +33,7 @@ const BULK_ACTIONS: Record<
     previousStage: 'processed',
   },
   publishing: { label: '', nextStage: null },
+  needs_attention: { label: 'Retry Failed Sources', nextStage: 'extracting', resetLabel: 'Return to Imported', previousStage: 'imported' },
   failed: {
     label: 'Return to Imported',
     nextStage: 'imported',
@@ -52,9 +52,7 @@ interface FloatingActionsBarProps {
   onBulkAction: (nextStage: PersistedPipelineStatus) => void;
   onResetStage?: (previousStage: PersistedPipelineStatus) => void;
   onConsolidate?: () => void;
-  onOpenScrapeDialog?: () => void;
   onAssignBrand?: () => void;
-  scrapeSelectionValidation?: { allowed: boolean; reason: string | null };
   onDelete?: () => void;
   actionState?: 'upload' | 'zip' | null;
   onUploadShopSite?: () => void;
@@ -73,7 +71,6 @@ export function FloatingActionsBar({
   onBulkAction,
   onResetStage,
   onConsolidate,
-  onOpenScrapeDialog,
   onAssignBrand,
   onDelete,
   actionState = null,
@@ -148,12 +145,7 @@ export function FloatingActionsBar({
               </Button>
             ) : null}
 
-            {currentStage === 'processed' && onOpenScrapeDialog ? (
-              <Button variant="outline" onClick={onOpenScrapeDialog} disabled={isLoading}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {bulkAction.secondaryAction}
-              </Button>
-            ) : null}
+
 
             {onAssignBrand ? (
               <Button variant="outline" onClick={onAssignBrand} disabled={isLoading}>

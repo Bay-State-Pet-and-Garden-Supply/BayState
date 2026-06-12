@@ -113,7 +113,7 @@ class EnrichedProductFacts(BaseModel):
 
     @property
     def upc(self) -> Optional[str]:
-        return None
+        return self._get_facet("upc")
 
     @property
     def weight(self) -> Optional[float]:
@@ -290,7 +290,7 @@ def build_nested_product_facts(fields: dict[str, Any], evidence_url: Optional[st
         # Generic product facets
         "size", "color", "material", "scent",
         # Identifiers (stored as facets for evidence/matching)
-        "item_number", "manufacturer_number",
+        "item_number", "manufacturer_number", "upc",
         # Other
         "indoor_outdoor", "subscription_eligible",
     ]
@@ -409,6 +409,13 @@ class SourceResultInfo(BaseModel):
     extractionMethod: Optional[str] = None
     platform: Optional[str] = None
     llmUsed: Optional[bool] = None
+    # Per-source outcome classification
+    outcome: Optional[str] = None  # "found" | "not_stocked" | "source_error" | "skipped"
+    errorCode: Optional[str] = Field(default=None, alias="error_code")  # Machine-readable error code
+    errorMessage: Optional[str] = Field(default=None, alias="error_message")  # Human-readable error detail
+    attemptedAt: Optional[str] = Field(default=None, alias="attempted_at")  # ISO timestamp of when this source was attempted
+
+    model_config = {"populate_by_name": True}
 
 
 
@@ -601,6 +608,10 @@ def build_v1_from_extraction_result(
                     extractionMethod=sr.get("extractionMethod") or sr.get("method"),
                     platform=sr.get("platform"),
                     llmUsed=sr.get("llmUsed") if sr.get("llmUsed") is not None else sr.get("llm_used"),
+                    outcome=sr.get("outcome"),
+                    error_code=sr.get("error_code") or sr.get("errorCode"),
+                    error_message=sr.get("error_message") or sr.get("errorMessage"),
+                    attempted_at=sr.get("attempted_at") or sr.get("attemptedAt"),
                 )
             )
 

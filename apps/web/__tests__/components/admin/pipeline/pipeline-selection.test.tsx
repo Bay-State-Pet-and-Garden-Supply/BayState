@@ -6,8 +6,6 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PipelineClient } from "@/components/admin/pipeline/PipelineClient";
 import type { PipelineProduct, StatusCount } from "@/lib/pipeline/types";
 
-let lastScraperDialogProps: Record<string, unknown> | null = null;
-
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockSearchParamGet = jest.fn();
@@ -61,13 +59,6 @@ jest.mock("@/components/admin/pipeline/ProductTable", () => ({
       })}
     </div>
   ),
-}));
-
-jest.mock("@/components/admin/pipeline/ScraperSelectDialog", () => ({
-  ScraperSelectDialog: (props: Record<string, unknown>) => {
-    lastScraperDialogProps = props;
-    return <div data-testid="scraper-dialog-props" />;
-  },
 }));
 
 jest.mock("@/components/admin/pipeline/PipelineSidebarTable", () => ({
@@ -192,7 +183,6 @@ beforeAll(() => {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  lastScraperDialogProps = null;
   mockSearchParamGet.mockReturnValue(null);
   mockSearchParamsToString.mockReturnValue("");
   (global.fetch as jest.Mock).mockResolvedValue({
@@ -285,79 +275,5 @@ describe("PipelineClient shift range selection", () => {
     });
   });
 
-  it("opens enrichment dialog with selected UPC count", async () => {
-    const processedCounts: StatusCount[] = [
-      { status: "imported", count: 0 },
-      { status: "awaiting_brand", count: 0 },
-      { status: "extracting", count: 0 },
-      { status: "processed", count: 2 },
-      { status: "merging", count: 0 },
-      { status: "reviewing", count: 0 },
-      { status: "publishing", count: 0 },
-      { status: "failed", count: 0 },
-    ];
 
-    const processedProducts = importedCohortProducts.map(p => ({
-      ...p,
-      pipeline_status: "processed" as const,
-    }));
-
-    render(
-      <PipelineClient
-        initialCounts={processedCounts}
-        initialProducts={processedProducts}
-        initialTotal={2}
-        initialStage="processed"
-      />,
-    );
-
-    const row1 = await screen.findByRole("button", { name: "UPC101" });
-    const row2 = screen.getByRole("button", { name: "UPC102" });
-    fireEvent.click(row1);
-    fireEvent.click(row2);
-
-    await waitFor(() => {
-      expect(lastScraperDialogProps).not.toBeNull();
-    });
-  });
-
-  it("does not include legacy enrichment method props in scraper dialog", async () => {
-    const processedCounts: StatusCount[] = [
-      { status: "imported", count: 0 },
-      { status: "awaiting_brand", count: 0 },
-      { status: "extracting", count: 0 },
-      { status: "processed", count: 2 },
-      { status: "merging", count: 0 },
-      { status: "reviewing", count: 0 },
-      { status: "publishing", count: 0 },
-      { status: "failed", count: 0 },
-    ];
-
-    const processedProducts = importedCohortProducts.map(p => ({
-      ...p,
-      pipeline_status: "processed" as const,
-    }));
-
-    render(
-      <PipelineClient
-        initialCounts={processedCounts}
-        initialProducts={processedProducts}
-        initialTotal={2}
-        initialStage="processed"
-      />,
-    );
-
-    const row1 = await screen.findByRole("button", { name: "UPC101" });
-    const row2 = screen.getByRole("button", { name: "UPC102" });
-    fireEvent.click(row1);
-    fireEvent.click(row2);
-
-    const reEnrichButton = await screen.findByRole("button", { name: /Re-run Extraction/i });
-    fireEvent.click(reEnrichButton);
-
-    await waitFor(() => {
-      expect(lastScraperDialogProps).not.toHaveProperty("enrichmentMethod");
-      expect(lastScraperDialogProps).not.toHaveProperty("officialBrandEligibility");
-    });
-  });
 });

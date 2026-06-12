@@ -50,7 +50,7 @@
       "expected_name_contains": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
       "expected_brand": "KONG",
       "expected_has_features": true,
-      "expected_fields": ["name", "brand", "image_urls", "description", "features"],
+      "expected_fields": ["name", "brand", "image_urls", "description", "features", "weight"],
       "expected_facets": []
     },
     "central_pet_43580233": {

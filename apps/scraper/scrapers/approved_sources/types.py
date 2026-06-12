@@ -89,6 +89,15 @@ class ApprovedSourceExtractionResult:
 
     This is an intermediate result type used internally by adapters.
     The final EnrichmentResultV1 is built by result_builder.py.
+
+    The ``outcome`` field classifies the result for the automated cascade:
+    - "found": Product was found and data extracted
+    - "not_stocked": Source ran successfully but product not in catalog
+    - "source_error": Source could not be queried (auth, network, etc.)
+    - "skipped": Source was intentionally skipped (e.g. incremental re-extraction)
+
+    When ``outcome`` is None, the result_builder will derive it from ``success``
+    and ``failure_code`` for backward compatibility.
     """
 
     success: bool = False
@@ -103,6 +112,7 @@ class ApprovedSourceExtractionResult:
     failure_message: str | None = None
     warnings: list[str] = field(default_factory=list)
     auth_required: bool = False
+    outcome: str | None = None
 
 
 @dataclass

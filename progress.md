@@ -1,28 +1,46 @@
-# Progress Update - Wed Jun  3 22:57:56 EDT 2026
-## Fix 7: Complete canonical passthrough at v1 boundaries — DONE
-- crawl4ai_extractor.py: Added animal_type, breed_size, primary_protein, diet_type, package_count, package_weight, material to extract_to_v1
-- extractor.py: Added packaging_type and color to normalized and product_facts dicts
-- enrichment_models.py: Verified build_nested_product_facts handles all 13 canonical fields (already correct)
+# Progress
 
-## Fix 8: Run lint and fix errors — DONE
-- Fixed 13 E501 line-length errors (12 in platform_extraction.py, 1 in crawl4ai_extractor.py)
-- Bonus: Fixed SyntaxError in enrichment_models.py (llm_used_val bug inside SourceResultInfo constructor)
+## Status
+In Progress
 
-## Reviewer Fixes (June 3, 2026)
+## Done
+- [x] P0: Fix Orgill image backslash — 3 files changed, backslash→forward-slash, +2 unit tests
+- [x] P0: Base adapter global backslash safety net — `base.py` normalize_images()
+- [x] P1: Fix Central Pet weight/features/dimensions extraction — 8→14 fields (live verified)
+- [x] P2: Fix result builder `product_number` → `item_number` mapping (reverted — useless for final product)
+- [x] P2: Central Pet cleanup — removed `product_number` from consolidation output (distributor-internal SKU)
+- [x] P2: Fix UPC facet mapping — kept, good for LLM context
+- [x] Updated live test UPCs for Orgill (stale fixture UPC replaced)
+- [x] Updated Central Pet fixture expected_fields to include `weight`
 
-### Fix A: Wire platform schema extraction into actual crawl — DONE
-- `crawl4ai_extractor.py`: Changed `_try_platform_schema_extraction` from manual engine init + `engine.crawl(url)` to `async with Crawl4AIEngine(...)` with extraction_strategy in config
-- Removed unused import (Crawl4AIEngine as PlatformEngine)
-- Resource leak fixed: async context manager handles cleanup automatically
+## Remaining
+- [ ] Verify live re-test for Central Pet (14 fields) and Orgill (backslash fixed)
 
-### Fix B: Wire _select_llm_markdown into LLM extraction path — DONE
-- Added `_select_llm_markdown()` method to Crawl4AIExtractor (returns rich markdown with spec snippets)
-- Added `self._llm_markdown` and `self._llm_input_source` to __init__
-- Line 1135: marks now stores both simple markdown (for other consumers) and rich LLM markdown (for LLM calls)
-- Both LLM call sites updated to use `self._llm_markdown` instead of `markdown`
-- Test updated: `test_completeness_check_passes_good_product` now includes animal_type + flavor to satisfy facet-sparse quality gate
+## Files Changed
 
-### Validation
-- 97/97 scraper tests passing, 6 skipped
-- All platform, extractor, adapter fixture, and result builder tests pass
+### Orgill backslash fix
+- `apps/scraper/scrapers/approved_sources/adapters/orgill.py` — backslash→slash in normalize_images()
+- `apps/scraper/scrapers/approved_sources/adapters/base.py` — global backslash safety net
+- `apps/scraper/tests/unit/test_approved_sources_adapter_fixtures.py` — +2 orgill/backslash tests
 
+### Central Pet extraction
+- `apps/scraper/scrapers/approved_sources/adapters/central_pet.py` — fixed weight li selector, added accordion features/dimensions parsing, added sell/pallet qty
+- `apps/scraper/benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json` — added `weight` to expected_fields
+
+### Central Pet cleanup (consolidation-relevant only)
+- `apps/scraper/scrapers/approved_sources/adapters/central_pet.py` — product_number used internally for matching, stripped from output
+- `apps/scraper/benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json` — verified `weight` is extracted
+
+### Result builder (enrichment_models.py)
+- `apps/scraper/scrapers/ai_search/enrichment_models.py` — product_number→item_number mapping removed (was reverted); UPC facet kept
+- `apps/scraper/tests/unit/test_enrichment_models.py` — updated
+- `apps/scraper/tests/unit/test_approved_sources_result_builder.py` — updated
+
+### Live test UPCs
+- `apps/scraper/tests/live/test_all_adapters_live.py` — Orgill UPC updated
+- `apps/scraper/tests/live/run_adapter_test.py` — Orgill UPC updated
+
+## Notes
+- Consolidation pipeline does NOT use distributor-internal SKUs for the final product
+- UPC is preserved — it's in RELEVANT_FIELDS for LLM context
+- `product_number` stripped from Central Pet output but still used internally for identifier matching

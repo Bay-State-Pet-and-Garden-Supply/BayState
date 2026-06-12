@@ -263,9 +263,10 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
                 continue
 
             if "product #" in label:
+                # Extract internally for identifier matching but don't store
+                # as a consolidation field — this is Central Pet's internal
+                # catalog SKU, not useful for the final published product.
                 product["product_number"] = val_cleaned
-                if "product_number" not in matched:
-                    matched.append("product_number")
             elif "upc" in label:
                 product["upc"] = val_cleaned
                 if "upc" not in matched:
@@ -278,17 +279,18 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
                 product["case_pack"] = val_cleaned
                 if "case_pack" not in matched:
                     matched.append("case_pack")
-
-        # --- Product # / UPC (Legacy Fallback) ---
-        if "product_number" not in product:
-            sku_elem = soup.select_one("span[itemprop='upc'], .item-num span")
-            if sku_elem:
-                pn = sku_elem.get_text(strip=True)
-                if pn:
-                    product["product_number"] = pn
-                    matched.append("product_number")
+            elif "sell pk qty" in label:
+                product["sell_pack_qty"] = val_cleaned
+                if "sell_pack_qty" not in matched:
+                    matched.append("sell_pack_qty")
+            elif "pallet qty" in label:
+                product["pallet_qty"] = val_cleaned
+                if "pallet_qty" not in matched:
+                    matched.append("pallet_qty")
 
         # --- UPC (Legacy Fallback) ---
+        # Note: We skip legacy product_number extraction since it's a
+        # distributor-internal SKU, not a consolidation field.
         if "upc" not in product:
             upc_elem = soup.select_one(".upc span")
             if upc_elem:
@@ -307,12 +309,22 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
                     matched.append("manufacturer_number")
 
         # --- Weight ---
-        weight_elem = soup.find("li", string=re.compile(r"Product Gross Weight", re.I))
-        if weight_elem:
-            span = weight_elem.find("span")
-            if span:
-                product["weight"] = span.get_text(strip=True)
-                matched.append("weight")
+        # BS4's string= param returns None for mixed-content <li> with <span> children,
+        # so iterate all <li> and check get_text() instead.
+        for li in soup.find_all("li"):
+            text = li.get_text(" ", strip=True)
+            if "product gross weight" in text.lower():
+                span = li.find("span")
+                if span:
+                    product["weight"] = span.get_text(strip=True)
+                else:
+                    # Fallback: strip the label via regex
+                    val = re.sub(r"^.*?Product\s*Gross\s*Weight\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+                    if val:
+                        product["weight"] = val
+                if "weight" in product:
+                    matched.append("weight")
+                break
 
         # --- Description ---
         desc_elem = soup.select_one("#tst_productDetail_htmlContent")
@@ -335,17 +347,75 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
                     text = li.get_text(strip=True)
                     if text:
                         features.append(text)
+        # Fallback: features from responsive accordion (.resp-tab-content)
+        if not features:
+            accordion = soup.select_one(".resp-tab-content")
+            if accordion:
+                for li in accordion.select("li"):
+                    text = li.get_text(strip=True)
+                    if text:
+                        features.append(text)
+                if not features:
+                    # Parse labeled values from accordion text
+                    accordion_text = accordion.get_text(" ", strip=True)
+                    for label in ["Recommended For", "Product Height", "Product Length",
+                                  "Product Width", "Product Gross Weight", "Product Net Weight",
+                                  "Product Weight"]:
+                        match = re.search(
+                            rf"{re.escape(label)}\s*:?\s*(.+?)(?=\s+(?:Product\s+\w+|$)|$)",
+                            accordion_text, re.I
+                        )
+                        if match:
+                            val = match.group(1).strip().rstrip(",")
+                            if val:
+                                features.append(f"{label}: {val}")
         if features:
             product["features"] = features
             matched.append("features")
 
         # --- Dimensions ---
-        dim_elem = soup.find("li", string=re.compile(r"Dimension", re.I))
-        if dim_elem:
-            span = dim_elem.find("span")
-            if span:
-                product["dimensions"] = span.get_text(strip=True)
-                matched.append("dimensions")
+        # Parse from individual Height/Length/Width li elements or fallback to
+        # a single "Dimension" label. Iterate all <li> instead of using BS4 string=.
+        dimensions_parts: list[str] = []
+
+        # First pass: look for individual Height/Length/Width
+        for li in soup.find_all("li"):
+            text = li.get_text(" ", strip=True)
+            match = re.match(r"Product\s+(Height|Length|Width)\s*:?\s*(.+)", text, re.I)
+            if match:
+                dim_type = match.group(1).strip().title()
+                dim_val = match.group(2).strip()
+                dimensions_parts.append(f"{dim_type}: {dim_val}")
+
+        # Second pass: check .resp-tab-content for Height/Length/Width
+        if not dimensions_parts:
+            accordion = soup.select_one(".resp-tab-content")
+            if accordion:
+                for li in accordion.select("li"):
+                    text = li.get_text(" ", strip=True)
+                    match = re.match(r"Product\s+(Height|Length|Width)\s*:?\s*(.+)", text, re.I)
+                    if match:
+                        dim_type = match.group(1).strip().title()
+                        dim_val = match.group(2).strip()
+                        dimensions_parts.append(f"{dim_type}: {dim_val}")
+
+        # Fallback: single "Dimension" label
+        if not dimensions_parts:
+            for li in soup.find_all("li"):
+                text = li.get_text(" ", strip=True)
+                if re.search(r"\bDimension\b", text, re.I):
+                    span = li.find("span")
+                    if span:
+                        dimensions_parts.append(span.get_text(strip=True))
+                    else:
+                        val = re.sub(r"^.*?Dimension\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+                        if val:
+                            dimensions_parts.append(val)
+                    break
+
+        if dimensions_parts:
+            product["dimensions"] = "; ".join(dimensions_parts)
+            matched.append("dimensions")
 
         # --- Category / Breadcrumb ---
         breadcrumb = self._extract_breadcrumb(soup)
@@ -407,6 +477,11 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
         result.confidence = confidence
         result.sku_match = True if identifier_match else (False if has_identifier else None)
         result.warnings = warnings
+
+        # Strip internal-only identifier fields that don't contribute
+        # to the final consolidated product.
+        product.pop("product_number", None)
+
         return result
 
     def _extract_with_regex(

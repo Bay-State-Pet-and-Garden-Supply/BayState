@@ -77,6 +77,7 @@ describe('pipeline status transition CRUD', () => {
             { status: 'reviewing', count: 1 },
             { status: 'publishing', count: 1 },
             { status: 'failed', count: 2 },
+            { status: 'needs_attention', count: 0 },
         ]);
     });
 
@@ -105,7 +106,7 @@ describe('pipeline status transition CRUD', () => {
 
         expect(result).toEqual({
             success: false,
-            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'awaiting_brand', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed' UPC(s): UPC-1",
+            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'awaiting_brand', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed', 'needs_attention' UPC(s): UPC-1",
             updatedCount: 0,
         });
         expect(updateBuilder.update).not.toHaveBeenCalled();

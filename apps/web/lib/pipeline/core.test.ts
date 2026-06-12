@@ -13,11 +13,12 @@ describe('STATUS_TRANSITIONS', () => {
     expect(STATUS_TRANSITIONS).toEqual({
       awaiting_brand: ['imported', 'failed'],
       imported: ['extracting', 'awaiting_brand', 'failed'],
-      extracting: ['processed', 'imported', 'failed'],
-      processed: ['merging', 'reviewing', 'imported', 'failed'],
+      extracting: ['processed', 'needs_attention', 'imported', 'failed'],
+      processed: ['extracting', 'merging', 'reviewing', 'imported', 'failed'],
       merging: ['reviewing', 'processed', 'failed'],
       reviewing: ['publishing', 'processed', 'failed'],
       publishing: ['reviewing', 'failed'],
+      needs_attention: ['imported', 'extracting', 'processed', 'failed'],
       failed: ['imported', 'extracting'],
     });
   });

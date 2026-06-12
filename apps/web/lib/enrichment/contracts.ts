@@ -116,6 +116,8 @@ export interface EnrichmentAttemptSummaryV1 {
  */
 export type EnrichmentDecision = "deterministic_success" | "deterministic_partial" | "llm_fallback" | "failed";
 
+export type SourceOutcome = "found" | "not_stocked" | "source_error" | "skipped";
+
 export interface SourceResultInfo {
   sourceSlug: string;
   sourceType: string;
@@ -126,6 +128,14 @@ export interface SourceResultInfo {
   extractionMethod?: string | null;
   platform?: string | null;
   llmUsed?: boolean | null;
+  /** Per-source outcome classification */
+  outcome?: SourceOutcome | null;
+  /** Machine-readable error code (e.g. "auth_expired", "network_timeout") */
+  errorCode?: string | null;
+  /** Human-readable error detail */
+  errorMessage?: string | null;
+  /** ISO timestamp of when this source was attempted */
+  attemptedAt?: string | null;
 }
 
 export interface EnrichmentResultV1 {

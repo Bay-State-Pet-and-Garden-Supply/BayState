@@ -14,6 +14,7 @@ import {
     type TaxonomyCategoryRecord,
 } from '@/lib/taxonomy';
 import { FACET_PROFILE_APPLICABLE_FIELDS } from './category-domain';
+import { getCanonicalFacetValues } from './facet-vocabulary';
 
 const USER_PROMPT_PREFIX =
     'Consolidate this product into a ShopSite export-ready record using the provided source trust metadata and only source-supported values: ';
@@ -269,11 +270,23 @@ function buildFacetProfileRulesString(): string {
  * Categories can be either flat breadcrumb strings or pre-grouped lines
  * (as produced by buildGroupedCategoryList).
  */
-export function generateSystemPrompt(categories: string[]): string {
+export function generateSystemPrompt(categories: string[], facetVocabulary?: Map<string, string[]>): string {
     const allowedCategoriesStr = categories.length > 0
         ? categories.join('\n')
         : '(none configured)';
     const profileRulesStr = buildFacetProfileRulesString();
+
+    let vocabRulesStr = '';
+    if (facetVocabulary && facetVocabulary.size > 0) {
+        vocabRulesStr = '\n\nFacet Value Constraints:\nFor the following fields, you MUST use ONLY values from these lists if they match the product details (select the best-fitting canonical value, case-insensitive):\n';
+        for (const [slug, values] of facetVocabulary.entries()) {
+            if (values.length > 0) {
+                // List up to 50 values to keep prompt size manageable.
+                const displayedValues = values.slice(0, 50).join(' | ');
+                vocabRulesStr += `- ${slug}: ${displayedValues}${values.length > 50 ? ' | ...' : ''}\n`;
+            }
+        }
+    }
 
     return `You consolidate multi-source product data into one ShopSite export-ready product record.
 
@@ -313,7 +326,7 @@ Product-name rules:
 - Never produce identical names for distinguishable variants; include source-supported differentiators and do not invent variant details.
 - Same product, different colors: "Motorsport Container Red 5 Gal.", "Motorsport Container White 5 Gal.", "Motorsport Container Yellow 5 Gal."
 - Same product line, different flavors/scents: "SPOT BAMBONE Coffee Wood Bacon 7 in.", "SPOT BAMBONE Coffee Wood Chicken 7 in." — flavor MUST be included when sources show different flavors for different UPCs.
-- Same product line, different materials: "SPOT BAMBONE Eco Knot Bone 7.5 in.", "SPOT BAMBONE Bambone Knot Bone 7.5 in." — material/type MUST be included when sources show different materials.
+- Same product line, different materials: "SPOT BAMBONE Eco Knot Bone 7.5 in.", "SPOT BAMBONE Eco Knot Bone 7.5 in." — material/type MUST be included when sources show different materials.
 - If two UPCs have different flavor, color, scent, or material in their source data, the name MUST include that differentiator. Do not omit it.
 - Remove special characters like TM, R, and C marks.
 - Use unit periods: lb., oz., ct., in., ft., gal., qt., pt., pk., sq. ft.
@@ -335,7 +348,7 @@ Field rules:
 
 Facet Profile Field Matrix:
 When extracting \`packaging_facets\`, you MUST determine the logical Facet Profile based on the category you select, and ONLY extract fields allowed for that profile.
-${profileRulesStr}
+${profileRulesStr}${vocabRulesStr}
 
 Output contract — respond with valid JSON matching this structure:
 {
@@ -369,13 +382,20 @@ export async function buildPromptContext(): Promise<ConsolidationPromptContext> 
     const categoryRecords = await getCategories();
     const categories = categoryRecords.map((category) => category.breadcrumb ?? category.name);
 
+    let vocabulary: Map<string, string[]> | undefined;
+    try {
+        vocabulary = await getCanonicalFacetValues();
+    } catch (err) {
+        console.error('[Consolidation] Failed to load facet vocabulary for prompt:', err);
+    }
+
     // Use compact grouped format for the prompt to fit ~200+ leaves in ~4000 chars.
     // The prompt asks the model to pick an exact category using full breadcrumb matches,
     // and the grouped lines still show full breadcrumbs like "Dog > Food: Dry Food, Wet Food..."
     const groupedCategoryLines = buildGroupedCategoryList(categoryRecords);
 
     cachedPromptContext = {
-        systemPrompt: generateSystemPrompt(groupedCategoryLines),
+        systemPrompt: generateSystemPrompt(groupedCategoryLines, vocabulary),
         categories,
     };
     cachedPromptContextExpiresAt = Date.now() + PROMPT_CONTEXT_CACHE_TTL_MS;

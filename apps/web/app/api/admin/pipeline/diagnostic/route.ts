@@ -43,6 +43,7 @@ export async function GET() {
             merging: 0,
             reviewing: 0,
             publishing: 0,
+            needs_attention: 0,
             failed: 0,
         };
 

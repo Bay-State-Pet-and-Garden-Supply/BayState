@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { cn } from '@/lib/utils';
-import { Layers, Save, Loader2, X } from 'lucide-react';
+import { Layers, Save, Loader2, X, CheckCircle2, AlertCircle, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
-import { DistributorSection } from './DistributorSection';
-import { updateProductsBatch } from '@/app/admin/pipeline/batch-actions';
 
 interface BulkManagementPanelProps {
   selectedCohortIds: Set<string>;
@@ -30,13 +28,6 @@ export function BulkManagementPanel({
   onSuccess,
 }: BulkManagementPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [activeScrapers, setActiveScrapers] = useState<string[]>([]);
-  const [ocrEnabled, setOcrEnabled] = useState(true);
-  const [credentialStatuses, setCredentialStatuses] = useState<Record<string, { configured: boolean; loading: boolean }>>({
-    phillips: { configured: false, loading: true },
-    orgill: { configured: false, loading: true },
-    petfoodex: { configured: false, loading: true },
-  });
 
   // Calculate statistics for selected cohorts
   const selectedCohortsList = useMemo(() => {
@@ -53,74 +44,20 @@ export function BulkManagementPanel({
     return selectedCohortsList.reduce((acc, curr) => acc + curr.count, 0);
   }, [selectedCohortsList]);
 
-  // Load distributor credential statuses
-  useEffect(() => {
-    let active = true;
-    async function loadStatuses() {
-      try {
-        const slugs = ['phillips', 'orgill', 'petfoodex'];
-        const results = await Promise.all(
-          slugs.map(async (slug) => {
-            const res = await fetch(`/api/admin/pipeline/scrapers/${slug}/credentials`);
-            if (!res.ok) throw new Error('Failed to load credentials for ' + slug);
-            const data = await res.json();
-            const login = data.statuses?.find((status: any) => status.type === 'login');
-            const password = data.statuses?.find((status: any) => status.type === 'password');
-            return {
-              slug,
-              configured: (login?.configured && password?.configured) ?? false,
-            };
-          }),
-        );
-        if (active) {
-          const newStatuses: Record<string, { configured: boolean; loading: boolean }> = {};
-          results.forEach(({ slug, configured }) => {
-            newStatuses[slug] = { configured, loading: false };
-          });
-          setCredentialStatuses(newStatuses);
-        }
-      } catch (err) {
-        console.error('Failed to load credential statuses:', err);
-        if (active) {
-          setCredentialStatuses({
-            phillips: { configured: false, loading: false },
-            orgill: { configured: false, loading: false },
-            petfoodex: { configured: false, loading: false },
-          });
-        }
-      }
-    }
-    void loadStatuses();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Determine if AI is available for at least one selected cohort
-  const isAISerpEnabled = useMemo(() => {
-    return selectedCohortsList.some(({ brand }) => {
-      return brand?.official_domains && brand.official_domains.length > 0;
+  // Check if all selected cohorts have source cascade configured
+  const allCascadesConfigured = useMemo(() => {
+    return selectedCohortsList.every(({ brand }) => {
+      return brand?.id && brand?.source_cascade_configured_at;
     });
   }, [selectedCohortsList]);
 
-  const effectiveScrapers = isAISerpEnabled
-    ? activeScrapers
-    : activeScrapers.filter((scraper) => scraper !== 'official_brand');
+  const unconfiguredBrands = useMemo(() => {
+    return selectedCohortsList
+      .filter(({ brand }) => !brand?.id || !brand?.source_cascade_configured_at)
+      .map(({ name }) => name);
+  }, [selectedCohortsList]);
 
-  const toggleScraper = (id: string) => {
-    setActiveScrapers((previous) => (
-      previous.includes(id)
-        ? previous.filter((scraper) => scraper !== id)
-        : [...previous, id]
-    ));
-  };
-
-  const handleStartBulkScrape = async () => {
-    if (effectiveScrapers.length === 0) {
-      toast.error('At least one extraction method must be selected to start scraping.');
-      return;
-    }
-
+  const handleStartBulkExtraction = async () => {
     if (totalProductsCount === 0) {
       toast.error('No products found in the selected cohorts.');
       return;
@@ -129,45 +66,14 @@ export function BulkManagementPanel({
     setIsSaving(true);
     try {
       const allUpcs: string[] = [];
-
-      // 1. Update product configurations cohort-by-cohort to preserve brand domains
       for (const cohortId of selectedCohortIds) {
         const cohortProducts = groupedProducts?.groups[cohortId] || [];
         if (cohortProducts.length === 0) continue;
-
-        const upcs = cohortProducts.map((p) => p.upc);
-        allUpcs.push(...upcs);
-
-        const brand = cohortBrandObjects[cohortId];
-        const cohortDomains = brand?.official_domains || [];
-
-        const productResult = await updateProductsBatch(upcs, {
-          enrichment_config: {
-            enabled_sources: effectiveScrapers,
-            official_domains: cohortDomains,
-          },
-        });
-
-        if (!productResult.success) {
-          throw new Error(`Failed to update products for cohort ${cohortId}: ${productResult.error}`);
-        }
+        allUpcs.push(...cohortProducts.map((p) => p.upc));
       }
 
       if (allUpcs.length === 0) {
-        throw new Error('No UPCs were resolved for scraping');
-      }
-
-      // 2. Start the enrichment jobs
-      const hasAI = effectiveScrapers.includes('official_brand');
-      const hasDistributors = effectiveScrapers.some((scraper) => scraper !== 'official_brand');
-
-      let inferredExtractionMode: 'mixed' | 'distributor_only' | 'ai_only' = 'mixed';
-      if (hasAI && hasDistributors) {
-        inferredExtractionMode = 'mixed';
-      } else if (hasAI) {
-        inferredExtractionMode = 'ai_only';
-      } else {
-        inferredExtractionMode = 'distributor_only';
+        throw new Error('No UPCs were resolved for extraction');
       }
 
       const response = await fetch('/api/admin/enrichment/jobs', {
@@ -175,30 +81,23 @@ export function BulkManagementPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           upcs: allUpcs,
-          extractionMode: inferredExtractionMode,
-          config: {
-            source_type: 'approved_source_extraction',
-            ocr: { enabled: ocrEnabled },
-          },
+          retryMode: 'all',
         }),
       });
 
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.error || 'Failed to start bulk extraction job');
+        throw new Error(payload.error || 'Failed to start bulk extraction');
       }
 
-      let successMessage = `Scraper initiated successfully for ${selectedCohortIds.size} cohorts (${allUpcs.length} products)!`;
-      if (typeof payload.message === 'string' && payload.message.trim().length > 0) {
-        successMessage = payload.message;
-      }
-
-      toast.success(successMessage);
+      toast.success(`Extraction started for ${selectedCohortIds.size} cohorts (${allUpcs.length} products)!`, {
+        description: `Job ID: ${(payload.jobId || '').slice(0, 8)}...`,
+      });
       onSuccess();
     } catch (error: any) {
-      console.error('Error starting bulk scrape:', error);
-      toast.error(error.message || 'Failed to start bulk scrape.');
+      console.error('Error starting bulk extraction:', error);
+      toast.error(error.message || 'Failed to start bulk extraction.');
     } finally {
       setIsSaving(false);
     }
@@ -232,7 +131,7 @@ export function BulkManagementPanel({
             <span className="w-1.5 h-1.5 bg-muted-foreground" />
             Selected Batches
           </label>
-          <div className="max-h-36 overflow-y-auto border border-border bg-background/50 divide-y divide-border rounded-none p-1 space-y-1">
+          <div className="max-h-36 overflow-y-auto border border-border bg-background/50 divide-y divide-border p-1 space-y-1">
             {selectedCohortsList.map((cohort) => (
               <div key={cohort.id} className="flex items-center justify-between py-1.5 px-2 text-[10px] font-medium">
                 <span className="truncate max-w-[160px] text-foreground" title={cohort.name}>
@@ -246,44 +145,58 @@ export function BulkManagementPanel({
           </div>
         </div>
 
-        <DistributorSection
-          activeScrapers={activeScrapers}
-          onToggleScraper={toggleScraper}
-          credentialStatuses={credentialStatuses}
-          isAISerpEnabled={isAISerpEnabled}
-        />
+        {/* Cascade Status Summary */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-muted-foreground" />
+            Source Cascade Status
+          </label>
+
+          {allCascadesConfigured ? (
+            <div className="flex items-center gap-3 p-3 border border-brand-forest-green bg-brand-forest-green/5">
+              <CheckCircle2 className="h-4 w-4 text-brand-forest-green shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-foreground">All brands configured</span>
+                <span className="text-[9px] text-brand-forest-green font-semibold mt-0.5">
+                  Source cascades ready for all selected cohorts
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col p-3 border border-dashed border-destructive/45 bg-destructive/[0.01]">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-foreground">Cascade not configured</span>
+                  <span className="text-[9px] text-destructive font-semibold mt-0.5">
+                    {unconfiguredBrands.length > 0
+                      ? `Needs setup: ${unconfiguredBrands.join(', ')}`
+                      : 'Some brands need source cascade configuration'}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-border/50 flex justify-end">
+                <Link
+                  href="/admin/brands"
+                  className="text-[9px] font-bold text-brand-burgundy hover:underline flex items-center gap-1 transition-colors"
+                >
+                  <Settings2 className="h-3 w-3" />
+                  Configure in Brand Settings
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="border-t border-border bg-muted/30 p-4 space-y-3">
-        <div className="flex items-center justify-between p-2.5 border border-border bg-card">
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-foreground">Vision OCR</span>
-            <span className="text-[9px] text-muted-foreground font-semibold">Extract text from packaging images</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setOcrEnabled(!ocrEnabled)}
-            className={cn(
-              "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-              ocrEnabled ? "bg-brand-forest-green" : "bg-muted"
-            )}
-          >
-            <span
-              className={cn(
-                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-lg ring-0 transition duration-200 ease-in-out",
-                ocrEnabled ? "translate-x-4" : "translate-x-0"
-              )}
-            />
-          </button>
-        </div>
-
         <Button
           className="h-11 w-full bg-brand-gold text-ledger-charcoal hover:bg-brand-gold/90 font-bold uppercase text-xs tracking-wider"
-          disabled={isSaving}
-          onClick={handleStartBulkScrape}
+          disabled={isSaving || !allCascadesConfigured}
+          onClick={handleStartBulkExtraction}
         >
           {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Start Bulk Scrape
+          Start Bulk Extraction
         </Button>
       </div>
     </div>

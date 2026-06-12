@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('brands')
-    .select('id, name, slug, logo_url, description, official_domains, preferred_domains, created_at')
+    .select('id, name, slug, logo_url, description, official_domains, preferred_domains, source_cascade_configured_at, source_cascade_configured_by, created_at')
     .order('name', { ascending: true });
 
   if (error) {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         official_domains: normalizeValues(official_domains, true),
         preferred_domains: [],
       }])
-      .select('id, name, slug, logo_url, description, official_domains, preferred_domains, created_at')
+      .select('id, name, slug, logo_url, description, official_domains, preferred_domains, source_cascade_configured_at, source_cascade_configured_by, created_at')
       .single();
 
     if (error) {

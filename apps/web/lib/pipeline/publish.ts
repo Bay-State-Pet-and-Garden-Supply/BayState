@@ -158,10 +158,40 @@ async function syncProductFacets(
     return;
   }
 
-  const definitionBySlug = new Map<string, { id: string; name: string }>();
+  const definitionBySlug = new Map<string, { id: string; name: string; slug: string }>();
   for (const def of definitions) {
-    definitionBySlug.set(def.slug, { id: def.id, name: def.name });
+    definitionBySlug.set(def.slug, { id: def.id, name: def.name, slug: def.slug });
   }
+
+  // Pre-fetch all existing facet values for these definitions
+  const { data: existingVals, error: valFetchError } = await supabase
+    .from("facet_values")
+    .select("id, facet_definition_id, value, normalized_value, slug")
+    .in("facet_definition_id", definitions.map((d: { id: string }) => d.id));
+
+  const existingMap = new Map<string, { id: string; value: string; slug: string }>();
+  const hasValues = new Set<string>();
+
+  if (!valFetchError && existingVals) {
+    for (const val of existingVals) {
+      const key = `${val.facet_definition_id}:${val.normalized_value}`;
+      existingMap.set(key, { id: val.id, value: val.value, slug: val.slug });
+      hasValues.add(val.facet_definition_id);
+    }
+  }
+
+  const STRICT_ENUM_SLUGS = new Set([
+    "animal-type",
+    "breed-size",
+    "life-stage",
+    "lifestage",
+    "indoor-outdoor",
+    "subscription-eligible",
+    "clumping",
+    "has-squeaker",
+    "organic",
+    "rawhide-free"
+  ]);
 
   const productFacetRows: Array<{ product_id: string; facet_value_id: string }> = [];
 
@@ -179,6 +209,26 @@ async function syncProductFacets(
 
     for (const valText of individualValues) {
       const normalizedValue = valText.toLowerCase();
+      const key = `${def.id}:${normalizedValue}`;
+
+      const existing = existingMap.get(key);
+      if (existing) {
+        productFacetRows.push({
+          product_id: productId,
+          facet_value_id: existing.id,
+        });
+        continue;
+      }
+
+      // Guardrail: if it's a strict enum, and the definition already has values,
+      // do not allow creating a new value - log warning and skip
+      if (STRICT_ENUM_SLUGS.has(def.slug) && hasValues.has(def.id)) {
+        console.warn(
+          `[Publish] Guardrail blocked upsert of non-canonical value "${valText}" for strict enum "${def.slug}"`
+        );
+        continue;
+      }
+
       const valSlug = buildFacetSlug(valText);
 
       const { data: upsertedVal, error: valError } = await supabase

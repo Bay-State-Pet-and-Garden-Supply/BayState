@@ -44,7 +44,7 @@ export async function createBrand(formData: FormData): Promise<BrandActionState>
         const { data, error } = await supabase
             .from('brands')
             .insert(validatedData)
-            .select('id, name, slug, logo_url, description, official_domains, preferred_domains, created_at')
+            .select('id, name, slug, logo_url, description, official_domains, preferred_domains, source_cascade_configured_at, source_cascade_configured_by, created_at')
             .single();
 
         if (error) {
@@ -87,7 +87,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<Brand
             .from('brands')
             .update(validatedData)
             .eq('id', id)
-            .select('id, name, slug, logo_url, description, official_domains, preferred_domains, created_at')
+            .select('id, name, slug, logo_url, description, official_domains, preferred_domains, source_cascade_configured_at, source_cascade_configured_by, created_at')
             .single();
 
         if (error) {

@@ -46,6 +46,47 @@ interface AttemptLike {
   attempt_number?: number | null;
 }
 
+/**
+ * Determines final pipeline status from per-source outcomes.
+ *
+ * Rules (per ADR 0002):
+ * - Any source_error &#8594; needs_attention (can't trust the cascade was exhaustive)
+ * - All sources attempted cleanly (found or not_stocked) &#8594; processed
+ */
+function determineSourceOutcomeStatus(
+  sourceResults: Array<{ outcome?: string | null }>,
+): { status: string } {
+  const hasSourceError = sourceResults.some(
+    (r) => r.outcome === "source_error",
+  );
+
+  if (hasSourceError) {
+    return { status: "needs_attention" };
+  }
+
+  return { status: "processed" };
+}
+
+/**
+ * Builds a concise error message summarizing source errors for needs_attention.
+ */
+function buildSourceErrorMessage(
+  sourceResults: Array<{ sourceSlug: string; outcome?: string | null; errorCode?: string | null }>,
+): string {
+  const errors = sourceResults
+    .filter((r) => r.outcome === "source_error")
+    .map((r) => {
+      const code = r.errorCode ? ` (${r.errorCode})` : "";
+      return `${r.sourceSlug}${code}`;
+    });
+
+  if (errors.length === 0) {
+    return "Source errors encountered during extraction";
+  }
+
+  return `Source errors: ${errors.join(", ")}`;
+}
+
 function isRequestedExtractionMode(value: unknown): value is RequestedExtractionMode {
   return typeof value === "string" && REQUESTED_EXTRACTION_MODES.includes(value as RequestedExtractionMode);
 }
@@ -238,7 +279,6 @@ export async function POST(request: NextRequest) {
     });
 
     const isTestJob = (attemptData as { enrichment_jobs?: { test_mode?: boolean } }).enrichment_jobs?.test_mode === true;
-    const nextAttempt = determineNextStatus(enrichedResult as any, attemptData, requestedMode);
 
     const resultPayload = {
       ...(rawBody as Record<string, unknown>),
@@ -266,19 +306,49 @@ export async function POST(request: NextRequest) {
       console.error("Failed to update enrichment attempt:", attemptUpdateError);
     }
 
-    const nextAttemptNumber = (attemptData.attempt_number ?? 1) + 1;
-    const shouldQueueRetry = nextAttempt.retry && nextAttemptNumber <= MAX_ENRICHMENT_ATTEMPTS;
-    const nextStatus = shouldQueueRetry
-      ? nextAttempt.status
-      : nextAttempt.status === "processed"
-        ? "processed"
-        : "imported";
+    // ------------------------------------------------------------------
+    // ------------------------------------------------------------------
+    // Persist source-level outcomes to enrichment_source_attempts
+    // (only for non-test jobs — test jobs don't have brand_id mocks)
+    // ------------------------------------------------------------------
+    const sourceResults = enrichedResult.source_results;
+    const hasSourceResults = Array.isArray(sourceResults) && sourceResults.length > 0;
 
-    if (nextAttempt.retry && !shouldQueueRetry) {
-      console.warn(
-        `[Enrichment Callback] Retry hard cap reached for UPC ${enrichedResult.upc} ` +
-        `(attempt ${attemptData.attempt_number ?? 1}/${MAX_ENRICHMENT_ATTEMPTS}). Finalizing without requeue.`
-      );
+    // ------------------------------------------------------------------
+    // Determine next pipeline status
+    // ------------------------------------------------------------------
+    const isApprovedSource = isApprovedSourceResult(enrichedResult as any);
+    let nextStatus: string;
+    let shouldQueueRetry: boolean;
+    let nextAttemptNumber = (attemptData.attempt_number ?? 1) + 1;
+
+    if (isApprovedSource) {
+      // Approved source results use source-outcome status determination
+      if (hasSourceResults && sourceResults!.some((r) => r.outcome)) {
+        nextStatus = determineSourceOutcomeStatus(sourceResults!).status;
+      } else {
+        // Approved source result without outcome data — runner may need update.
+        // Treat as needs_attention to avoid silently processing incomplete data.
+        nextStatus = "needs_attention";
+      }
+      // No auto-requeue for approved source extraction (manual re-extraction only)
+      shouldQueueRetry = false;
+    } else {
+      // Legacy (non-approved-source) extraction uses existing retry logic
+      const nextAttempt = determineNextStatus(enrichedResult as any, attemptData, requestedMode);
+      shouldQueueRetry = nextAttempt.retry && nextAttemptNumber <= MAX_ENRICHMENT_ATTEMPTS;
+      nextStatus = shouldQueueRetry
+        ? nextAttempt.status
+        : nextAttempt.status === "processed"
+          ? "processed"
+          : "imported";
+
+      if (nextAttempt.retry && !shouldQueueRetry) {
+        console.warn(
+          `[Enrichment Callback] Retry hard cap reached for UPC ${enrichedResult.upc} ` +
+          `(attempt ${attemptData.attempt_number ?? 1}/${MAX_ENRICHMENT_ATTEMPTS}). Finalizing without requeue.`
+        );
+      }
     }
 
     if (isTestJob) {
@@ -286,9 +356,70 @@ export async function POST(request: NextRequest) {
     } else {
       const { data: product } = await supabase
         .from("products_ingestion")
-        .select("sources")
+        .select("sources, brand_id")
         .eq("upc", enrichedResult.upc)
         .single();
+
+      // Persist source-level outcomes to enrichment_source_attempts
+      if (hasSourceResults) {
+        const brandId = (product as { brand_id?: string | null } | null)?.brand_id ?? null;
+
+        // Derive display_name/priority from the job's source plan if available
+        const jobConfigData = (attemptData as { enrichment_jobs?: { config?: Record<string, unknown> } })?.enrichment_jobs?.config;
+        const sourcePlansByUpc = jobConfigData?.source_plans_by_upc as Record<string, { priority?: Array<{ sourceSlug: string; displayName: string; priority: number }> }> | undefined;
+        const sourcePlan = sourcePlansByUpc?.[enrichedResult.upc];
+        const planEntryBySlug = new Map<string, { displayName: string; priority: number }>();
+        if (sourcePlan?.priority) {
+          for (const entry of sourcePlan.priority) {
+            planEntryBySlug.set(entry.sourceSlug, {
+              displayName: entry.displayName,
+              priority: entry.priority,
+            });
+          }
+        }
+
+        // Delete existing source attempts for this job+upc to replace cleanly
+        const { error: deleteError } = await supabase
+          .from("enrichment_source_attempts")
+          .delete()
+          .eq("job_id", attemptData.job_id)
+          .eq("upc", enrichedResult.upc);
+
+        if (deleteError) {
+          console.error("Failed to delete existing source attempts:", deleteError);
+        }
+
+        // Build rows from source_results
+        const sourceAttemptRows = sourceResults!.map((sr) => {
+          const planEntry = planEntryBySlug.get(sr.sourceSlug);
+          return {
+            job_id: attemptData.job_id,
+            attempt_id: attemptData.id,
+            upc: enrichedResult.upc,
+            brand_id: brandId,
+            source_type: sr.sourceType ?? "distributor",
+            source_slug: sr.sourceSlug,
+            display_name: planEntry?.displayName ?? sr.sourceSlug,
+            priority: planEntry?.priority ?? 100,
+            outcome: sr.outcome ?? "source_error",
+            confidence: sr.confidence ?? null,
+            matched_fields: sr.matchedFields ?? null,
+            evidence_url: sr.evidenceUrl ?? null,
+            error_code: sr.errorCode ?? null,
+            error_message: sr.errorMessage ?? null,
+            raw_result: sr as unknown as Record<string, unknown>,
+            attempted_at: sr.attemptedAt ?? new Date().toISOString(),
+          };
+        });
+
+        const { error: sourceAttemptError } = await supabase
+          .from("enrichment_source_attempts")
+          .insert(sourceAttemptRows);
+
+        if (sourceAttemptError) {
+          console.error("Failed to persist source attempts:", sourceAttemptError);
+        }
+      }
 
       const currentSources = (product?.sources as Record<string, unknown>) ?? {};
       const mergedEnriched = mergeEnrichedSource(currentSources.enriched, normalized, {
@@ -333,9 +464,11 @@ export async function POST(request: NextRequest) {
         pipeline_status: nextStatus,
         confidence_score: mergedEnriched.confidence_score,
         error_message:
-          nextStatus === "imported" && enrichedResult.status === "failed"
-            ? enrichedResult.validation?.warnings?.[0] ?? "Enrichment failed"
-            : null,
+          nextStatus === "needs_attention" && hasSourceResults
+            ? buildSourceErrorMessage(sourceResults!)
+            : nextStatus === "imported" && enrichedResult.status === "failed"
+              ? enrichedResult.validation?.warnings?.[0] ?? "Enrichment failed"
+              : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -353,7 +486,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (shouldQueueRetry) {
+    if (shouldQueueRetry && !isApprovedSource) {
       await supabase.from("enrichment_attempts").insert({
         job_id: attemptData.job_id,
         upc: enrichedResult.upc,

@@ -185,9 +185,13 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         """Apply image quality replacements from legacy configs.
 
         Override in subclass for distributor-specific patterns.
-        Default: no transformation.
+        Default: normalizes backslash to forward slash as a safety net.
         """
-        return list(urls)
+        normalized = []
+        for url in urls:
+            if url:
+                normalized.append(url.replace("\\", "/"))
+        return normalized
 
     # ------------------------------------------------------------------
     # Shared deterministic extraction helpers

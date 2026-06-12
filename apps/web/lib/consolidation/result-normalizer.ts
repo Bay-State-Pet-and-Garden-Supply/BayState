@@ -97,18 +97,18 @@ function toTitleCasePreserveBrand(text: string, brand?: string): string {
  */
 function normalizeUnits(text: string): string {
     const replacements: [RegExp, string][] = [
-        [/\b(lbs?|pounds?)\b\.?/gi, 'lb.'],
-        [/\b(ounces?|oz)\b\.?/gi, 'oz.'],
-        [/\b(count|ct)\b\.?/gi, 'ct.'],
-        [/\b(feet|ft)\b\.?/gi, 'ft.'],
+        [/(?<=\d\s*|\b)(lbs?|pounds?)\b\.?/gi, 'lb.'],
+        [/(?<=\d\s*|\b)(ounces?|oz)\b\.?/gi, 'oz.'],
+        [/(?<=\d\s*|\b)(count|ct)\b\.?/gi, 'ct.'],
+        [/(?<=\d\s*|\b)(feet|ft)\b\.?/gi, 'ft.'],
         [/\b(inches?)\b/gi, 'in.'],
         [/(?<=\d\s*)in\b\.?/gi, 'in.'],
         [/"/g, ' in. '],
-        [/\b(gallons?|gal)\b\.?/gi, 'gal.'],
-        [/\b(quarts?|qt)\b\.?/gi, 'qt.'],
-        [/\b(pints?|pt)\b\.?/gi, 'pt.'],
-        [/\b(packs?|pk)\b\.?/gi, 'pk.'],
-        [/\b(liters?)\b|\bL\.?/g, 'L'],
+        [/(?<=\d\s*|\b)(gallons?|gal)\b\.?/gi, 'gal.'],
+        [/(?<=\d\s*|\b)(quarts?|qt)\b\.?/gi, 'qt.'],
+        [/(?<=\d\s*|\b)(pints?|pt)\b\.?/gi, 'pt.'],
+        [/(?<=\d\s*|\b)(packs?|pk)\b\.?/gi, 'pk.'],
+        [/(?<=\d\s*|\b)(liters?)\b|\bL\.?/g, 'L'],
     ];
     let output = text;
     for (const [pattern, replacement] of replacements) {
@@ -161,17 +161,16 @@ function ensureUnitPeriods(text: string): string {
  */
 function normalizeUnitCasing(text: string): string {
     return text
-        .replace(/\b(lb|lb)\b\.?/gi, 'lb.')
-        .replace(/\b(oz|oz)\b\.?/gi, 'oz.')
-        .replace(/\b(ct|ct)\b\.?/gi, 'ct.')
-        .replace(/\b(ft|ft)\b\.?/gi, 'ft.')
-        .replace(/(?<=\d\s*)(in|in)\b\.?/gi, 'in.')
-        .replace(/\b(in|in)\b\./gi, 'in.')
-        .replace(/\b(gal|gal)\b\.?/gi, 'gal.')
-        .replace(/\b(qt|qt)\b\.?/gi, 'qt.')
-        .replace(/\b(pt|pt)\b\.?/gi, 'pt.')
-        .replace(/\b(pk|pk)\b\.?/gi, 'pk.')
-        .replace(/\b(l)\b/gi, 'L');
+        .replace(/(?<=\d\s*|\b)lb\b\.?/gi, 'lb.')
+        .replace(/(?<=\d\s*|\b)oz\b\.?/gi, 'oz.')
+        .replace(/(?<=\d\s*|\b)ct\b\.?/gi, 'ct.')
+        .replace(/(?<=\d\s*|\b)ft\b\.?/gi, 'ft.')
+        .replace(/(?<=\d\s*)in\b\.?/gi, 'in.')
+        .replace(/(?<=\d\s*|\b)gal\b\.?/gi, 'gal.')
+        .replace(/(?<=\d\s*|\b)qt\b\.?/gi, 'qt.')
+        .replace(/(?<=\d\s*|\b)pt\b\.?/gi, 'pt.')
+        .replace(/(?<=\d\s*|\b)pk\b\.?/gi, 'pk.')
+        .replace(/(?<=\d\s*|\b)l\b/gi, 'L');
 }
 
 /**

@@ -23,6 +23,7 @@ type StageBackedPipelineStage = Extract<
   | "merging"
   | "reviewing"
   | "publishing"
+  | "needs_attention"
   | "failed"
 >;
 
@@ -57,6 +58,10 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
   publishing: {
     table: "products_ingestion",
     status: "publishing",
+  },
+  needs_attention: {
+    table: "products_ingestion",
+    status: "needs_attention",
   },
   failed: {
     table: "products_ingestion",
@@ -799,6 +804,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
     merging: 0,
     reviewing: 0,
     publishing: 0,
+    needs_attention: 0,
     failed: 0,
   };
 

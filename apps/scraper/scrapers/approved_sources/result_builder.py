@@ -38,6 +38,9 @@ def _build_source_results(
     matched_fields: list[str] | None = None,
     product: EnrichedProductFacts | None = None,
     source_results: list[SourceResultInfo] | None = None,
+    outcome: str | None = None,
+    error_code: str | None = None,
+    error_message: str | None = None,
 ) -> list[SourceResultInfo]:
     if source_results:
         return source_results
@@ -50,6 +53,9 @@ def _build_source_results(
             matchedFields=matched_fields or [],
             evidenceUrl=evidence_url,
             product=product,
+            outcome=outcome,
+            error_code=error_code,
+            error_message=error_message,
         )
     ]
 
@@ -88,6 +94,7 @@ def build_success_result(
             source_slug=source_slug,
             evidence="Deterministic extraction matched UPC on approved source",
         ),
+        # outcome: found — product was successfully matched and extracted
         status="success",
         extracted_at=now_iso(),
         mode="mixed",
@@ -118,6 +125,7 @@ def build_success_result(
             matched_fields=matched_fields,
             product=product,
             source_results=source_results,
+            outcome="found",
         ),
     )
 
@@ -141,6 +149,7 @@ def build_partial_result(
     """Build a partial enrichment result (some fields found, some missing).
 
     decision = deterministic_partial (or llm_fallback if llm_used=True)
+    outcome = found (partial still found data, just not all fields)
     """
     decision = "llm_fallback" if llm_used else "deterministic_partial"
 
@@ -187,6 +196,7 @@ def build_partial_result(
             matched_fields=matched_fields,
             product=product,
             source_results=source_results,
+            outcome="found",
         ),
     )
 
@@ -204,6 +214,7 @@ def build_auth_required_result(
 
     Returns a legitimate EnrichmentResultV1 with failed status and AUTH_REQUIRED
     warning, so the runner can still progress to the next source.
+    outcome = source_error — could not query the source at all
     """
     warning = message or f"AUTH_REQUIRED: Authentication required for {source_slug}; no usable session"
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
@@ -242,6 +253,7 @@ def build_auth_required_result(
             confidence=0.0,
             evidence_url=resolved_evidence_url,
             source_results=source_results,
+            outcome="source_error",
         ),
     )
 
@@ -259,6 +271,7 @@ def build_auth_failed_result(
 
     Returns a legitimate EnrichmentResultV1 with failed status and
     AUTH_FAILED warning, so the runner can progress to the next source.
+    outcome = source_error — could not query the source at all
     """
     warning = message or f"AUTH_FAILED: Login failed for {source_slug}"
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
@@ -297,6 +310,7 @@ def build_auth_failed_result(
             confidence=0.0,
             evidence_url=resolved_evidence_url,
             source_results=source_results,
+            outcome="source_error",
         ),
     )
 
@@ -314,6 +328,7 @@ def build_auth_expired_result(
 
     Returns a legitimate EnrichmentResultV1 with failed status and
     AUTH_EXPIRED warning, so the runner can progress to the next source.
+    outcome = source_error — could not query the source at all
     """
     warning = message or f"AUTH_EXPIRED: Session expired for {source_slug}; re-login required"
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
@@ -352,6 +367,7 @@ def build_auth_expired_result(
             confidence=0.0,
             evidence_url=resolved_evidence_url,
             source_results=source_results,
+            outcome="source_error",
         ),
     )
 
@@ -364,7 +380,10 @@ def build_no_match_result(
     requested_extraction_mode: RequestedExtractionMode | None = None,
     source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
-    """Build a failed result when a source returned no matching product."""
+    """Build a failed result when a source returned no matching product.
+
+    outcome = not_stocked — source ran fine but product not in catalog
+    """
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
     return EnrichmentResultV1(
         schema_version="v1",
@@ -400,6 +419,7 @@ def build_no_match_result(
             confidence=0.0,
             evidence_url=resolved_evidence_url,
             source_results=source_results,
+            outcome="not_stocked",
         ),
     )
 
@@ -412,7 +432,10 @@ def build_policy_blocked_result(
     requested_extraction_mode: RequestedExtractionMode | None = None,
     source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
-    """Build a failed result when a URL is blocked by the domain policy."""
+    """Build a failed result when a URL is blocked by the domain policy.
+
+    outcome = source_error — blocked by policy means we couldn't check
+    """
     return EnrichmentResultV1(
         schema_version="v1",
         upc=upc,
@@ -447,6 +470,9 @@ def build_policy_blocked_result(
             confidence=0.0,
             evidence_url=blocked_url,
             source_results=source_results,
+            outcome="source_error",
+            error_code="policy_blocked",
+            error_message=reason,
         ),
     )
 
@@ -467,8 +493,25 @@ def build_failed_result(
     The web callback contract requires ``source.url`` to be non-empty even for
     failed results, so fall back to the approved-source sentinel when we do not
     have a concrete evidence URL.
+
+    When source_slug is provided, always emit a SourceResultInfo with
+    outcome="source_error" so the web callback correctly classifies
+    the UPC as needs_attention and blocks SERP fallback.
     """
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
+
+    # Always emit a source_error outcome when source_slug is known
+    if source_slug and not source_results:
+        source_results = _build_source_results(
+            source_slug=source_slug,
+            source_type=source_type,
+            confidence=0.0,
+            evidence_url=resolved_evidence_url,
+            outcome="source_error",
+            error_code="extraction_failed",
+            error_message=error_message,
+        )
+
     return EnrichmentResultV1(
         schema_version="v1",
         upc=upc,

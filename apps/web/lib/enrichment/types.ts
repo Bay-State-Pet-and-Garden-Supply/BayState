@@ -79,8 +79,10 @@ export interface EnrichmentSource {
  */
 export interface EnrichmentConfig {
   /**
-   * Array of source IDs enabled for this product.
-   * If empty or undefined, all sources are enabled (default behavior).
+   * @deprecated Per-product source selection is obsolete.
+   * Source selection is now handled by the per-brand Source Cascade
+   * configured in Brand Settings. This field is no longer read by the
+   * source plan builder. Existing data is preserved but ignored.
    */
   enabled_sources?: string[];
 

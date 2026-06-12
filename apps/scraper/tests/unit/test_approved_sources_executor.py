@@ -307,10 +307,21 @@ class TestExecutor:
         assert [entry.sourceSlug for entry in result.source_results] == ["bradley", "phillips"]
         assert result.source.source_slug == "bradley"
 
-    @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
-    def test_returns_success_with_high_confidence(self, mock_fetch):
+    @patch(
+        "scrapers.approved_sources.adapters.bradley.BradleyAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    def test_returns_success_with_high_confidence(self, mock_extract_method):
         """Successful extraction returns success status."""
-        mock_fetch.return_value = SAMPLE_BRADLEY_HTML
+        mock_extract_method.return_value = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/product",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+        )
 
         entries = [
             ApprovedSourcePlanEntry(
@@ -334,8 +345,6 @@ class TestExecutor:
         executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
         import asyncio
         result = asyncio.run(executor.execute())
-        # Bradley adapter finds name+brand from HTML, confidence should be >= 0.7
-        # Should return success or partial
         assert result.status in ("success", "partial"), f"Expected success/partial but got {result.status}: {result.validation.warnings}"
 
     # ------------------------------------------------------------------ #
@@ -346,12 +355,23 @@ class TestExecutor:
         "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
         new_callable=AsyncMock,
     )
-    @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
+    @patch(
+        "scrapers.approved_sources.adapters.bradley.BradleyAdapter.extract",
+        new_callable=AsyncMock,
+    )
     def test_selected_distributor_succeeds_skips_official_fallback(
-        self, mock_bradley_fetch, mock_official_extract
+        self, mock_bradley_extract, mock_official_extract
     ):
         """When Bradley succeeds, official brand fallback is NOT called."""
-        mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
+        mock_bradley_extract.return_value = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+        )
         mock_official_extract.return_value = build_success_result(
             upc="001135",
             source_slug="serp_discovery",
@@ -486,14 +506,32 @@ class TestExecutor:
         assert result.status == "success"
         assert result.source.source_slug == "serp_discovery"
 
-    @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
-    @patch("scrapers.approved_sources.adapters.phillips.PhillipsAdapter.check_credentials")
+    @patch(
+        "scrapers.approved_sources.adapters.bradley.BradleyAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "scrapers.approved_sources.adapters.phillips.PhillipsAdapter.extract",
+        new_callable=AsyncMock,
+    )
     def test_auth_required_continues_to_next_source(
-        self, mock_phillips_check_creds, mock_bradley_fetch
+        self, mock_phillips_extract, mock_bradley_extract
     ):
         """Auth-required source fails with AUTH_REQUIRED, then next no-auth source succeeds."""
-        mock_phillips_check_creds.return_value = (False, "AUTH_REQUIRED: no credentials available")
-        mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
+        mock_phillips_extract.return_value = build_auth_required_result(
+            upc="001135",
+            source_slug="phillips",
+            requested_extraction_mode="mixed",
+        )
+        mock_bradley_extract.return_value = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+        )
 
         entries = [
             ApprovedSourcePlanEntry(
@@ -572,12 +610,23 @@ class TestExecutor:
         "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
         new_callable=AsyncMock,
     )
-    @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
-    def test_executor_runs_all_sources_and_aggregates_them(
-        self, mock_bradley_fetch, mock_official_extract
+    @patch(
+        "scrapers.approved_sources.adapters.bradley.BradleyAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    def test_distributor_success_blocks_serp_fallback(
+        self, mock_bradley_extract, mock_official_extract
     ):
-        """When multiple sources are in the plan, executor runs all of them and aggregates results."""
-        mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
+        """When a distributor succeeds, SERP/official brand fallback is NOT called."""
+        mock_bradley_extract.return_value = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+        )
         mock_official_extract.return_value = build_success_result(
             upc="001135",
             source_slug="serp_discovery",
@@ -621,14 +670,132 @@ class TestExecutor:
 
         result = asyncio.run(executor.execute())
 
-        # Both sources should have been executed
-        mock_official_extract.assert_called_once()
+        # SERP should NOT be called because distributor found the product
+        mock_official_extract.assert_not_called()
         assert result.status in ("success", "partial")
         
-        # Verify both results are in source_results
+        # Only bradley results should be in source_results (no serp_discovery)
         source_slugs = [s.sourceSlug for s in result.source_results]
         assert "bradley" in source_slugs
-        assert "serp_discovery" in source_slugs
+        assert "serp_discovery" not in source_slugs
+
+    @patch(
+        "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    @patch("scrapers.approved_sources.adapters.phillips.PhillipsAdapter.check_credentials")
+    def test_distributor_error_blocks_serp(
+        self, mock_phillips_check_creds, mock_official_extract
+    ):
+        """When a distributor source errors, SERP is NOT called even if official_brand is in plan."""
+        mock_phillips_check_creds.return_value = (False, "AUTH_REQUIRED: no credentials available")
+        mock_official_extract.return_value = build_success_result(
+            upc="001135",
+            source_slug="serp_discovery",
+            source_type="official_brand",
+            evidence_url="https://example.com/product",
+            product_fields={"name": "Official Product", "brand": "Brand"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.85,
+            llm_used=True,
+        )
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="phillips",
+                displayName="Phillips",
+                domains=["shop.phillipspet.com"],
+                assetDomains=["shop.phillipspet.com"],
+                adapterSlug="phillips_crawl4ai",
+                requiresAuth=True,
+                searchMode="sku_search",
+                allowedFields=["name"],
+                priority=10,
+                runFirst=True,
+            ),
+            ApprovedSourcePlanEntry(
+                sourceType="official_brand",
+                sourceSlug="official_brand",
+                displayName="Official Brand",
+                domains=["example.com"],
+                adapterSlug="crawl4ai_direct",
+                priority=100,
+            ),
+        ]
+        plan = _make_plan(entries=entries)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        # SERP should NOT be called because distributor had source_error
+        mock_official_extract.assert_not_called()
+        # Should be failed since only source errored and SERP was blocked
+        assert result.status == "failed"
+        assert result.decision == "failed"
+
+    @patch(
+        "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    @patch("scrapers.approved_sources.adapters.central_pet.CentralPetAdapter._fetch_html")
+    def test_all_not_stocked_triggers_serp(
+        self, mock_cp_fetch, mock_official_extract
+    ):
+        """When all distributors are clean not_stocked, SERP fallback IS called."""
+        mock_cp_fetch.return_value = SAMPLE_NO_MATCH_HTML
+        mock_official_result = build_success_result(
+            upc="38777520",
+            source_slug="serp_discovery",
+            source_type="official_brand",
+            evidence_url="https://www.example.com/product",
+            product_fields={"name": "Official Product Name", "brand": "Official Brand"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.85,
+            llm_used=True,
+        )
+        mock_official_extract.return_value = mock_official_result
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="central_pet",
+                displayName="Central Pet",
+                domains=["centralpet.com"],
+                assetDomains=["centralpet.com"],
+                adapterSlug="central_pet_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=10,
+                runFirst=True,
+            ),
+            ApprovedSourcePlanEntry(
+                sourceType="official_brand",
+                sourceSlug="official_brand",
+                displayName="Official Brand",
+                domains=["example.com"],
+                adapterSlug="crawl4ai_direct",
+                priority=100,
+            ),
+        ]
+        plan = _make_plan(entries=entries)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        # SERP should have been called
+        mock_official_extract.assert_called_once()
+        assert result.status == "success"
+        assert result.source.source_slug == "serp_discovery"
 
     @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
     def test_serp_discovery_adapter_uses_ai_credentials_for_search(self, mock_search_client_class):
@@ -708,10 +875,10 @@ class TestExecutor:
         entries = [
             ApprovedSourcePlanEntry(
                 sourceType="official_brand",
-                sourceSlug="official_brand",
+                sourceSlug="serp_discovery",
                 displayName="Official Brand",
                 domains=["example.com"],
-                adapterSlug="crawl4ai_direct",
+                adapterSlug="serp_discovery",
                 priority=100,
             )
         ]
@@ -863,46 +1030,4 @@ class TestExecutor:
         ))
 
         assert resolved is None  # Bypassed Phase 1 direct match and returned None instead of the incentive page
-
-    @patch("src.ocr.vision_service.extract_text_from_image_urls")
-    def test_executor_runs_ocr_when_enabled(self, mock_extract):
-        mock_extract.return_value = "Extracted OCR text"
-        import asyncio
-        plan, mock_extractor = _create_plan_with_mock_html()
-        job_config = {
-            "ocr": {
-                "enabled": True,
-                "model": "gpt-4o-mini",
-            }
-        }
-        
-        executor = ApprovedSourceExecutor(
-            plan=plan,
-            extractor=mock_extractor,
-            job_config=job_config,
-        )
-        
-        # Mock result of _try_source_entries to return a successful result with images
-        result = build_success_result(
-            upc="001135",
-            source_slug="bradley",
-            source_type="distributor",
-            evidence_url="https://example.com",
-            product_fields={
-                "name": "E-Z HANG SCALE",
-                "brand": "KERBL",
-                "image_urls": ["https://example.com/front.jpg"]
-            },
-            matched_fields=["name", "brand"],
-            overall_confidence=0.9,
-        )
-        
-        executor._try_source_entries = AsyncMock(return_value=result)
-        
-        final_result = asyncio.run(executor.execute())
-        
-        assert final_result.product.evidence.image_text == "Extracted OCR text"
-        mock_extract.assert_called_once()
-
-
 

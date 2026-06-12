@@ -28,7 +28,8 @@ export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor
     merging: STATUS_COLORS.MERGING,
     reviewing: STATUS_COLORS.WARNING,
     publishing: STATUS_COLORS.PUBLISHED,
-    failed: STATUS_COLORS.FAILED,
+    needs_attention: STATUS_COLORS.WARNING,
+  failed: STATUS_COLORS.FAILED,
 } as const;
 
 export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
@@ -39,7 +40,8 @@ export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
     merging: 'Merging',
     reviewing: 'Reviewing',
     publishing: 'Publishing',
-    failed: 'Failed',
+    needs_attention: 'Needs Attention',
+  failed: 'Failed',
 } as const;
 
 export const CSS_CUSTOM_PROPERTIES = {
@@ -73,6 +75,7 @@ export function getStatusCssVar(status: PersistedPipelineStatus): string {
         merging: CSS_CUSTOM_PROPERTIES.STATUS.MERGING,
         reviewing: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
         publishing: CSS_CUSTOM_PROPERTIES.BRAND.FOREST_GREEN,
+        needs_attention: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
         failed: CSS_CUSTOM_PROPERTIES.STATUS.FAILED,
     };
     return statusToCssVar[status];

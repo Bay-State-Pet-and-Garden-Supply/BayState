@@ -150,17 +150,72 @@ const enrichedProductFactsV1Schema = z.preprocess((val) => {
   }).transform((v) => v.data),
 ]));
 
-const sourceResultInfoSchema = z.object({
-  sourceSlug: z.string(),
-  sourceType: z.string(),
-  confidence: z.number().min(0).max(1),
-  matchedFields: z.array(z.string()).optional(),
-  evidenceUrl: z.string().nullable().optional(),
-  product: enrichedProductFactsV1Schema.nullable().optional(),
-  extractionMethod: z.string().nullable().optional(),
-  platform: z.string().nullable().optional(),
-  llmUsed: z.boolean().nullable().optional(),
-});
+const sourceOutcomeSchema = z.enum([
+  "found",
+  "not_stocked",
+  "source_error",
+  "skipped",
+]).nullable().optional();
+
+/**
+ * Normalize snake_case field names from Python runner to camelCase
+ * expected by the Zod schema. Runs as a preprocess step.
+ */
+function normalizeSourceResultFields(data: unknown): unknown {
+  if (typeof data !== "object" || data === null) return data;
+  const obj = data as Record<string, unknown>;
+  const normalized: Record<string, unknown> = { ...obj };
+
+  // Map snake_case Python fields to camelCase schema fields
+  if ("error_code" in obj && !("errorCode" in obj)) {
+    normalized.errorCode = obj.error_code;
+  }
+  if ("error_message" in obj && !("errorMessage" in obj)) {
+    normalized.errorMessage = obj.error_message;
+  }
+  if ("attempted_at" in obj && !("attemptedAt" in obj)) {
+    normalized.attemptedAt = obj.attempted_at;
+  }
+  if ("source_slug" in obj && !("sourceSlug" in obj)) {
+    normalized.sourceSlug = obj.source_slug;
+  }
+  if ("source_type" in obj && !("sourceType" in obj)) {
+    normalized.sourceType = obj.source_type;
+  }
+  if ("evidence_url" in obj && !("evidenceUrl" in obj)) {
+    normalized.evidenceUrl = obj.evidence_url;
+  }
+  if ("matched_fields" in obj && !("matchedFields" in obj)) {
+    normalized.matchedFields = obj.matched_fields;
+  }
+  if ("extraction_method" in obj && !("extractionMethod" in obj)) {
+    normalized.extractionMethod = obj.extraction_method;
+  }
+  if ("llm_used" in obj && !("llmUsed" in obj)) {
+    normalized.llmUsed = obj.llm_used;
+  }
+
+  return normalized;
+}
+
+const sourceResultInfoSchema = z.preprocess(
+  normalizeSourceResultFields,
+  z.object({
+    sourceSlug: z.string(),
+    sourceType: z.string(),
+    confidence: z.number().min(0).max(1),
+    matchedFields: z.array(z.string()).optional(),
+    evidenceUrl: z.string().nullable().optional(),
+    product: enrichedProductFactsV1Schema.nullable().optional(),
+    extractionMethod: z.string().nullable().optional(),
+    platform: z.string().nullable().optional(),
+    llmUsed: z.boolean().nullable().optional(),
+    outcome: sourceOutcomeSchema,
+    errorCode: z.string().nullable().optional(),
+    errorMessage: z.string().nullable().optional(),
+    attemptedAt: z.string().nullable().optional(),
+  })
+);
 
 const enrichmentResultSourceV1Schema = z.object({
   url: z.string().min(1, "URL is required"),

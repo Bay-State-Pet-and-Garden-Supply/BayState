@@ -11,11 +11,10 @@ import {
     type BrandRegistryRow,
 } from '@/lib/brand-registry';
 
-import { findDistributorInCatalog } from '@/lib/approved-sources/distributor-catalog';
 import { buildApprovedSourcePlans } from '@/lib/approved-sources/source-plan';
-import type { 
-    ScrapeOptions, 
-    ScrapeResult 
+import type {
+    ScrapeOptions,
+    ScrapeResult
 } from './pipeline-scraping-types';
 
 export type { ScrapeOptions } from './pipeline-scraping-types';
@@ -597,56 +596,14 @@ export async function scrapeProducts(
     }
 
     const testMode = options?.testMode ?? false;
-    const scrapers = options?.scrapers ?? [];
-
-    // Resolve scraper display names/slugs to crawl4ai adapter slugs using distributor catalog
-    let effectiveScrapers = scrapers;
-    if (scrapers.length > 0) {
-        effectiveScrapers = scrapers.map(s => {
-            const entry = findDistributorInCatalog(s);
-            return entry ? entry.adapterSlug : s;
-        });
-    }
 
     const supabase = await createClient();
 
-    // 1. Update products_ingestion's enrichment_config.enabled_sources with the selected scrapers
-    if (effectiveScrapers.length > 0) {
-        try {
-            const { data: existingProducts } = await supabase
-                .from('products_ingestion')
-                .select('upc, enrichment_config')
-                .in('upc', upcs);
-
-            if (existingProducts) {
-                await Promise.all(
-                    existingProducts.map(async (p) => {
-                        const existingConfig = (p.enrichment_config || {}) as Record<string, any>;
-                        await supabase
-                            .from('products_ingestion')
-                            .update({
-                                enrichment_config: {
-                                    ...existingConfig,
-                                    enabled_sources: effectiveScrapers,
-                                },
-                            })
-                            .eq('upc', p.upc);
-                    })
-                );
-            }
-        } catch (e) {
-            console.error('[Pipeline Scraping] Failed to update products enabled_sources:', e);
-            // Non-fatal: continue with current DB state
-        }
-    }
-
-    // 2. Build Approved Source Plans (required since direct URL extraction is deprecated)
-    let sourcePlansByUpc: Record<string, any> = {};
-    let skippedUpcs: string[] = [];
+    // Build Approved Source Plans using the automated cascade
+    const sourcePlansByUpc: Record<string, any> = {};
+    const skippedUpcs: string[] = [];
     try {
-        const plans = await buildApprovedSourcePlans(supabase, upcs, {
-            extractionMode: 'distributor_only',
-        });
+        const plans = await buildApprovedSourcePlans(supabase, upcs, {});
 
         for (const [upc, result] of Object.entries(plans)) {
             if (result.ok) {
@@ -663,9 +620,9 @@ export async function scrapeProducts(
 
     const brandedUpcs = Object.keys(sourcePlansByUpc);
     if (brandedUpcs.length === 0) {
-        return { 
-            success: false, 
-            error: 'No valid approved source plans could be built for the selected UPCs. Assign a brand with enabled brand sources in Settings.' 
+        return {
+            success: false,
+            error: 'No valid approved source plans could be built for the selected UPCs. Assign a brand with an enabled source cascade in Brand Settings.'
         };
     }
 
@@ -676,15 +633,14 @@ export async function scrapeProducts(
     const jobMode = 'mixed';
     const jobModel = null;
     const jobConfig = {
-        scrapers: effectiveScrapers,
         upc_context: standardUpcContext,
         test_mode: testMode,
         source: 'pipeline',
-        pipeline_version: 'static_first_v1',
+        pipeline_version: 'cascade_v1',
         source_type: 'approved_source_extraction',
         source_plans_by_upc: sourcePlansByUpc,
-        extraction_mode: 'distributor_only',
-        ocr: { enabled: true },
+        cascade_version: 'v1',
+        serp_fallback_policy: 'run_when_all_distributors_clean_not_stocked',
     };
 
     const { data: job, error: insertError } = await supabase
@@ -728,20 +684,34 @@ export async function scrapeProducts(
     }
 
     if (!testMode) {
-        const { error: statusError } = await supabase
+        // Only transition imported products to extracting
+        // Products already in processed/needs_attention stay in their status
+        // (the callback finalizes the re-extraction status)
+        const { data: existingProducts } = await supabase
             .from('products_ingestion')
-            .update({
-                pipeline_status: 'extracting',
-                updated_at: new Date().toISOString(),
-                error_message: null,
-            })
+            .select('upc, pipeline_status')
             .in('upc', brandedUpcs);
 
-        if (statusError) {
-            console.error('[Pipeline Scraping] Failed to move products into extracting:', statusError);
-            await supabase.from('enrichment_attempts').delete().eq('job_id', job.id);
-            await supabase.from('enrichment_jobs').delete().eq('id', job.id);
-            return { success: false, error: 'Failed to mark products as extracting' };
+        const importingUpcs = (existingProducts ?? [])
+            .filter((p: { upc: string; pipeline_status: string }) => p.pipeline_status === 'imported')
+            .map((p: { upc: string }) => p.upc);
+
+        if (importingUpcs.length > 0) {
+            const { error: statusError } = await supabase
+                .from('products_ingestion')
+                .update({
+                    pipeline_status: 'extracting',
+                    updated_at: new Date().toISOString(),
+                    error_message: null,
+                })
+                .in('upc', importingUpcs);
+
+            if (statusError) {
+                console.error('[Pipeline Scraping] Failed to move products into extracting:', statusError);
+                await supabase.from('enrichment_attempts').delete().eq('job_id', job.id);
+                await supabase.from('enrichment_jobs').delete().eq('id', job.id);
+                return { success: false, error: 'Failed to mark products as extracting' };
+            }
         }
     }
 

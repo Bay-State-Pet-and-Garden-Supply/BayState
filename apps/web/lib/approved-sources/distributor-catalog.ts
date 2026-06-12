@@ -275,7 +275,7 @@ export function buildDistributorPlanEntry(
     searchMode: catalogEntry.searchMode,
     allowedFields: catalogEntry.allowedFields,
     priority: catalogEntry.priority,
-    runFirst: true,
+    runFirst: false,
   };
 }
 

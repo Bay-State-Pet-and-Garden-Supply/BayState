@@ -78,7 +78,6 @@ interface ProcessedResultsViewProps {
   cohortBrands?: Record<string, string>;
   cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
-  onOpenScrapeDialog?: (upc: string) => void;
 }
 
 interface SourceDetails extends Record<string, unknown> {
@@ -166,7 +165,6 @@ export function ProcessedResultsView({
   cohortBrands = {},
   cohortBrandObjects = {},
   onEditCohort,
-  onOpenScrapeDialog,
 }: ProcessedResultsViewProps) {
   // 1. Data Sorting
   const sortedProducts = useMemo(() => {
@@ -695,18 +693,36 @@ export function ProcessedResultsView({
                 
                 {/* Single Product Workflow Actions */}
                 <div className="flex items-center gap-2 shrink-0">
-                  {onOpenScrapeDialog && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-[11px] font-bold border border-border hover:bg-muted text-foreground"
-                      onClick={() => onOpenScrapeDialog(selectedProduct.upc)}
-                      disabled={submitting}
-                    >
-                      <RefreshCw className="size-3.5 mr-1.5" />
-                      Re-scrape
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-[11px] font-bold border border-border hover:bg-muted text-foreground"
+                    onClick={async () => {
+                      if (!selectedProduct) return;
+                      setSubmitting(true);
+                      try {
+                        const res = await fetch('/api/admin/enrichment/jobs', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ upcs: [selectedProduct.upc], retryMode: 'failed_or_untried' }),
+                        });
+                        const payload = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(payload.error || 'Failed to re-scrape');
+                        toast.success(`Re-scraping ${selectedProduct.upc}`, {
+                          description: 'Only failed/untried sources will be retried.',
+                        });
+                        onRefresh(true);
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to re-scrape');
+                      } finally {
+                        setSubmitting(false);
+                      }
+                    }}
+                    disabled={submitting}
+                  >
+                    <RefreshCw className="size-3.5 mr-1.5" />
+                    Re-scrape
+                  </Button>
                   <Button
                     size="sm"
                     className="h-8 text-[11px] font-bold bg-primary text-primary-foreground hover:bg-primary/95"

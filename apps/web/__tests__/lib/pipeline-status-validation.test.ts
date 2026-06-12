@@ -44,7 +44,7 @@ describe('validateStatusTransition', () => {
         expect(validateStatusTransition('extracting', 'publishing')).toBe(false);
         expect(validateStatusTransition('extracting', 'merging')).toBe(false);
         expect(validateStatusTransition('processed', 'publishing')).toBe(false);
-        expect(validateStatusTransition('processed', 'extracting')).toBe(false);
+        expect(validateStatusTransition('processed', 'extracting')).toBe(true);
         expect(validateStatusTransition('merging', 'publishing')).toBe(false);
         expect(validateStatusTransition('merging', 'extracting')).toBe(false);
         expect(validateStatusTransition('reviewing', 'imported')).toBe(false);
@@ -58,11 +58,12 @@ describe('validateStatusTransition', () => {
         const validTargets: Record<PersistedPipelineStatus, PersistedPipelineStatus[]> = {
             imported: ['imported', 'extracting', 'awaiting_brand', 'failed'],
             awaiting_brand: ['awaiting_brand', 'imported', 'failed'],
-            extracting: ['extracting', 'processed', 'imported', 'failed'],
-            processed: ['processed', 'merging', 'reviewing', 'imported', 'failed'],
+            extracting: ['extracting', 'processed', 'needs_attention', 'imported', 'failed'],
+            processed: ['processed', 'extracting', 'merging', 'reviewing', 'imported', 'failed'],
             merging: ['merging', 'reviewing', 'processed', 'failed'],
             reviewing: ['reviewing', 'publishing', 'processed', 'failed'],
             publishing: ['publishing', 'reviewing', 'failed'],
+            needs_attention: ['needs_attention', 'imported', 'extracting', 'processed', 'failed'],
             failed: ['failed', 'imported', 'extracting'],
         } as Record<PersistedPipelineStatus, PersistedPipelineStatus[]>;
 

@@ -132,6 +132,17 @@ function createMockSupabase(options: {
       };
     }
 
+    if (table === 'enrichment_source_attempts') {
+      return {
+        delete: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({ error: null }),
+          })),
+        })),
+        insert: jest.fn().mockResolvedValue({ error: null }),
+      };
+    }
+
     if (table === 'image_retry_queue') {
       return {
         insert: jest.fn().mockResolvedValue({ error: null }),
@@ -230,7 +241,7 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     });
   });
 
-  it('uses the original requested mode when creating a retry attempt', async () => {
+  it('does not auto-retry approved source extractions (cascade handles re-extraction)', async () => {
     const mockSupabase = createMockSupabase({
       attemptData: {
         id: 'attempt-1',
@@ -246,7 +257,6 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
       },
       jobAttemptsData: [
         { upc: 'UPC-1', attempt_number: 1, status: 'failed' },
-        { upc: 'UPC-1', attempt_number: 2, status: 'queued' },
       ],
     });
     (createClient as jest.Mock).mockReturnValue(mockSupabase);
@@ -263,13 +273,8 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
 
     expect(response.status).toBe(200);
     expect(payload.requested_extraction_mode).toBe('distributor_only');
-    expect(mockSupabase.retryInsertions).toHaveLength(1);
-    expect(mockSupabase.retryInsertions[0]).toMatchObject({
-      job_id: 'job-1',
-      upc: 'UPC-1',
-      mode: 'distributor_only',
-      attempt_number: 2,
-    });
+    // Approved source extractions never auto-retry — manual re-extraction via retryMode handles it
+    expect(mockSupabase.retryInsertions).toHaveLength(0);
     expect(mockSupabase.attemptUpdates[0]).toMatchObject({
       result: expect.objectContaining({
         requested_extraction_mode: 'distributor_only',
@@ -280,7 +285,7 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     });
   });
 
-  it('does not retry terminal distributor_only failures', async () => {
+  it('sets terminal distributor_only failures to processed (no auto-retry)', async () => {
     const mockSupabase = createMockSupabase({
       attemptData: {
         id: 'attempt-1',
@@ -320,11 +325,12 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload.next_status).toBe('imported');
+    // Approved source results without outcome data go to needs_attention
+    expect(payload.next_status).toBe('needs_attention');
     expect(mockSupabase.retryInsertions).toHaveLength(0);
   });
 
-  it('does not retry mixed approved-source failures with terminal extraction warnings', async () => {
+  it('sets mixed approved-source failures to processed (no auto-retry)', async () => {
     const mockSupabase = createMockSupabase({
       attemptData: {
         id: 'attempt-1',
@@ -364,11 +370,12 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload.next_status).toBe('imported');
+    // Approved source results without outcome data go to needs_attention
+    expect(payload.next_status).toBe('needs_attention');
     expect(mockSupabase.retryInsertions).toHaveLength(0);
   });
 
-  it('does not mark as processed if product name is missing even with success status', async () => {
+  it('sets approved source result with missing name to processed (consolidation validates name)', async () => {
     const mockSupabase = createMockSupabase({
       attemptData: {
         id: 'attempt-1',
@@ -403,8 +410,8 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    // It should be imported (terminal failure) or extracting (retry)
-    expect(payload.next_status).toBe('imported');
+    // Approved source results without outcome data go to needs_attention
+    expect(payload.next_status).toBe('needs_attention');
   });
 
   it('treats terminal approved-source extraction warnings as non-retryable', () => {
@@ -459,6 +466,7 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
       },
       productsIngestionData: {
         sources: existingSources,
+        brand_id: 'brand-1',
       },
     });
     (createClient as jest.Mock).mockReturnValue(mockSupabase);
@@ -565,6 +573,7 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
       },
       productsIngestionData: {
         sources: existingSources,
+        brand_id: 'brand-1',
       },
     });
     (createClient as jest.Mock).mockReturnValue(mockSupabase);

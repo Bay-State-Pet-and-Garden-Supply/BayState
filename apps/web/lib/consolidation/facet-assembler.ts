@@ -5,6 +5,7 @@
 import type { ConsolidationResult } from './types';
 import { enrichProductDetails } from './detail-enrichment';
 import { collectSourceBackedFallbacks } from '@/lib/product-source-fallbacks';
+import { getCachedVocabularySync, validateFacetValue } from './facet-vocabulary';
 
 export const LEGACY_TO_CANONICAL_FACETS: Record<string, string> = {
     pet_type: 'animal_type',
@@ -136,6 +137,19 @@ export function assembleProductFacets(
 
         // Normalize facet value (Issue 3)
         strValue = normalizeFacetValue(canonicalKey, strValue);
+
+        // Validate value against vocabulary if cached
+        const activeVocabulary = getCachedVocabularySync() || new Map<string, string[]>();
+        const validatedValue = validateFacetValue(canonicalKey, strValue, activeVocabulary);
+        if (validatedValue) {
+            strValue = validatedValue;
+        } else if (activeVocabulary.size > 0 && activeVocabulary.has(canonicalKey)) {
+            const allowed = activeVocabulary.get(canonicalKey);
+            if (allowed && allowed.length > 0) {
+                // Skip adding this facet value if it failed validation but the key has allowed options
+                return;
+            }
+        }
 
         if (!candidateFacetsMap.has(canonicalKey)) {
             candidateFacetsMap.set(canonicalKey, {

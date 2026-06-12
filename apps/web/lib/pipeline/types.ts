@@ -17,6 +17,7 @@ export const PERSISTED_PIPELINE_STATUSES = [
   "reviewing",
   "publishing",
   "failed",
+  "needs_attention",
 ] as const;
 
 export type PersistedPipelineStatus =
@@ -34,6 +35,7 @@ export const PIPELINE_TABS = [
   "reviewing",
   "publishing",
   "failed",
+  "needs_attention",
 ] as const;
 
 export type PipelineStage = (typeof PIPELINE_TABS)[number];
@@ -128,7 +130,7 @@ export interface PipelineProduct {
   } | null;
   /** Scraped data from multiple sources keyed by source ID */
   sources: Record<string, unknown>;
-  /** Configuration for enrichment and extraction */
+  /** @deprecated Per-product source selection is obsolete. Use per-brand Source Cascade. */
   enrichment_config?: {
     enabled_sources?: string[];
     official_domains?: string[];
@@ -298,6 +300,11 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
     label: "Publishing",
     color: "#008850",
     description: "Approved products are ready to publish to ShopSite and export files.",
+  },
+  needs_attention: {
+    label: "Needs Attention",
+    color: "#F97316",
+    description: "Some sources errored during extraction. Review and retry failed sources before continuing.",
   },
   failed: {
     label: "Failed",

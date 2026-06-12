@@ -167,6 +167,13 @@ function queryFailedTabProducts(
   return queryTab("failed", supabase, pagination);
 }
 
+function queryNeedsAttentionTabProducts(
+  supabase: PipelineQuerySupabaseClient,
+  pagination?: PipelineTabPagination
+): Promise<PipelineTabQueryResult> {
+  return queryTab("needs_attention", supabase, pagination);
+}
+
 export function queryProductsForWorkflowTab(
   tab: WorkflowPipelineTab,
   supabase: PipelineQuerySupabaseClient,
@@ -186,6 +193,7 @@ export async function queryWorkflowTabCounts(
     merging,
     reviewing,
     publishing,
+    needs_attention,
     failed,
   ] = await Promise.all([
     queryImportedTabProducts(supabase, pagination),
@@ -194,6 +202,7 @@ export async function queryWorkflowTabCounts(
     queryMergingTabProducts(supabase, pagination),
     queryReviewingTabProducts(supabase, pagination),
     queryPublishingTabProducts(supabase, pagination),
+    queryNeedsAttentionTabProducts(supabase, pagination),
     queryFailedTabProducts(supabase, pagination),
   ]);
 
@@ -204,6 +213,7 @@ export async function queryWorkflowTabCounts(
     merging: merging.count,
     reviewing: reviewing.count,
     publishing: publishing.count,
+    needs_attention: needs_attention.count,
     failed: failed.count,
   };
 }
