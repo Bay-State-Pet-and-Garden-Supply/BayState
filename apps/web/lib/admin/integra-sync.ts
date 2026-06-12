@@ -125,22 +125,37 @@ export async function addToOnboarding(
 // ---------------------------------------------------------------------------
 
 /**
- * Create an inventory_reconciliation row.
+ * Create an integration_sync_runs row for an Integra reconciliation.
  */
-async function createInventoryReconciliationRun(input: {
+async function createIntegraReconciliationSyncRun(input: {
   fileName?: string;
   rowCount: number;
   createdBy?: string | null;
 }): Promise<string> {
   const supabase = await createClient();
+  const { data: externalSource, error: externalSourceError } = await supabase
+    .from('external_sources')
+    .select('id')
+    .eq('key', 'integra')
+    .maybeSingle();
+
+  if (externalSourceError) {
+    throw new Error(`Failed to resolve external source: ${externalSourceError.message}`);
+  }
+
+  const externalSourceId = externalSource?.id ?? null;
   const { data, error } = await supabase
-    .from('inventory_reconciliation')
+    .from('integration_sync_runs')
     .insert({
+      external_source_id: externalSourceId,
+      source_type: 'integra',
+      source_system: 'integra_register',
+      sync_kind: 'inventory',
       status: 'running',
-      total_items: input.rowCount,
+      file_name: input.fileName || null,
+      row_count: input.rowCount,
+      created_by: input.createdBy || null,
       metadata: {
-        file_name: input.fileName || null,
-        created_by: input.createdBy || null,
         initiated_from: 'runIntegraReconciliation',
       },
     })
@@ -148,31 +163,37 @@ async function createInventoryReconciliationRun(input: {
     .single();
 
   if (error || !data) {
-    throw new Error(`Failed to create inventory reconciliation: ${error?.message}`);
+    throw new Error(`Failed to create sync run: ${error?.message}`);
   }
   return data.id;
 }
 
 /**
- * Complete an inventory reconciliation run.
+ * Complete a sync run with final counts.
  */
-async function completeInventoryReconciliationRun(
-  reconciliationId: string,
+async function completeIntegraReconciliationSyncRun(
+  syncRunId: string,
   result: {
     success: boolean;
-    mismatchCount: number;
+    insertedCount: number;
+    updatedCount: number;
+    errorCount: number;
+    errorSummary?: string;
   }
 ): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase
-    .from('inventory_reconciliation')
+    .from('integration_sync_runs')
     .update({
       completed_at: new Date().toISOString(),
-      status: result.success ? 'completed' : 'failed',
-      mismatch_count: result.mismatchCount,
+      status: result.success ? 'completed' : (result.errorCount > 0 && result.insertedCount > 0 ? 'partial' : 'failed'),
+      inserted_count: result.insertedCount,
+      updated_count: result.updatedCount,
+      error_count: result.errorCount,
+      error_summary: result.errorSummary || null,
     })
-    .eq('id', reconciliationId);
-  if (error) console.error('Failed to complete inventory reconciliation:', error.message);
+    .eq('id', syncRunId);
+  if (error) console.error('Failed to complete sync run:', error.message);
 }
 
 /**
@@ -403,21 +424,24 @@ export async function runIntegraReconciliation(input: {
     throw new Error('No products found in the uploaded file');
   }
 
-  const reconciliationId = await createInventoryReconciliationRun({
+  const syncRunId = await createIntegraReconciliationSyncRun({
     fileName: input.fileName,
     rowCount: workbookProducts.length,
     createdBy: input.createdBy,
   });
 
   const analysis = await analyzeIntegraReconciliation(workbookProducts);
-  const { insertedCount, errorCount } = await persistReconciliationIssues(reconciliationId, analysis.issues);
+  const { insertedCount, errorCount } = await persistReconciliationIssues(syncRunId, analysis.issues);
 
-  await completeInventoryReconciliationRun(reconciliationId, {
+  await completeIntegraReconciliationSyncRun(syncRunId, {
     success: errorCount === 0,
-    mismatchCount: analysis.issues.length,
+    insertedCount,
+    updatedCount: 0,
+    errorCount,
+    errorSummary: errorCount > 0 ? `${errorCount} issues failed to persist` : undefined,
   });
 
-  return { syncRunId: reconciliationId, ...analysis };
+  return { syncRunId, ...analysis };
 }
 
 /**
