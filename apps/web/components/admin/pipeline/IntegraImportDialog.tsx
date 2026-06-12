@@ -124,7 +124,7 @@ export function IntegraImportDialog({
                                     </div>
                                     <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-none border border-border">
                                         <AlertCircle className="h-3.5 w-3.5" />
-                                        <span>Required: UPC_NO, LIST_PRICE</span>
+                                        <span>Required: UPC_NO or SKU_NO, LIST_PRICE</span>
                                     </div>
                                 </div>
                             </div>

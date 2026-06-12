@@ -125,37 +125,22 @@ export async function addToOnboarding(
 // ---------------------------------------------------------------------------
 
 /**
- * Create an integration_sync_runs row for an Integra reconciliation.
+ * Create an inventory_reconciliation row.
  */
-async function createIntegraReconciliationSyncRun(input: {
+async function createInventoryReconciliationRun(input: {
   fileName?: string;
   rowCount: number;
   createdBy?: string | null;
 }): Promise<string> {
   const supabase = await createClient();
-  const { data: externalSource, error: externalSourceError } = await supabase
-    .from('external_sources')
-    .select('id')
-    .eq('key', 'integra')
-    .maybeSingle();
-
-  if (externalSourceError) {
-    throw new Error(`Failed to resolve external source: ${externalSourceError.message}`);
-  }
-
-  const externalSourceId = externalSource?.id ?? null;
   const { data, error } = await supabase
-    .from('integration_sync_runs')
+    .from('inventory_reconciliation')
     .insert({
-      external_source_id: externalSourceId,
-      source_type: 'integra',
-      source_system: 'integra_register',
-      sync_kind: 'inventory',
       status: 'running',
-      file_name: input.fileName || null,
-      row_count: input.rowCount,
-      created_by: input.createdBy || null,
+      total_items: input.rowCount,
       metadata: {
+        file_name: input.fileName || null,
+        created_by: input.createdBy || null,
         initiated_from: 'runIntegraReconciliation',
       },
     })
@@ -163,37 +148,31 @@ async function createIntegraReconciliationSyncRun(input: {
     .single();
 
   if (error || !data) {
-    throw new Error(`Failed to create sync run: ${error?.message}`);
+    throw new Error(`Failed to create inventory reconciliation: ${error?.message}`);
   }
   return data.id;
 }
 
 /**
- * Complete a sync run with final counts.
+ * Complete an inventory reconciliation run.
  */
-async function completeIntegraReconciliationSyncRun(
-  syncRunId: string,
+async function completeInventoryReconciliationRun(
+  reconciliationId: string,
   result: {
     success: boolean;
-    insertedCount: number;
-    updatedCount: number;
-    errorCount: number;
-    errorSummary?: string;
+    mismatchCount: number;
   }
 ): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase
-    .from('integration_sync_runs')
+    .from('inventory_reconciliation')
     .update({
       completed_at: new Date().toISOString(),
-      status: result.success ? 'completed' : (result.errorCount > 0 && result.insertedCount > 0 ? 'partial' : 'failed'),
-      inserted_count: result.insertedCount,
-      updated_count: result.updatedCount,
-      error_count: result.errorCount,
-      error_summary: result.errorSummary || null,
+      status: result.success ? 'completed' : 'failed',
+      mismatch_count: result.mismatchCount,
     })
-    .eq('id', syncRunId);
-  if (error) console.error('Failed to complete sync run:', error.message);
+    .eq('id', reconciliationId);
+  if (error) console.error('Failed to complete inventory reconciliation:', error.message);
 }
 
 /**
@@ -375,26 +354,21 @@ async function analyzeIntegraReconciliation(
  * Persist reconciliation issues to the database.
  */
 async function persistReconciliationIssues(
-  syncRunId: string,
+  reconciliationId: string,
   issues: ReconciliationIssue[]
 ): Promise<{ insertedCount: number; errorCount: number }> {
   const supabase = await createClient();
   const rows = issues.map(issue => ({
-    sync_run_id: syncRunId,
+    reconciliation_id: reconciliationId,
     upc: issue.upc,
     product_id: issue.productId,
-    register_name: issue.registerName,
-    website_name: issue.websiteName,
     register_price: issue.registerPrice,
     website_price: issue.websitePrice,
     register_quantity: issue.registerQuantity,
     website_quantity: issue.websiteQuantity,
     issue_type: issue.issueType,
-    severity: issue.severity,
     status: 'open',
-    recommended_action: issue.recommendedAction,
-    raw_register_payload: issue.rawRegisterPayload || {},
-    metadata: {},
+    notes: issue.registerName || null,
   }));
 
   let insertedCount = 0;
@@ -429,24 +403,21 @@ export async function runIntegraReconciliation(input: {
     throw new Error('No products found in the uploaded file');
   }
 
-  const syncRunId = await createIntegraReconciliationSyncRun({
+  const reconciliationId = await createInventoryReconciliationRun({
     fileName: input.fileName,
     rowCount: workbookProducts.length,
     createdBy: input.createdBy,
   });
 
   const analysis = await analyzeIntegraReconciliation(workbookProducts);
-  const { insertedCount, errorCount } = await persistReconciliationIssues(syncRunId, analysis.issues);
+  const { insertedCount, errorCount } = await persistReconciliationIssues(reconciliationId, analysis.issues);
 
-  await completeIntegraReconciliationSyncRun(syncRunId, {
+  await completeInventoryReconciliationRun(reconciliationId, {
     success: errorCount === 0,
-    insertedCount,
-    updatedCount: 0,
-    errorCount,
-    errorSummary: errorCount > 0 ? `${errorCount} issues failed to persist` : undefined,
+    mismatchCount: analysis.issues.length,
   });
 
-  return { syncRunId, ...analysis };
+  return { syncRunId: reconciliationId, ...analysis };
 }
 
 /**
@@ -486,7 +457,7 @@ export async function pushRegisterOnlyIssuesToPipeline(
     .eq('status', 'open');
 
   if (params.syncRunId) {
-    query = query.eq('sync_run_id', params.syncRunId);
+    query = query.eq('reconciliation_id', params.syncRunId);
   } else if (params.issueIds && params.issueIds.length > 0) {
     query = query.in('id', params.issueIds);
   } else {
@@ -500,7 +471,7 @@ export async function pushRegisterOnlyIssuesToPipeline(
     return { success: false, count: 0, errors: [`Failed to fetch issues: ${fetchError?.message || 'No issues returned'}`] };
   }
 
-  console.log(`[pushToPipeline] Fetching ${issues.length} issues for sync run ${params.syncRunId || 'custom list'}`);
+  console.log(`[pushToPipeline] Fetching ${issues.length} issues for run ${params.syncRunId || 'custom list'}`);
 
   for (const issue of issues) {
     const { error: insertError } = await supabase
@@ -508,11 +479,11 @@ export async function pushRegisterOnlyIssuesToPipeline(
       .upsert({
         upc: issue.upc,
         input: {
-          name: issue.register_name || issue.upc,
+          name: issue.notes || issue.upc,
           price: issue.register_price,
           upc: issue.upc,
           source: 'integra',
-          sync_run_id: issue.sync_run_id,
+          sync_run_id: issue.reconciliation_id,
           reconciliation_item_id: issue.id,
         },
         pipeline_status: 'imported',

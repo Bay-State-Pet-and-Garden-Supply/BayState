@@ -100,4 +100,46 @@ describe("parseRegisterWorkbook", () => {
       },
     ]);
   });
+
+  it("normalizes and parses SKU_NO and SKU when UPC_NO is missing", () => {
+    const products = parseRegisterRows([
+      {
+        SKU_NO: "987654321",
+        DESCRIPTION1: "Test SKU_NO Product",
+        LIST_PRICE: "19.99",
+        QUANTITY_ON_HAND: "5",
+      },
+      {
+        SKU: "123456789",
+        DESCRIPTION1: "Test SKU Product",
+        LIST_PRICE: "9.99",
+        QUANTITY_ON_HAND: "10",
+      },
+    ]);
+
+    expect(products).toEqual([
+      {
+        upc: "987654321",
+        name: "Test SKU_NO Product",
+        price: 19.99,
+        quantityOnHand: 5,
+        dateCreated: null,
+        dateCounted: null,
+        dateReceived: null,
+        datePriced: null,
+        dateSold: null,
+      },
+      {
+        upc: "123456789",
+        name: "Test SKU Product",
+        price: 9.99,
+        quantityOnHand: 10,
+        dateCreated: null,
+        dateCounted: null,
+        dateReceived: null,
+        datePriced: null,
+        dateSold: null,
+      },
+    ]);
+  });
 });

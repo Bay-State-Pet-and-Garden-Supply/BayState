@@ -30,23 +30,19 @@ export type ReconciliationIssueStatus = 'open' | 'ignored' | 'resolved' | 'pushe
 
 export interface InventoryReconciliationItemRow {
   id: string;
-  sync_run_id: string;
+  reconciliation_id: string | null;
   upc: string;
   product_id: string | null;
-  register_name: string | null;
-  website_name: string | null;
   register_price: number | null;
   website_price: number | null;
   register_quantity: number | null;
   website_quantity: number | null;
-  issue_type: ReconciliationIssueType;
-  severity: string;
-  status: ReconciliationIssueStatus;
-  recommended_action: string | null;
-  metadata: Record<string, unknown>;
+  issue_type: string;
+  status: string;
+  notes: string | null;
   resolved_at: string | null;
   resolved_by: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface IntegraReconciliationResult {

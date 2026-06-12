@@ -165,7 +165,7 @@ export function AnalyticsDashboard({
                                                 fontFamily: 'Inter, sans-serif',
                                                 fontWeight: '600'
                                             }}
-                                            formatter={(value: number | string | undefined) => [formatCurrency(Number(value) || 0), 'REV']}
+                                            formatter={(value: any) => [formatCurrency(Number(value) || 0), 'REV']}
                                         />
                                         <Area
                                             type="stepAfter"
