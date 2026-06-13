@@ -20,6 +20,7 @@ import {
   UserRound,
   Workflow,
   Wrench,
+  History,
 } from 'lucide-react';
 
 export interface AdminNavItem {
@@ -51,6 +52,12 @@ export const adminNavSections: AdminNavSection[] = [
         label: 'Pipeline',
         icon: Workflow,
         description: 'Imports, review, publishing',
+      },
+      {
+        href: '/admin/pipeline/history',
+        label: 'Publish history',
+        icon: History,
+        description: 'Products published by day',
       },
       {
         href: '/admin/pipeline/runners',

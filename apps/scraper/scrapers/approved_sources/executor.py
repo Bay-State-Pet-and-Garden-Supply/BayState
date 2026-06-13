@@ -18,7 +18,9 @@ NEVER returns None — always returns valid EnrichmentResultV1.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import random
 from typing import Any
 
 from scrapers.approved_sources.adapters.registry import get_adapter_class
@@ -47,6 +49,9 @@ class ApprovedSourceExecutor:
         self.ai_credentials = ai_credentials
         self.job_config = job_config
         self.policy = plan.sourcePolicy
+        # Random delay (seconds) between source executions to avoid rapid-fire
+        # requests from the same IP. Set to (0, 0) to disable throttling.
+        self.inter_source_delay: tuple[float, float] = (1.0, 3.0)
 
         if api_client is not None:
             extractor.api_client = api_client
@@ -112,11 +117,19 @@ class ApprovedSourceExecutor:
         all_results: list[EnrichmentResultV1] = []
 
         # ---- Phase 1: Execute ALL distributors ----
-        for entry in distributor_entries:
+        for i, entry in enumerate(distributor_entries):
             result = await self._execute_single_entry(entry)
             if result:
                 result.requested_extraction_mode = self.plan.extractionMode
                 all_results.append(result)
+            # Inter-source throttle: add a random delay between sources
+            if i < len(distributor_entries) - 1 and self.inter_source_delay[1] > 0:
+                delay = random.uniform(*self.inter_source_delay)
+                logger.debug(
+                    "[Executor] Inter-source throttle: %.1fs before next source",
+                    delay,
+                )
+                await asyncio.sleep(delay)
 
         # ---- Phase 2: Classify distributor outcomes ----
         distributor_outcomes = self._collect_source_outcomes(all_results)

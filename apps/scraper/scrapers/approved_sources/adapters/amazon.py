@@ -25,6 +25,10 @@ from bs4 import BeautifulSoup
 from crawl4ai import CacheMode, CrawlerRunConfig
 
 from scrapers.approved_sources.adapters.base import ApprovedSourceAdapter, get_shared_browser_engine
+from scrapers.approved_sources.anti_bot import (
+    detect_bot_block,
+    retry_with_backoff,
+)
 from scrapers.ai_search.enrichment_models import (
     EnrichmentResultV1,
     build_v1_from_extraction_result,
@@ -461,39 +465,27 @@ class AmazonAdapter(ApprovedSourceAdapter):
         Amazon aggressively blocks concurrent headless requests. This method
         serialises search requests through a class-level lock and retries on
         failure with jittered backoff to recover from transient bot blocks.
+
+        Uses the shared retry_with_backoff utility from anti_bot module.
         """
-        import random
 
-        for attempt_num in range(1 + max_retries):
+        async def _single_attempt() -> Any:
             async with self._search_lock:
-                try:
-                    result = await engine.crawler.arun(url=search_url, config=config)
-                except Exception as e:
-                    logger.warning(
-                        "[AmazonAdapter] Crawl search attempt %d/%d threw exception: %s",
-                        attempt_num + 1, 1 + max_retries, e,
-                    )
-                    result = None
+                result = await engine.crawler.arun(url=search_url, config=config)
+            if not result or not result.success or not result.html:
+                raise RuntimeError(f"Crawl failed for {search_url}")
+            return result
 
-            if result and result.success and result.html:
-                if attempt_num > 0:
-                    logger.info(
-                        "[AmazonAdapter] Search succeeded on retry %d for: %s",
-                        attempt_num, search_url,
-                    )
-                return result
-
-            if attempt_num < max_retries:
-                base_delay = 2.0 * (2 ** attempt_num)  # 2s, 4s
-                jitter = random.uniform(0.5, 1.5)
-                delay = base_delay * jitter
-                logger.info(
-                    "[AmazonAdapter] Search attempt %d/%d failed for %s, retrying in %.1fs",
-                    attempt_num + 1, 1 + max_retries, search_url, delay,
-                )
-                await asyncio.sleep(delay)
-
-        return result  # final failed attempt
+        try:
+            return await retry_with_backoff(
+                _single_attempt,
+                max_retries=max_retries,
+                base_delay=2.0,
+                label=f"AmazonAdapter search {search_url}",
+            )
+        except Exception:
+            # Return None on exhausted retries instead of raising
+            return None
 
     async def extract(self, extractor: Any) -> EnrichmentResultV1 | None:
         upc = self._get_sku()
@@ -597,29 +589,29 @@ class AmazonAdapter(ApprovedSourceAdapter):
                     break
 
         if not pdp_url:
-            # Check for bot block/captcha indicators
-            captcha_form = soup.select_one('form[action*="validateCaptcha"]')
-            has_robot_text = "make sure you're not a robot" in html.lower() or "automated access" in html.lower()
+            # Check for bot block/captcha indicators using shared detection
+            block = detect_bot_block(html)
 
-            body_text = soup.body.get_text(" ", strip=True).lower() if soup.body else ""
-            no_results_patterns = ["no results for", "try checking your spelling", "did not match any products"]
-            found_no_results = any(p in body_text for p in no_results_patterns)
-
-            if captcha_form or has_robot_text:
+            if block.is_blocked:
                 logger.warning(
-                    "[AmazonAdapter] Search for UPC %s failed: BOT BLOCK DETECTED (CAPTCHA/robot check page loaded).",
-                    upc,
-                )
-            elif found_no_results:
-                logger.info(
-                    "[AmazonAdapter] Search for UPC %s failed: Genuinely NO RESULTS found on Amazon (product is not listed).",
-                    upc,
+                    "[AmazonAdapter] Search for UPC %s failed: %s (%s)",
+                    upc, block.message, block.block_type,
                 )
             else:
-                logger.warning(
-                    "[AmazonAdapter] Search for UPC %s failed: No valid PDP URL found in search results.",
-                    upc,
-                )
+                body_text = soup.body.get_text(" ", strip=True).lower() if soup.body else ""
+                no_results_patterns = ["no results for", "try checking your spelling", "did not match any products"]
+                found_no_results = any(p in body_text for p in no_results_patterns)
+
+                if found_no_results:
+                    logger.info(
+                        "[AmazonAdapter] Search for UPC %s failed: Genuinely NO RESULTS found on Amazon (product is not listed).",
+                        upc,
+                    )
+                else:
+                    logger.warning(
+                        "[AmazonAdapter] Search for UPC %s failed: No valid PDP URL found in search results.",
+                        upc,
+                    )
             return None
 
         # Phase 3: Crawl PDP and extract from rendered HTML
@@ -684,12 +676,11 @@ class AmazonAdapter(ApprovedSourceAdapter):
                     )
 
                 pdp_soup = BeautifulSoup(pdp_result.html, "html.parser")
-                pdp_captcha = pdp_soup.select_one('form[action*="validateCaptcha"]')
-                pdp_robot_text = "make sure you're not a robot" in pdp_result.html.lower() or "automated access" in pdp_result.html.lower()
-                if pdp_captcha or pdp_robot_text:
+                pdp_block = detect_bot_block(pdp_result.html)
+                if pdp_block.is_blocked:
                     logger.warning(
-                        "[AmazonAdapter] PDP crawl for UPC %s failed: BOT BLOCK DETECTED (CAPTCHA/robot check page loaded on PDP).",
-                        upc,
+                        "[AmazonAdapter] PDP crawl for UPC %s failed: %s (%s)",
+                        upc, pdp_block.message, pdp_block.block_type,
                     )
                 else:
                     logger.warning(

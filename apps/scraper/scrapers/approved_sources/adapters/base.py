@@ -26,6 +26,12 @@ from scrapers.approved_sources.auth import (
 )
 import httpx
 
+from scrapers.approved_sources.anti_bot import (
+    detect_bot_block,
+    get_proxy_config,
+    get_random_user_agent,
+)
+
 logger = logging.getLogger(__name__)
 
 _IDENTIFIER_RE = re.compile(r"[^A-Z0-9]+")
@@ -42,14 +48,19 @@ async def get_shared_browser_engine():
                 import os
                 from src.crawl4ai_engine.engine import Crawl4AIEngine
                 headless = os.environ.get("HEADLESS", "true").lower() != "false"
+                browser_settings: dict[str, Any] = {
+                    "headless": headless,
+                    "viewport_width": 1280,
+                    "viewport_height": 800,
+                    "light_mode": True,
+                    "enable_stealth": True,
+                    "user_agent": get_random_user_agent(),
+                }
+                proxy_config = get_proxy_config()
+                if proxy_config:
+                    browser_settings["proxy_config"] = proxy_config
                 engine_config = {
-                    "browser": {
-                        "headless": headless,
-                        "viewport_width": 1280,
-                        "viewport_height": 800,
-                        "light_mode": True,
-                        "enable_stealth": True,
-                    },
+                    "browser": browser_settings,
                     "crawler": {
                         "page_timeout": 30000,
                         "delay_before_return_html": 1000,
@@ -122,6 +133,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
     base_url: str = ""
     search_url_template: str = ""
     requires_auth: bool = False
+    bot_sensitive: bool = False  # When True, fetch+parse is retried on bot blocks
 
     def __init__(self, entry: ApprovedSourcePlanEntry, plan: ApprovedSourcePlan):
         super().__init__(entry, plan)
@@ -865,36 +877,71 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
     async def _fetch_html(self, url: str) -> str | None:
         """Fetch HTML from a URL using httpx.
 
-        Uses a short timeout and simple headers. Returns the HTML text
-        or None if the request fails or returns a non-OK status.
+        Uses a short timeout, rotating user-agent, and retry with backoff
+        for transient failures (429s, connection resets). Returns the HTML
+        text or None if the request fails or returns a non-OK status.
         """
-        try:
-            async with httpx.AsyncClient(
-                timeout=30.0,
-                follow_redirects=True,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                                  "Chrome/120.0.0.0 Safari/537.36",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.5",
-                },
-            ) as client:
-                response = await client.get(url)
-                if response.status_code == 200:
-                    return response.text
-                else:
-                    logger.warning(
-                        "[%s] HTTP %d fetching %s",
-                        self.adapter_slug, response.status_code, url,
-                    )
-                    return None
-        except Exception as e:
-            logger.warning(
-                "[%s] Error fetching %s: %s",
-                self.adapter_slug, url, e,
-            )
-            return None
+        max_attempts = 3 if self.bot_sensitive else 1
+
+        for attempt in range(max_attempts):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=30.0,
+                    follow_redirects=True,
+                    headers={
+                        "User-Agent": get_random_user_agent(),
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                    },
+                ) as client:
+                    response = await client.get(url)
+                    if response.status_code == 200:
+                        html = response.text
+                        # Check for bot blocks in the response body
+                        block = detect_bot_block(html)
+                        if block.is_blocked:
+                            logger.warning(
+                                "[%s] Bot block detected on HTTP fetch (%s): %s",
+                                self.adapter_slug, block.block_type, block.message,
+                            )
+                            if attempt < max_attempts - 1:
+                                import random as _rand
+                                delay = 2.0 * (2 ** attempt) * _rand.uniform(0.5, 1.5)
+                                logger.info(
+                                    "[%s] Retrying fetch in %.1fs (attempt %d/%d)",
+                                    self.adapter_slug, delay, attempt + 1, max_attempts,
+                                )
+                                await asyncio.sleep(delay)
+                                continue
+                            return None
+                        return html
+                    elif response.status_code == 429 and attempt < max_attempts - 1:
+                        import random as _rand
+                        delay = 2.0 * (2 ** attempt) * _rand.uniform(0.5, 1.5)
+                        logger.info(
+                            "[%s] HTTP 429 (rate limited), retrying in %.1fs (attempt %d/%d)",
+                            self.adapter_slug, delay, attempt + 1, max_attempts,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        logger.warning(
+                            "[%s] HTTP %d fetching %s",
+                            self.adapter_slug, response.status_code, url,
+                        )
+                        return None
+            except Exception as e:
+                logger.warning(
+                    "[%s] Error fetching %s: %s",
+                    self.adapter_slug, url, e,
+                )
+                if attempt < max_attempts - 1:
+                    import random as _rand
+                    delay = 2.0 * (2 ** attempt) * _rand.uniform(0.5, 1.5)
+                    await asyncio.sleep(delay)
+                    continue
+                return None
+        return None
 
     def _needs_js_rendering(self, html: str) -> bool:
         """Detect if HTML appears to be a JS-rendered shell without product data.
@@ -923,6 +970,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
 
         Falls back gracefully if Crawl4AI is not available.
         Uses a short page timeout to avoid blocking too long.
+        Checks for bot blocks in the returned HTML.
         """
         try:
             from crawl4ai import CrawlerRunConfig, CacheMode, BrowserConfig, AsyncWebCrawler
@@ -934,13 +982,18 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                     "[%s] Crawl4AI using non-stealth browser crawler for %s",
                     self.adapter_slug, url,
                 )
-                browser_config = BrowserConfig(
-                    browser_type="chromium",
-                    headless=True,
-                    viewport_width=1280,
-                    viewport_height=800,
-                    enable_stealth=False,
-                )
+                browser_kwargs: dict[str, Any] = {
+                    "browser_type": "chromium",
+                    "headless": True,
+                    "viewport_width": 1280,
+                    "viewport_height": 800,
+                    "enable_stealth": False,
+                    "user_agent": get_random_user_agent(),
+                }
+                proxy_config = get_proxy_config()
+                if proxy_config:
+                    browser_kwargs["proxy_config"] = proxy_config
+                browser_config = BrowserConfig(**browser_kwargs)
                 run_config = CrawlerRunConfig(
                     cache_mode=CacheMode.BYPASS,
                     page_timeout=30000,
@@ -975,6 +1028,14 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             if result and getattr(result, "success", False):
                 html = getattr(result, "html", None) or ""
                 if html:
+                    # Check for bot blocks before returning
+                    block = detect_bot_block(html)
+                    if block.is_blocked:
+                        logger.warning(
+                            "[%s] Bot block detected in browser fetch (%s): %s",
+                            self.adapter_slug, block.block_type, block.message,
+                        )
+                        return None
                     logger.info(
                         "[%s] Browser fetch succeeded for %s (%d chars)",
                         self.adapter_slug, url, len(html),

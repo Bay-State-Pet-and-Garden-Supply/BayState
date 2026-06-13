@@ -218,7 +218,7 @@ export function determineSourceOutcomeStatus(
   }
 
   const hasSourceError = normalizedResults.some(
-    (r) => r.outcome === "source_error",
+    (r) => r.outcome === "source_error" && r.sourceSlug !== "amazon",
   );
   if (hasSourceError) {
     return { status: "needs_attention" };

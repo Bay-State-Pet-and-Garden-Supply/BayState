@@ -116,21 +116,35 @@ class TestRedactUsername:
 class TestResolveCredentials:
     """Test credential resolution logic."""
 
-    def test_no_api_client_returns_none(self):
+    def test_no_api_client_returns_none(self, monkeypatch):
+        monkeypatch.delenv("ORGILL_USERNAME", raising=False)
+        monkeypatch.delenv("ORGILL_PASSWORD", raising=False)
         creds = resolve_credentials("orgill", None)
         assert creds is None, "Should return None when no API client"
 
-    def test_api_client_no_method_returns_none(self):
+    def test_api_client_no_method_returns_none(self, monkeypatch):
+        monkeypatch.delenv("ORGILL_USERNAME", raising=False)
+        monkeypatch.delenv("ORGILL_PASSWORD", raising=False)
         class FakeClient:
             pass
         creds = resolve_credentials("orgill", FakeClient())
         assert creds is None, "Should return None when API client has no get_credentials"
 
-    def test_rejects_unknown_slug(self):
+    def test_rejects_unknown_slug(self, monkeypatch):
+        monkeypatch.delenv("UNKNOWN_SLUG_USERNAME", raising=False)
+        monkeypatch.delenv("UNKNOWN_SLUG_PASSWORD", raising=False)
         creds = resolve_credentials("unknown_slug", None)
         assert creds is None
 
-    def test_alias_uses_canonical_api_client_lookup(self):
+    def test_env_fallback_resolution(self, monkeypatch):
+        monkeypatch.setenv("ORGILL_USERNAME", "mock_env_user")
+        monkeypatch.setenv("ORGILL_PASSWORD", "mock_env_password")
+        creds = resolve_credentials("orgill", None)
+        assert creds == ("mock_env_user", "mock_env_password")
+
+    def test_alias_uses_canonical_api_client_lookup(self, monkeypatch):
+        monkeypatch.delenv("PETFOODEX_USERNAME", raising=False)
+        monkeypatch.delenv("PETFOODEX_PASSWORD", raising=False)
         class FakeClient:
             def __init__(self) -> None:
                 self.calls: list[str] = []
@@ -312,7 +326,7 @@ class TestJSCodeGeneration:
         js_code = await manager._generate_login_js_code(
             ORGILL_LOGIN,
             "testuser@example.com",
-            "testpassword123",
+            "mock_test_password",
         )
         assert "#cphMainContent_ctl00_loginOrgillxs_UserName" in js_code
         assert "#cphMainContent_ctl00_loginOrgillxs_Password" in js_code
@@ -325,7 +339,7 @@ class TestJSCodeGeneration:
         js_code = await manager._generate_login_js_code(
             ORGILL_LOGIN,
             "testuser@example.com",
-            "testpassword123",
+            "mock_test_password",
         )
         # Should contain escaped version of username
         assert "testuser@example.com" in js_code or "testuser" in js_code
@@ -340,11 +354,11 @@ class TestJSCodeGeneration:
         js_code = await manager._generate_login_js_code(
             ORGILL_LOGIN,
             "testuser",
-            "SuperSecretP@ss123",
+            "mock_super_secret_password",
         )
         # The password IS in the JS (it has to be for form filling),
         # but we verify it's properly escaped
-        assert "SuperSecretP@ss123" in js_code
+        assert "mock_super_secret_password" in js_code
 
 
 class TestLoginManagerDefault:
