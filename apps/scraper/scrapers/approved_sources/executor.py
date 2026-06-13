@@ -132,9 +132,14 @@ class ApprovedSourceExecutor:
                 await asyncio.sleep(delay)
 
         # ---- Phase 2: Classify distributor outcomes ----
-        distributor_outcomes = self._collect_source_outcomes(all_results)
-        has_source_error = any(o == "source_error" for o in distributor_outcomes)
-        has_found = any(o == "found" for o in distributor_outcomes)
+        distributor_outcomes_with_slugs = self._collect_source_outcomes_with_slugs(all_results)
+        has_found = any(o == "found" for o, _ in distributor_outcomes_with_slugs)
+        # Amazon is prone to bot blocks; treat its source_error as non-blocking
+        # for SERP cascade, matching the TypeScript coordinator's exclusion logic
+        has_source_error = any(
+            o == "source_error" and slug != "amazon"
+            for o, slug in distributor_outcomes_with_slugs
+        )
 
         # ---- Phase 3: Conditionally run SERP/official brand ----
         # SERP runs when:
@@ -348,6 +353,42 @@ class ApprovedSourceExecutor:
                                 "not_stocked" if is_no_match else "source_error"
                             )
         return outcomes
+
+    def _collect_source_outcomes_with_slugs(
+        self,
+        results: list[EnrichmentResultV1],
+    ) -> list[tuple[str, str]]:
+        """Collect (outcome, source_slug) pairs from results.
+
+        Falls back to inferring outcome from result status when
+        individual source_results don't have explicit outcome set.
+        Source slug defaults to "unknown" if not present.
+        """
+        pairs: list[tuple[str, str]] = []
+        for result in results:
+            if result.source_results:
+                for sr in result.source_results:
+                    slug = sr.sourceSlug or "unknown"
+                    if sr.outcome:
+                        pairs.append((sr.outcome, slug))
+                    else:
+                        # Infer from result status
+                        if result.status in ("success", "partial"):
+                            pairs.append(("found", slug))
+                        elif result.status == "failed":
+                            # Check if this was a clean no-match vs error
+                            has_warnings = (
+                                result.validation
+                                and result.validation.warnings
+                            )
+                            is_no_match = any(
+                                "No match" in (w or "")
+                                for w in (has_warnings or [])
+                            )
+                            pairs.append(
+                                ("not_stocked" if is_no_match else "source_error", slug)
+                            )
+        return pairs
 
     def _entry_policy_allowed(self, entry: ApprovedSourcePlanEntry) -> bool:
         """Check if an entry is allowed by the source policy."""

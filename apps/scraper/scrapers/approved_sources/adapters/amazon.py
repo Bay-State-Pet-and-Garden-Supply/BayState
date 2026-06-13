@@ -597,21 +597,28 @@ class AmazonAdapter(ApprovedSourceAdapter):
                     "[AmazonAdapter] Search for UPC %s failed: %s (%s)",
                     upc, block.message, block.block_type,
                 )
-            else:
-                body_text = soup.body.get_text(" ", strip=True).lower() if soup.body else ""
-                no_results_patterns = ["no results for", "try checking your spelling", "did not match any products"]
-                found_no_results = any(p in body_text for p in no_results_patterns)
+                return None
 
-                if found_no_results:
-                    logger.info(
-                        "[AmazonAdapter] Search for UPC %s failed: Genuinely NO RESULTS found on Amazon (product is not listed).",
-                        upc,
-                    )
-                else:
-                    logger.warning(
-                        "[AmazonAdapter] Search for UPC %s failed: No valid PDP URL found in search results.",
-                        upc,
-                    )
+            body_text = soup.body.get_text(" ", strip=True).lower() if soup.body else ""
+            no_results_patterns = ["no results for", "try checking your spelling", "did not match any products"]
+            found_no_results = any(p in body_text for p in no_results_patterns)
+
+            if found_no_results:
+                logger.info(
+                    "[AmazonAdapter] Search for UPC %s failed: Genuinely NO RESULTS found on Amazon (product is not listed).",
+                    upc,
+                )
+                from scrapers.approved_sources.result_builder import build_no_match_result
+                return build_no_match_result(
+                    upc=upc,
+                    source_slug=self.source_slug,
+                    source_type=self.source_type,
+                )
+
+            logger.warning(
+                "[AmazonAdapter] Search for UPC %s failed: No valid PDP URL found in search results.",
+                upc,
+            )
             return None
 
         # Phase 3: Crawl PDP and extract from rendered HTML
