@@ -19,7 +19,7 @@ import {
     getOpenAIClient,
     type ConsolidationRuntimeConfig,
 } from './openai-client';
-import { buildPromptContext, buildUserPrompt } from './prompt-builder';
+import { buildPromptContext, buildUserPrompt, generateGroupConsolidationSystemPrompt, buildGroupUserPromptPayload } from './prompt-builder';
 import {
     buildJSONResponseFormat,
     buildResponseSchema,
@@ -68,6 +68,10 @@ import {
     buildGeminiBatchStatus,
 } from './gemini-batch-service';
 import { enrichProductDetails } from './detail-enrichment';
+import { classifyProduct, extractClassificationEvidence, isConfidentClassification, buildClassificationSystemPrompt, buildClassificationUserPrompt } from './product-line-classification';
+import { loadKnownProductLines, assignProductToLine } from './product-lines';
+import { deduplicateProductLines } from './product-line-dedup';
+import crypto from 'crypto';
 
 // =============================================================================
 // Batch Content Generation
@@ -941,7 +945,298 @@ export async function submitBatch(
     }
 }
 
+// =============================================================================
+// Classification Batch Submission
+// =============================================================================
+
 /**
+ * Submit a product line classification batch.
+ * Creates a batch_jobs row with execution_mode='product_line_classification'
+ * and one batch_job_items row per UPC.
+ */
+export async function submitProductLineClassificationBatch(
+    products: Array<{ upc: string; sources: Record<string, unknown>; input?: Record<string, unknown> | null }>,
+    metadata: BatchMetadata = {}
+): Promise<SubmitBatchResponse | BatchErrorResponse> {
+    if (products.length === 0) {
+        return { success: false, error: 'No products to classify' };
+    }
+
+    try {
+        const supabase = await createAdminClient();
+        const runtime = await getConfiguredBatchRuntime();
+        if (isRuntimeErrorResponse(runtime)) return runtime;
+
+        const batchId = crypto.randomUUID();
+        const providerBatchId = `classify_${crypto.randomUUID()}`;
+        const model = runtime.model;
+
+        // Load known product lines for the classification prompt
+        const knownProductLines = await loadKnownProductLines();
+
+        // Build the system prompt once (shared by all items)
+        const systemPrompt = buildClassificationSystemPrompt(
+            knownProductLines.map(pl => ({ id: pl.id, canonical_name: pl.canonical_name }))
+        );
+
+        // Insert batch_jobs parent row
+        const { error: insertError } = await supabase.from('batch_jobs').insert({
+            id: batchId,
+            provider: runtime.provider,
+            provider_batch_id: providerBatchId,
+            status: 'pending',
+            execution_mode: 'product_line_classification',
+            description: (metadata.description as string) || `Product line classification for ${products.length} products`,
+            auto_apply: false,
+            total_requests: products.length,
+            completed_requests: 0,
+            failed_requests: 0,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+            estimated_cost: 0,
+            metadata: {
+                ...metadata,
+                system_prompt: systemPrompt,
+                llm_model: model,
+                llm_base_url: runtime.llm_base_url,
+                known_product_lines_count: knownProductLines.length,
+            },
+        });
+
+        if (insertError) {
+            console.error('[Classification] Failed to insert batch job:', insertError);
+            return { success: false, error: insertError.message };
+        }
+
+        // Insert one batch_job_items row per product with classification evidence pre-built
+        const items = products.map(product => {
+            const evidence = extractClassificationEvidence(product.upc, product.sources, product.input);
+            const userPrompt = buildClassificationUserPrompt(evidence);
+
+            return {
+                batch_job_id: batchId,
+                upc: product.upc,
+                status: 'pending',
+                item_kind: 'upc',
+                subject_key: product.upc,
+                request_payload: {
+                    model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt },
+                    ],
+                    max_tokens: 256,
+                    temperature: 0.1,
+                    response_format: { type: 'json_object' },
+                },
+                product_source: product.sources,
+            };
+        });
+
+        const { error: itemsError } = await supabase.from('batch_job_items').insert(items);
+        if (itemsError) {
+            await supabase.from('batch_jobs').delete().eq('id', batchId);
+            return { success: false, error: itemsError.message };
+        }
+
+        console.log('[Classification] Created batch %s with %d items', batchId, items.length);
+
+        return {
+            success: true,
+            batch_id: batchId,
+            provider: runtime.provider,
+            provider_batch_id: providerBatchId,
+            product_count: products.length,
+            execution_mode: 'product_line_classification',
+        };
+    } catch (error) {
+        console.error('[Classification] Failed to submit batch:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to submit classification batch',
+        };
+    }
+}
+
+// =============================================================================
+// Group Consolidation Submission
+// =============================================================================
+
+/**
+ * Submit a group consolidation batch.
+ * Creates one batch_job_items row per Product Group (not per UPC).
+ * Each group item contains all UPC source evidence for a single multi-product LLM call.
+ */
+export async function submitGroupConsolidationBatch(
+    groups: Array<{ product_line_id: string; product_line_name: string; upcs: string[] }>,
+    metadata: BatchMetadata = {}
+): Promise<SubmitBatchResponse | BatchErrorResponse> {
+    if (groups.length === 0) {
+        return { success: false, error: 'No groups to consolidate' };
+    }
+
+    const totalProducts = groups.reduce((sum, g) => sum + g.upcs.length, 0);
+
+    try {
+        const supabase = await createAdminClient();
+        const runtime = await getConfiguredBatchRuntime();
+        if (isRuntimeErrorResponse(runtime)) return runtime;
+
+        const batchId = crypto.randomUUID();
+        const providerBatchId = `group_${crypto.randomUUID()}`;
+        const model = runtime.model;
+
+        // Build prompt context (shared categories for all groups)
+        const { categories = [] } = await buildPromptContext();
+
+        // Insert batch_jobs parent row
+        const { error: insertError } = await supabase.from('batch_jobs').insert({
+            id: batchId,
+            provider: runtime.provider,
+            provider_batch_id: providerBatchId,
+            status: 'pending',
+            execution_mode: 'direct_chat_chunks',
+            description: (metadata.description as string) || `Group consolidation for ${groups.length} groups (${totalProducts} products)`,
+            auto_apply: !!metadata.auto_apply,
+            total_requests: groups.length,
+            completed_requests: 0,
+            failed_requests: 0,
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+            estimated_cost: 0,
+            metadata: {
+                ...metadata,
+                group_count: groups.length,
+                product_count: totalProducts,
+                is_group_consolidation: true,
+                llm_model: model,
+                llm_base_url: runtime.llm_base_url,
+            },
+        });
+
+        if (insertError) {
+            console.error('[GroupConsolidation] Failed to insert batch job:', insertError);
+            return { success: false, error: insertError.message };
+        }
+
+        // Load all products' source data
+        const allUpcs = groups.flatMap(g => g.upcs);
+        const { data: products } = await supabase
+            .from('products_ingestion')
+            .select('upc, sources, input')
+            .in('upc', allUpcs);
+
+        if (!products || products.length === 0) {
+            await supabase.from('batch_jobs').delete().eq('id', batchId);
+            return { success: false, error: 'No products found for provided UPCs' };
+        }
+
+        const productsByUpc = new Map(
+            (products as Array<{ upc: string; sources: Record<string, unknown>; input: Record<string, unknown> | null }>).map(p => [p.upc, p])
+        );
+
+        // Build source evidence for each product and create one batch_job_items row per group
+        const items = groups.map(group => {
+            const groupProducts = group.upcs
+                .map(upc => productsByUpc.get(upc))
+                .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+            // Build source evidence for each product in the group
+            const productEvidence = groupProducts.map(p => {
+                // No require() -- inline data extraction from sources
+                const sourceEntries = Object.entries(p.sources || {});
+                const filteredSources: Record<string, unknown> = {};
+
+                for (const [sourceName, sourceData] of sourceEntries) {
+                    if (sourceData && typeof sourceData === 'object') {
+                        const sd = sourceData as Record<string, unknown>;
+                        const filtered: Record<string, unknown> = {};
+                        for (const [key, val] of Object.entries(sd)) {
+                            if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+                                filtered[key] = val;
+                            }
+                        }
+                        if (Object.keys(filtered).length > 0) {
+                            filteredSources[sourceName] = filtered;
+                        }
+                    }
+                }
+
+                const sources = Object.keys(filteredSources).map(sourceName => ({
+                    source: sourceName,
+                    trust: sourceName === 'shopsite_input' ? 'canonical' as const :
+                           /bradley|central-pet|orgill|doitbest|manufacturer|distributor|official-brand|catalog/i.test(sourceName) ? 'trusted' as const :
+                           /amazon|ebay|walmart|marketplace|seller/i.test(sourceName) ? 'marketplace' as const :
+                           'standard' as const,
+                    fields: filteredSources[sourceName] as Record<string, unknown>,
+                }));
+
+                return {
+                    upc: p.upc,
+                    sources,
+                };
+            });
+
+            // Build system prompt for this group
+            const systemPrompt = generateGroupConsolidationSystemPrompt(
+                categories,
+                group.product_line_name,
+                group.upcs.length
+            );
+
+            // Build user prompt
+            const userPrompt = buildGroupUserPromptPayload(productEvidence, group.product_line_name);
+
+            return {
+                batch_job_id: batchId,
+                upc: null,
+                status: 'pending' as const,
+                item_kind: 'product_group' as const,
+                subject_key: group.product_line_id,
+                request_payload: {
+                    model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt },
+                    ],
+                    max_tokens: runtime.maxTokens,
+                    temperature: runtime.temperature,
+                    response_format: { type: 'json_object' },
+                },
+                product_source: {
+                    group_upcs: group.upcs,
+                    product_line_id: group.product_line_id,
+                    product_line_name: group.product_line_name,
+                },
+            };
+        });
+
+        const { error: itemsError } = await supabase.from('batch_job_items').insert(items as any);
+        if (itemsError) {
+            await supabase.from('batch_jobs').delete().eq('id', batchId);
+            return { success: false, error: itemsError.message };
+        }
+
+        console.log('[GroupConsolidation] Created batch %s with %d groups (%d products)', batchId, groups.length, totalProducts);
+
+        return {
+            success: true,
+            batch_id: batchId,
+            provider: runtime.provider,
+            provider_batch_id: providerBatchId,
+            product_count: totalProducts,
+        };
+    } catch (error) {
+        console.error('[GroupConsolidation] Failed to submit batch:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to submit group consolidation batch',
+        };
+    }
+}
+
 /**
  * Read-only status helper for direct_chat_chunks jobs.
  * Does NOT process items or call DeepSeek.
@@ -1007,6 +1302,11 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
 
         // Use the direct-chat read-only snapshot if applicable
         if (executionMode === 'direct_chat_chunks') {
+            return await getDirectChatStatusSnapshot(batchId);
+        }
+
+        // Classification batches use direct-chat processing, same read-only path
+        if (executionMode === 'product_line_classification') {
             return await getDirectChatStatusSnapshot(batchId);
         }
 
@@ -1447,6 +1747,81 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to retrieve results',
+        };
+    }
+}
+
+// =============================================================================
+// Group Consolidation Results Retrieval
+// =============================================================================
+
+/**
+ * Retrieve and flatten group consolidation results.
+ * Group items store parsed results as { type: 'group_consolidation', results: ConsolidationResult[] }.
+ * This extracts and returns the flat per-UPC results.
+ */
+export async function retrieveGroupConsolidationResults(
+    batchId: string
+): Promise<ConsolidationResult[] | BatchErrorResponse> {
+    try {
+        const supabase = await createAdminClient();
+
+        const { data: items } = await supabase
+            .from('batch_job_items')
+            .select('*')
+            .eq('batch_job_id', batchId);
+
+        if (!items || items.length === 0) {
+            return { success: false, error: 'No items found in batch' };
+        }
+
+        const results: ConsolidationResult[] = [];
+
+        for (const item of items as Array<Record<string, unknown>>) {
+            const itemKind = (item.item_kind as string) || 'upc';
+            const parsedResult = item.parsed_result as Record<string, unknown> | null;
+
+            if (item.status === 'completed' && parsedResult) {
+                // Group result: extract flattened per-UPC results
+                if ((itemKind === 'product_group' || itemKind === 'subproduct_group') &&
+                    parsedResult.type === 'group_consolidation' &&
+                    Array.isArray(parsedResult.results)) {
+                    results.push(...(parsedResult.results as ConsolidationResult[]));
+                } else {
+                    // Legacy per-UPC or classification result
+                    const upc = (item.upc as string) || (parsedResult.upc as string) || 'unknown';
+                    results.push(parsedResult as unknown as ConsolidationResult);
+                }
+            } else if (item.status === 'failed') {
+                // Group failure: mark all UPCs in the group as failed
+                if (itemKind === 'product_group' || itemKind === 'subproduct_group') {
+                    const productSource = item.product_source as Record<string, unknown> || {};
+                    const groupUpcs = productSource.group_upcs as string[] || [];
+                    for (const upc of groupUpcs) {
+                        results.push({
+                            upc,
+                            error: (item.error_message as string) || 'Group consolidation failed',
+                        });
+                    }
+                } else {
+                    results.push({
+                        upc: (item.upc as string) || 'unknown',
+                        error: (item.error_message as string) || 'Unknown error',
+                    });
+                }
+            }
+        }
+
+        if (results.length === 0) {
+            return { success: false, error: 'No results found in batch' };
+        }
+
+        return results;
+    } catch (error: unknown) {
+        console.error('[GroupConsolidation] Failed to retrieve group results:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to retrieve group consolidation results',
         };
     }
 }

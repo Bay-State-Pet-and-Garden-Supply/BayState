@@ -25,11 +25,12 @@ export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor
     imported: STATUS_COLORS.QUEUED,
     extracting: STATUS_COLORS.EXTRACTING,
     processed: STATUS_COLORS.RUNNING,
+    grouping: STATUS_COLORS.MERGING,
     merging: STATUS_COLORS.MERGING,
     reviewing: STATUS_COLORS.WARNING,
     publishing: STATUS_COLORS.PUBLISHED,
     needs_attention: STATUS_COLORS.WARNING,
-  failed: STATUS_COLORS.FAILED,
+    failed: STATUS_COLORS.FAILED,
 } as const;
 
 export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
@@ -37,11 +38,12 @@ export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
     imported: 'Imported',
     extracting: 'Extracting',
     processed: 'Processed',
+    grouping: 'Grouping',
     merging: 'Merging',
     reviewing: 'Reviewing',
     publishing: 'Publishing',
     needs_attention: 'Needs Attention',
-  failed: 'Failed',
+    failed: 'Failed',
 } as const;
 
 export const CSS_CUSTOM_PROPERTIES = {
@@ -72,6 +74,7 @@ export function getStatusCssVar(status: PersistedPipelineStatus): string {
         imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
         extracting: CSS_CUSTOM_PROPERTIES.STATUS.EXTRACTING,
         processed: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
+        grouping: CSS_CUSTOM_PROPERTIES.STATUS.MERGING,
         merging: CSS_CUSTOM_PROPERTIES.STATUS.MERGING,
         reviewing: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
         publishing: CSS_CUSTOM_PROPERTIES.BRAND.FOREST_GREEN,

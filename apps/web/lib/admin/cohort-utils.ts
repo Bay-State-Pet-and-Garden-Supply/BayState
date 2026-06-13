@@ -1,3 +1,9 @@
+/**
+ * @deprecated UPC-prefix cohorts have been replaced by Product Groups (product_lines table).
+ *   Use product-line-utils.ts for new code. This file is retained for backward compatibility
+ *   with import/sync code that hasn't been migrated yet.
+ */
+
 import type { SupabaseClient } from "@/lib/supabase/server";
 
 const DEFAULT_PREFIX_LENGTH = 6;

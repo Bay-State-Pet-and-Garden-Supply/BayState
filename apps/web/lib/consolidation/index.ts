@@ -38,15 +38,48 @@ export { isOpenAIConfigured } from './openai-client';
 // Taxonomy Validator
 // Result Normalizer
 
-// Evaluation helpers
 // Parallel run tracking
 export {
     syncPendingParallelRuns,
 } from './parallel-runs';
 
-// Two-phase consolidation
+// Product Line Classification
 export {
-    buildDefaultConsistencyRules,
-    TwoPhaseConsolidationService,
-} from './two-phase-service';
+    CLASSIFICATION_THRESHOLD,
+    extractClassificationEvidence,
+    classifyProduct,
+    isConfidentClassification,
+} from './product-line-classification';
 
+// Grouping Service
+export {
+    finalizeClassificationBatch,
+    reassignProductsToLine,
+    mergeProductLines,
+    splitProductLine,
+    renameProductLine,
+} from './grouping-service';
+
+// Product Lines
+export {
+    loadKnownProductLines,
+    upsertProductLine,
+    assignProductToLine,
+    normalizeProductLineKey,
+} from './product-lines';
+
+// Product Line Dedup
+export {
+    deduplicateProductLines,
+} from './product-line-dedup';
+
+// Group Result Parsing
+export {
+    parseGroupConsolidationText,
+} from './group-result-parsing';
+
+// Batch Service
+export {
+    submitGroupConsolidationBatch,
+    retrieveGroupConsolidationResults,
+} from './batch-service';

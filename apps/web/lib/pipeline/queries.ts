@@ -134,6 +134,13 @@ function queryProcessedTabProducts(
   return queryTab("processed", supabase, pagination);
 }
 
+function queryGroupingTabProducts(
+  supabase: PipelineQuerySupabaseClient,
+  pagination?: PipelineTabPagination
+): Promise<PipelineTabQueryResult> {
+  return queryTab("grouping", supabase, pagination);
+}
+
 function queryMergingTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
@@ -190,6 +197,7 @@ export async function queryWorkflowTabCounts(
     imported,
     extracting,
     processed,
+    grouping,
     merging,
     reviewing,
     publishing,
@@ -199,6 +207,7 @@ export async function queryWorkflowTabCounts(
     queryImportedTabProducts(supabase, pagination),
     queryExtractingTabProducts(supabase, pagination),
     queryProcessedTabProducts(supabase, pagination),
+    queryGroupingTabProducts(supabase, pagination),
     queryMergingTabProducts(supabase, pagination),
     queryReviewingTabProducts(supabase, pagination),
     queryPublishingTabProducts(supabase, pagination),
@@ -210,6 +219,7 @@ export async function queryWorkflowTabCounts(
     imported: imported.count,
     extracting: extracting.count,
     processed: processed.count,
+    grouping: grouping.count,
     merging: merging.count,
     reviewing: reviewing.count,
     publishing: publishing.count,

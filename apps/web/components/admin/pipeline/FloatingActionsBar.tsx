@@ -20,10 +20,16 @@ const BULK_ACTIONS: Record<
   imported: { label: '', nextStage: null },
   extracting: { label: '', nextStage: null },
   processed: {
-    label: 'Merge selected',
-    nextStage: 'merging',
+    label: 'Group selected',
+    nextStage: 'grouping',
     resetLabel: 'Return to Imported',
     previousStage: 'imported',
+  },
+  grouping: {
+    label: 'Consolidate selected groups',
+    nextStage: 'merging',
+    resetLabel: 'Return to Processed',
+    previousStage: 'processed',
   },
   merging: { label: '', nextStage: null },
   reviewing: {
@@ -52,6 +58,8 @@ interface FloatingActionsBarProps {
   onBulkAction: (nextStage: PersistedPipelineStatus) => void;
   onResetStage?: (previousStage: PersistedPipelineStatus) => void;
   onConsolidate?: () => void;
+  onGroupProducts?: () => void;
+  onConsolidateGroups?: () => void;
   onAssignBrand?: () => void;
   onDelete?: () => void;
   actionState?: 'upload' | 'zip' | null;
@@ -71,6 +79,8 @@ export function FloatingActionsBar({
   onBulkAction,
   onResetStage,
   onConsolidate,
+  onGroupProducts,
+  onConsolidateGroups,
   onAssignBrand,
   onDelete,
   actionState = null,
@@ -90,6 +100,16 @@ export function FloatingActionsBar({
 
   const handlePrimaryAction = () => {
     if (isLoading) return;
+
+    if (currentStage === 'processed' && onGroupProducts) {
+      onGroupProducts();
+      return;
+    }
+
+    if (currentStage === 'grouping' && onConsolidateGroups) {
+      onConsolidateGroups();
+      return;
+    }
 
     if (currentStage === 'processed' && onConsolidate) {
       onConsolidate();

@@ -1,6 +1,6 @@
 /**
  * Pipeline types
- * 6-stage pipeline: imported → extracting → processed → merging → reviewing → publishing → failed
+ * 8-stage pipeline: imported → extracting → processed → grouping → merging → reviewing → publishing → failed
  * awaiting_brand is a persisted sub-status of imported for products without a brand —
  * those products appear in the imported tab, not as a separate tab.
  */
@@ -13,6 +13,7 @@ export const PERSISTED_PIPELINE_STATUSES = [
   "awaiting_brand",
   "extracting",
   "processed",
+  "grouping",
   "merging",
   "reviewing",
   "publishing",
@@ -31,6 +32,7 @@ export const PIPELINE_TABS = [
   "imported",
   "extracting",
   "processed",
+  "grouping",
   "merging",
   "reviewing",
   "publishing",
@@ -221,7 +223,19 @@ export interface PipelineProduct {
   retry_count?: number;
   /** Product line / Cohort identifier for batch processing */
   product_line?: string | null;
-  /** ID of the cohort batch this product belongs to */
+  /** FK to product_lines.id for canonical product line assignment */
+  product_line_id?: string | null;
+  /** Classification confidence (0.0-1.0). Below 0.80 = ungrouped singleton */
+  product_line_confidence?: number | null;
+  /** How this assignment was made: ai, manual, or migration */
+  product_line_assignment_source?: 'ai' | 'manual' | 'migration' | null;
+  /** Raw LLM output label before dedup normalization */
+  product_line_raw_label?: string | null;
+  /** LLM rationale for classification */
+  product_line_rationale?: string | null;
+  /** Flag for operator review (ambiguous dedup, manual override, etc.) */
+  product_line_review_required?: boolean | null;
+  /** ID of the cohort batch this product belongs to (legacy) */
   cohort_id?: string | null;
   /** Interpolated name from the associated cohort batch */
   cohort_name?: string | null;
@@ -285,6 +299,11 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
     label: "Processed",
     color: "#3B82F6",
     description: "Extraction is complete. Review source data here before sending products to Merging.",
+  },
+  grouping: {
+    label: "Grouping",
+    color: "#7C3AED",
+    description: "AI is classifying products into manufacturer product lines. Review and adjust groups before consolidation.",
   },
   merging: {
     label: "Merging",

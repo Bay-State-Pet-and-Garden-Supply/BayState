@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getBatchStatus, isOpenAIConfigured, processBatchQueue, submitBatch, applyResults } from '@/lib/consolidation';
+import { getBatchStatus, processBatchQueue, submitBatch, submitGroupConsolidationBatch } from '@/lib/consolidation/batch-service';
+import { isOpenAIConfigured } from '@/lib/consolidation/openai-client';
+import { applyResults } from '@/lib/consolidation/apply-service';
 import type { ProductSource } from '@/lib/consolidation';
 import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/submit
- * Submit a provider-neutral batch of products for LLM consolidation.
+ *
+ * Two submission modes:
+ *   1. Group-based (new): `{ groups: [{ product_line_id, upcs }] }`
+ *      One LLM call per Product Group, all UPCs in a group consolidated together.
+ *   2. Per-UPC fallback (legacy): `{ upcs: [...] }`
+ *      Individual consolidation for singletons or ungrouped products.
  *
  * Provider behavior:
  * - DeepSeek: Creates batch and immediately processes items (direct chat)
@@ -27,10 +34,90 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { upcs, description, auto_apply, productLineContext } = body;
+        const { upcs, groups, description, auto_apply } = body;
 
+        // =========================================================================
+        // NEW: Group-based consolidation path
+        // =========================================================================
+        if (groups && Array.isArray(groups) && groups.length > 0) {
+            const validatedGroups = groups.filter(
+                (g: any) => g.product_line_id && g.upcs && Array.isArray(g.upcs) && g.upcs.length > 0
+            );
+
+            if (validatedGroups.length === 0) {
+                return NextResponse.json({ error: 'No valid groups provided. Each group must have product_line_id and upcs[]' }, { status: 400 });
+            }
+
+            const supabase = await createAdminClient();
+
+            // Fetch product_line names for display
+            const lineIds = validatedGroups.map((g: any) => g.product_line_id);
+            const { data: productLines } = await supabase
+                .from('product_lines')
+                .select('id, canonical_name')
+                .in('id', lineIds);
+
+            const lineNameMap = new Map<string, string>();
+            for (const pl of (productLines || [])) {
+                lineNameMap.set(pl.id, pl.canonical_name);
+            }
+
+            const groupsWithNames = validatedGroups.map((g: any) => ({
+                product_line_id: g.product_line_id,
+                product_line_name: lineNameMap.get(g.product_line_id) || 'Unknown Product Line',
+                upcs: g.upcs,
+            }));
+
+            const result = await submitGroupConsolidationBatch(groupsWithNames, {
+                description: description || `Group consolidation for ${validatedGroups.length} groups`,
+                auto_apply: auto_apply || false,
+            });
+
+            if (!result.success) {
+                return NextResponse.json({ error: result.error }, { status: 500 });
+            }
+
+            // Process group items (one per group)
+            let processedItemCount = 0;
+            const chunkSize = 3;
+            const maxIterations = Math.ceil(validatedGroups.length / chunkSize) + 2;
+
+            for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+                const processResult = await processBatchQueue(result.batch_id, { limit: chunkSize });
+                if ('success' in processResult && !processResult.success) {
+                    return NextResponse.json({ error: processResult.error }, { status: 500 });
+                }
+                if ('processed' in processResult) {
+                    processedItemCount += processResult.processed;
+                    if (processResult.processed === 0 || processResult.status.is_complete || processResult.status.is_failed) {
+                        break;
+                    }
+                }
+            }
+
+            const totalProducts = validatedGroups.reduce((sum: number, g: any) => sum + g.upcs.length, 0);
+            const status = await getBatchStatus(result.batch_id);
+
+            return NextResponse.json({
+                success: true,
+                batch_id: result.batch_id,
+                provider: result.provider,
+                provider_batch_id: result.provider_batch_id,
+                group_count: validatedGroups.length,
+                product_count: totalProducts,
+                processed_item_count: processedItemCount,
+                status: 'success' in status ? null : status,
+            });
+        }
+
+        // =========================================================================
+        // LEGACY: Per-UPC (singleton fallback) path — kept for backward compatibility
+        // =========================================================================
         if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
-            return NextResponse.json({ error: 'upcs array is required' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Provide upcs[] for individual consolidation or groups[] for group-based consolidation' },
+                { status: 400 }
+            );
         }
 
         const supabase = await createAdminClient();
@@ -113,7 +200,6 @@ export async function POST(request: NextRequest) {
                 upc: p.upc,
                 sources: buildConsolidationSourcesPayload(p.sources, p.input),
                 imageUrls: deriveImageUrls(p as { selected_images?: unknown; image_candidates?: unknown; sources: unknown; upc: string }),
-                productLineContext: productLineContext?.[p.upc] ?? undefined,
             }));
 
         if (productsWithSources.length === 0) {
@@ -135,10 +221,6 @@ export async function POST(request: NextRequest) {
         }
 
         // For Gemini batch, return immediately without processing items.
-        // Do not call getBatchStatus() here: Gemini status refresh performs
-        // bounded image prep/provider submission, which would make submit
-        // side-effecting and potentially slow. Image prep and batch submission
-        // happen asynchronously via /sync or explicit status refresh.
         if (result.execution_mode === 'gemini_batch') {
             return NextResponse.json({
                 success: true,
@@ -189,9 +271,7 @@ export async function POST(request: NextRequest) {
 
         const status = await getBatchStatus(result.batch_id);
 
-        // Auto-apply results for direct_chat_chunks — results are already in
-        // parsed_result after processing, so apply them to consolidated immediately.
-        // This removes the manual "Apply Results" step for direct-chat mode.
+        // Auto-apply results for direct_chat_chunks
         let appliedCount: number | undefined;
         try {
             const applyResult = await applyResults(result.batch_id);

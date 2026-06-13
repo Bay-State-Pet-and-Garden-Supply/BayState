@@ -26,7 +26,7 @@ import type { LLMProvider } from '@/lib/ai-scraping/credentials';
  *
  * @deprecated Use kind/execution mode from PipelineRunSummary instead.
  */
-export type BatchExecutionMode = 'batch_api' | 'direct_chat_chunks' | 'gemini_batch';
+export type BatchExecutionMode = 'batch_api' | 'direct_chat_chunks' | 'gemini_batch' | 'product_line_classification';
 
 // =============================================================================
 // Batch Job Types
@@ -142,10 +142,13 @@ export interface BatchJob {
 export interface ProductSource {
     upc: string;
     sources: Record<string, unknown>;
-    /** Optional context about sibling products from the same product line. */
     /** Optional image URLs for multimodal processing (Gemini Batch API). */
     imageUrls?: string[];
-    /** Optional context about sibling products from the same product line. */
+    /**
+     * Optional context about sibling products from the same product line.
+     * @deprecated Replaced by persisted Product Group assignments via products_ingestion.product_line_id.
+     *   Kept for backward compatibility with existing code paths.
+     */
     productLineContext?: {
         productLine: string;
         siblings: Array<{
@@ -185,7 +188,7 @@ export interface ConsolidationResult {
 export interface BatchJobItem {
     id: string;
     batch_job_id: string;
-    upc: string;
+    upc?: string | null;
     status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
     request_payload: Record<string, unknown>;
     response_payload: Record<string, unknown> | null;
@@ -198,6 +201,10 @@ export interface BatchJobItem {
     completed_at: string | null;
     created_at: string;
     updated_at: string;
+    /** Kind of work item: upc (per-product), product_group, or subproduct_group. */
+    item_kind?: 'upc' | 'product_group' | 'subproduct_group';
+    /** Subject identifier: UPC string, product_line_id, or subgroup key. */
+    subject_key?: string | null;
 }
 
 /**
@@ -272,6 +279,51 @@ export interface ParallelRunRecord {
     created_at: string;
     updated_at: string;
     completed_at: string | null;
+}
+
+/** Input to the product line classification prompt. */
+export interface ProductLineClassificationInput {
+    upc: string;
+    /** Highest-signal source fields for classification: name, brand, category, product family. */
+    evidence: {
+        name?: string;
+        brand?: string;
+        category?: string;
+        product_family?: string;
+    };
+    /** Known product lines taxonomy to pick from. */
+    knownProductLines: Array<{
+        id: string;
+        canonical_name: string;
+    }>;
+}
+
+/** Output from the product line classification LLM. */
+export interface ProductLineClassificationResult {
+    upc: string;
+    product_line: string;
+    confidence: number;
+    rationale: string;
+}
+
+/** A group of products to consolidate together. */
+export interface ProductGroupSubmission {
+    product_line_id: string;
+    upcs: string[];
+}
+
+/** Response from submitting a group consolidation batch. */
+export interface GroupConsolidationResult {
+    product_line_id: string;
+    batch_id: string;
+    product_count: number;
+}
+
+/** Payload for group consolidation API endpoint. */
+export interface GroupConsolidationPayload {
+    groups: ProductGroupSubmission[];
+    description?: string;
+    auto_apply?: boolean;
 }
 
 /**

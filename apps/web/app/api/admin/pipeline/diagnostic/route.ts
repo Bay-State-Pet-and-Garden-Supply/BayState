@@ -40,6 +40,7 @@ export async function GET() {
             imported: 0,
             extracting: 0,
             processed: 0,
+            grouping: 0,
             merging: 0,
             reviewing: 0,
             publishing: 0,

@@ -405,3 +405,94 @@ export async function buildPromptContext(): Promise<ConsolidationPromptContext> 
         categories: [...cachedPromptContext.categories],
     };
 }
+
+/**
+ * Generate a system prompt for group consolidation (multiple products in one call).
+ * Uses the same rules as the single-product prompt but with a multi-product output contract.
+ */
+export function generateGroupConsolidationSystemPrompt(
+    categories: string[],
+    productLineName: string,
+    productCount: number
+): string {
+    const singlePrompt = generateSystemPrompt(categories);
+
+    // Build the multi-product output contract to replace the single-product one
+    const groupOutputContract = `
+Group consolidation output contract — respond with valid JSON matching this structure:
+{
+  "products": {
+    "UPC123": {
+      "name": "string (required) — product name with brand as first token",
+      "brand": "string (required) — must be IDENTICAL across all products in this group",
+      "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
+      "confidence_score": "number (required) — 0.0 to 1.0",
+      "category": "string (required) — must be IDENTICAL across all products in this group",
+      "description": "string (required) — custom product description following the Description rules",
+      "search_keywords": "string (required) — comma-separated keywords",
+      "packaging_facets": "object (optional)"
+    },
+    ...one entry per UPC (${productCount} UPCs total)
+  }
+}
+
+CRITICAL:
+- You MUST include EVERY UPC listed in the input. Do not skip, omit, or add UPCs.
+- Brand MUST be identical across all products in this group.
+- Category MUST be identical across all products in this group.
+- Names MUST follow a consistent template within the group, with only variant-specific differences (flavor, size, count).
+- Descriptions MUST share a common structure with variant-specific details.
+- This is a product line: "${productLineName}". All products belong to this same manufacturer product line.
+`;
+
+    // Find the output contract section and the Allowed category values section
+    const outputStart = singlePrompt.indexOf('Output contract');
+    const afterContract = singlePrompt.indexOf('Allowed category values');
+    
+    if (outputStart >= 0 && afterContract > outputStart) {
+        const before = singlePrompt.slice(0, outputStart);
+        const after = singlePrompt.slice(afterContract);
+        return before + groupOutputContract + after;
+    }
+
+    // Fallback: append the group contract at the end
+    return singlePrompt + groupOutputContract;
+}
+
+/**
+ * Build a user prompt payload string for a group consolidation call.
+ * Includes source evidence for all UPCs in the group.
+ *
+ * @param products - Array of products with their source evidence already built and sorted
+ * @param productLineName - The canonical product line label for the group
+ * @returns A JSON-stringified payload for the user prompt
+ */
+export function buildGroupUserPromptPayload(
+    products: Array<{
+        upc: string;
+        sources: Array<{
+            source: string;
+            trust: string;
+            fields: Record<string, unknown>;
+        }>;
+    }>,
+    productLineName: string
+): string {
+    const payload = {
+        product_line: productLineName,
+        product_count: products.length,
+        instructions: [
+            'Consolidate all products below into ShopSite export-ready records.',
+            'Use only exact source-supported category values.',
+            'Brand and category must be IDENTICAL across all products.',
+            'Names must follow a consistent template with variant-specific differences.',
+            'Include EVERY UPC in your output — do not skip any.',
+        ],
+        products: products.map(p => ({
+            upc: p.upc,
+            sources: p.sources,
+        })),
+    };
+
+    return JSON.stringify(payload);
+}

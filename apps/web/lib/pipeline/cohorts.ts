@@ -1,3 +1,9 @@
+/**
+ * @deprecated Cohort-based product grouping has been replaced by AI-driven Product Groups.
+ *   The recohortProducts function is retained for backward compatibility during migration.
+ *   New code should use grouping-service.ts and product-line-utils.ts.
+ */
+
 import { SupabaseClient } from '@supabase/supabase-js';
 import { groupUpcsByPrefix } from '@/lib/admin/cohort-utils';
 

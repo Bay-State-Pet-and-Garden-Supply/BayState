@@ -872,7 +872,7 @@ export async function retrieveGeminiBatchResults(
       results.push(item.parsed_result as unknown as ConsolidationResult);
     } else if (item.status === 'failed') {
       results.push({
-        upc: item.upc,
+        upc: item.upc ?? 'unknown',
         error: item.error_message || 'Gemini consolidation failed',
       });
     }

@@ -34,6 +34,7 @@ const statusConfig: Record<
   imported: { variant: "default", icon: Package },
   extracting: { variant: "warning", icon: Loader2 },
   processed: { variant: "success", icon: Sparkles },
+  grouping: { variant: "warning", icon: Sparkles },
   merging: { variant: "warning", icon: Sparkles },
   reviewing: { variant: "warning", icon: CheckCircle2 },
   publishing: { variant: "success", icon: Globe },

@@ -309,7 +309,7 @@ export async function processDirectChatChunk(
     // Load the parent batch to get runtime config
     const { data: parentRow, error: parentError } = await supabase
         .from('batch_jobs')
-        .select('id, provider, metadata, provider_batch_id')
+        .select('id, provider, metadata, provider_batch_id, execution_mode')
         .eq('id', batchDbId)
         .single();
 
@@ -317,6 +317,9 @@ export async function processDirectChatChunk(
         console.error('[DirectChat] Parent batch not found:', parentError);
         return { processed: 0, completed: 0, failed: 0 };
     }
+
+    const executionMode = (parentRow.execution_mode as string) || 'direct_chat_chunks';
+    const isClassification = executionMode === 'product_line_classification';
 
     const parentMetadata = (parentRow.metadata as Record<string, unknown>) || {};
     const runtimeConfig = await getConsolidationConfig();
@@ -423,18 +426,79 @@ export async function processDirectChatChunk(
                 responsePayload.usage = usage;
                 responsePayload.finish_reason = choice?.finish_reason;
 
-                parsed = parseStructuredConsolidationText(item.upc, content, categories);
+                // Determine item kind for per-item routing
+                const itemKind = (item as unknown as Record<string, unknown>).item_kind as string || 'upc';
+                const isGroupItem = itemKind === 'product_group' || itemKind === 'subproduct_group';
 
-                if (!content.trim() || parsed.error) {
-                    lastError = new Error(
-                        !content.trim()
-                            ? 'DeepSeek returned an empty response'
-                            : parsed.error
-                    );
+                if (isGroupItem) {
+                    // Group consolidation: parse multi-product response
+                    const { parseGroupConsolidationText } = await import('./group-result-parsing');
+                    const productSource = item.product_source as Record<string, unknown> || {};
+                    const groupUpcs = (productSource.group_upcs as string[]) || [];
 
-                    if (attempt < MAX_RETRY_ATTEMPTS) {
-                        await delay(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1));
-                        continue;
+                    const groupResult = parseGroupConsolidationText(groupUpcs, content, categories);
+
+                    if (groupResult.error || groupResult.results.length === 0) {
+                        lastError = new Error(
+                            groupResult.error || 'Group consolidation returned no results'
+                        );
+
+                        if (attempt < MAX_RETRY_ATTEMPTS) {
+                            await delay(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1));
+                            continue;
+                        }
+                    } else {
+                        // Store group result as a typed consolidation result for persistence
+                        // The parsed_result stores the full group structure with flattened results
+                        parsed = {
+                            upc: groupResult.results[0]?.upc || 'group',
+                            type: 'group_consolidation' as any,
+                            results: groupResult.results,
+                        } as unknown as ConsolidationResult;
+                    }
+                } else if (isClassification) {
+                    const { parseClassificationResponse } = await import('./product-line-classification');
+                    const classificationResult = parseClassificationResponse(item.upc ?? 'unknown', content);
+
+                    parsed = classificationResult
+                        ? {
+                            upc: item.upc ?? 'unknown',
+                            confidence_score: classificationResult.confidence,
+                            name: classificationResult.product_line,
+                            description: classificationResult.rationale,
+                            brand: '',
+                            weight: '',
+                            category: '',
+                            search_keywords: '',
+                          } as ConsolidationResult
+                        : null;
+
+                    if (!content.trim() || !classificationResult) {
+                        lastError = new Error(
+                            !content.trim()
+                                ? 'LLM returned an empty classification response'
+                                : 'Failed to parse classification response'
+                        );
+
+                        if (attempt < MAX_RETRY_ATTEMPTS) {
+                            await delay(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1));
+                            continue;
+                        }
+                    }
+                } else {
+                    parsed = parseStructuredConsolidationText(item.upc ?? 'unknown', content, categories);
+
+                    if (!content.trim() || parsed.error) {
+                        lastError = new Error(
+                            !content.trim()
+                                ? 'DeepSeek returned an empty response'
+                                : parsed.error
+                        );
+
+                        if (attempt < MAX_RETRY_ATTEMPTS) {
+                            await delay(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1));
+                            continue;
+                        }
                     }
                 }
 
@@ -716,7 +780,7 @@ export async function retrieveDirectChatResults(
             results.push(item.parsed_result as unknown as ConsolidationResult);
         } else if (item.status === 'failed') {
             results.push({
-                upc: item.upc,
+                upc: item.upc ?? 'unknown',
                 error: item.error_message || 'Unknown error',
             });
         }

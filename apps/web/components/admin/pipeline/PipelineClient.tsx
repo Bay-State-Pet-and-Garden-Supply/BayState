@@ -20,6 +20,7 @@ import {
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ProcessedResultsView } from "./ProcessedResultsView";
+import GroupingResultsView from "./GroupingResultsView";
 import { ActiveEnrichmentsTab } from "./ActiveEnrichmentsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { NeedsAttentionView } from "./NeedsAttentionView";
@@ -743,6 +744,74 @@ export function PipelineClient({
     [fetchCounts, handleStageChange],
   );
 
+  // Handle product grouping from Processed tab
+  const handleGroupProducts = useCallback(
+    async (upcs: string[]) => {
+      setIsLoading(true);
+      try {
+        const res = await adminFetch('/api/admin/grouping/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ upcs }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          toast.success(`Submitted ${data.product_count} products for grouping`, {
+            description: 'Products will be classified into manufacturer product lines.',
+          });
+          setSelectedUpcs(new Set());
+          handleStageChange('grouping');
+          await fetchCounts();
+        } else {
+          const error = await res.json();
+          toast.error(error.error || 'Failed to submit grouping');
+        }
+      } catch {
+        toast.error('Failed to start grouping');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchCounts, handleStageChange],
+  );
+
+  // Handle group consolidation from Grouping tab
+  const handleConsolidateGroups = useCallback(
+    async (groups: Array<{ product_line_id: string; upcs: string[] }>) => {
+      setIsLoading(true);
+      try {
+        const res = await adminFetch('/api/admin/consolidation/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groups,
+            description: `Group consolidation for ${groups.length} groups`,
+            auto_apply: true,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          toast.success(`Consolidated ${data.product_count} products across ${data.group_count || groups.length} groups`, {
+            description: 'Results are live in the Merging tab.',
+          });
+          setSelectedUpcs(new Set());
+          handleStageChange('merging');
+          await fetchCounts();
+        } else {
+          const error = await res.json();
+          toast.error(error.error || 'Failed to consolidate groups');
+        }
+      } catch {
+        toast.error('Failed to start group consolidation');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchCounts, handleStageChange],
+  );
+
   // Handle product deletion
   const handleDelete = useCallback(async () => {
     const upcs = Array.from(selectedUpcs);
@@ -1200,6 +1269,11 @@ export function PipelineClient({
         <div className={cn("flex flex-col flex-1 w-full min-h-0 h-full")}>
           {currentStage === "extracting" ? (
             <ActiveEnrichmentsTab />
+          ) : currentStage === "grouping" ? (
+            <GroupingResultsView
+              onConsolidateGroups={handleConsolidateGroups}
+              onStageChange={handleStageChange}
+            />
           ) : currentStage === "merging" ? (
             <ActiveConsolidationsTab />
           ) : currentStage === "processed" ? (
@@ -1561,6 +1635,7 @@ export function PipelineClient({
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
           onConsolidate={() => handleConsolidate(Array.from(selectedUpcs))}
+          onGroupProducts={() => handleGroupProducts(Array.from(selectedUpcs))}
           consolidationInfo={consolidationConfig}
           onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
           onDelete={handleDelete}

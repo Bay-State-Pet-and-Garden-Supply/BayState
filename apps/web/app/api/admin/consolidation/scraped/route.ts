@@ -1,99 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { createAdminClient } from '@/lib/supabase/server';
-import { TwoPhaseConsolidationService, buildDefaultConsistencyRules } from '@/lib/consolidation';
-import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/scraped
- * Trigger consolidation for products that are processed and ready for consolidation.
- * Backward-compatible with legacy records that only have pipeline_status = 'processed'.
- * Body: { upcs?: string[] } - if no UPCs provided, consolidates all processed products
+ *
+ * @deprecated This legacy endpoint used the TwoPhaseConsolidationService which
+ *   has been removed. Use the new grouping stage APIs instead:
+ *   - POST /api/admin/grouping/submit — submit products for AI product line classification
+ *   - POST /api/admin/consolidation/submit — submit grouped products for consolidation
+ *
+ *   Pipeline flow is now: processed → grouping (new) → merging (consolidation)
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
-    try {
-        const body = await request.json();
-        const { upcs } = body;
-
-        const supabase = await createAdminClient();
-
-        // Build query - either specific UPCs or all scraped products
-        let query = supabase
-            .from('products_ingestion')
-            .select('upc, sources, input')
-            .eq('pipeline_status', 'processed');
-
-        if (upcs && Array.isArray(upcs) && upcs.length > 0) {
-            query = query.in('upc', upcs);
-        }
-
-        const { data: products, error: fetchError } = await query;
-
-        if (fetchError) {
-            console.error('[Consolidation Scraped API] Failed to fetch products:', fetchError);
-            return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
-        }
-
-        if (!products || products.length === 0) {
-            return NextResponse.json(
-                { error: 'No processed products found. Run enrichment first.' },
-                { status: 404 }
-            );
-        }
-
-        // Transform to ProductSource format with sibling context from database
-        const productSources = products.map((p) => ({
-            upc: p.upc,
-            sources: buildConsolidationSourcesPayload(p.sources, p.input),
-            productLineContext: p.input?.productLineContext ?? undefined,
-        }));
-
-        // Submit for two-phase consolidation
-        const twoPhaseService = new TwoPhaseConsolidationService();
-        const result = await twoPhaseService.consolidate(productSources, {
-            batchMetadata: {
-                description: `Manual consolidation for ${productSources.length} processed products`,
-                auto_apply: false,
-            },
-            enablePhase2: true,
-            phaseSelection: 'both',
-            consistencyRules: buildDefaultConsistencyRules(),
-        });
-
-        // Generate batch ID
-        const batchId = `consolidation-${Date.now()}`;
-
-        if (result.phase === 'phase2' && result.consistencyReport) {
-            return NextResponse.json({
-                success: true,
-                batch_id: batchId,
-                product_count: result.products.length,
-                phase: result.phase,
-                consistency_report: {
-                    enabled: result.consistencyReport.enabled,
-                    total_products: result.consistencyReport.totalProducts,
-                    flagged_products: result.consistencyReport.flaggedProducts,
-                    total_issues: result.consistencyReport.totalIssues,
-                },
-                message: `${productSources.length} products queued for consolidation with Phase 2 consistency checking`,
-            });
-        }
-
-        return NextResponse.json({
-            success: true,
-            batch_id: batchId,
-            product_count: result.products.length,
-            phase: result.phase,
-            message: `${productSources.length} products queued for consolidation`,
-        });
-    } catch (error) {
-        console.error('[Consolidation Scraped API] Error:', error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to submit consolidation' },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json(
+        {
+            error: 'This legacy endpoint has been removed. Use the Grouping stage to classify products into product lines before consolidation.',
+            migration: 'Navigate to the Processed tab in the Pipeline UI, select products, and click "Group Products" to start the new flow.',
+        },
+        { status: 410 }
+    );
 }

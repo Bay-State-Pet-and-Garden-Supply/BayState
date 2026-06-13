@@ -11,6 +11,7 @@ export const WORKFLOW_PIPELINE_TABS = [
   'imported',
   'extracting',
   'processed',
+  'grouping',
   'merging',
   'reviewing',
   'publishing',
@@ -126,6 +127,8 @@ export function deriveTabFromProduct(
       return 'extracting';
     case 'processed':
       return 'processed';
+    case 'grouping':
+      return 'grouping';
     case 'merging':
       return 'merging';
     case 'reviewing':
