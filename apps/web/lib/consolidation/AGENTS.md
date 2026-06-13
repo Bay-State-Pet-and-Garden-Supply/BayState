@@ -93,7 +93,7 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
 - **Processing**: Claim → run → store (1 item per poll cycle; configurable via `limit`)
 
 ## RENAMING NOTES
-Originally written for OpenAI Batch API. Renames are planned (see `DEEPSEEK_OVERHAUL_PLAN.md`) but not yet executed:
+Originally written for OpenAI Batch API. Key renames applied:
 - `openai-client.ts` still active; rename to `llm-client.ts` is pending
 - `getOpenAIClient()` / `isOpenAIConfigured()` still in use; not yet renamed to `getLLMClient()` / `isLLMConfigured()`
 - `buildJSONResponseFormat()` exists in `taxonomy-validator.ts`; `buildOpenAIResponseFormat()` is not a function name in the module

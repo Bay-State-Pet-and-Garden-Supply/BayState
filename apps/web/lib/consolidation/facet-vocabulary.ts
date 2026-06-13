@@ -97,7 +97,7 @@ export async function getCanonicalFacetValues(): Promise<Map<string, string[]>> 
 /**
  * Reset vocabulary cache (e.g. for testing)
  */
-export function clearVocabularyCache(): void {
+function clearVocabularyCache(): void {
     cachedVocabulary = null;
     cachedVocabularyExpiresAt = 0;
 }

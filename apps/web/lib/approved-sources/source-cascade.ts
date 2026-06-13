@@ -89,7 +89,7 @@ export async function isCascadeConfigured(
  *   - `configured`: true if brand is cascade-ready
  *   - `reason`: human-readable explanation when not configured
  */
-export async function getCascadeReadiness(
+async function getCascadeReadiness(
   db: SupabaseClient,
   brandIds: string[],
 ): Promise<Record<string, { configured: boolean; reason?: string }>> {
@@ -171,7 +171,7 @@ export async function getCascadeReadiness(
  * entries — the official brand site (terminal SERP fallback) is handled separately
  * in the plan builder and is not part of the cascade.
  */
-export async function getCascadeEntries(
+async function getCascadeEntries(
   db: SupabaseClient,
   brandId: string,
 ): Promise<BrandSourceRow[]> {
@@ -319,7 +319,7 @@ export async function upsertBrandCascade(
  * recent attempt for each source. Returns a map of sourceSlug → { outcome,
  * attemptedAt }.
  */
-export async function getLatestSourceOutcomes(
+async function getLatestSourceOutcomes(
   db: SupabaseClient,
   upc: string,
 ): Promise<Map<string, { outcome: string; attemptedAt: string }>> {

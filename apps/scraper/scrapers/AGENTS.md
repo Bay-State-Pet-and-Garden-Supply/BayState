@@ -7,7 +7,7 @@ This module contains the domain-specific scraping logic, discovery pipelines, an
 - `ai_search/`: Handles search-based discovery using providers like Serper. Includes logic for scoring and ranking search results.
 - `cohort/`: Manages groups of products (cohorts) for batch processing and search frequency analysis.
 - `product_url_extraction/`: Specialized logic for finding the correct manufacturer URL for a product before extraction.
-- `config/`: Contains YAML templates and sample configurations for scrapers. Note: Production configs are fetched via API.
+- `config/`: Runtime settings and evaluation thresholds. Note: Production scraper configs are fetched via API, not stored locally.
 - `models/`: Pydantic schemas for scraper configurations and validation rules.
 
 ## Phase 10 Context

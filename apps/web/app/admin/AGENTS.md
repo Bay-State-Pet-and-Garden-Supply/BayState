@@ -1,6 +1,6 @@
 # ADMIN PORTAL
 
-**Context:** 26-module management interface for products, scrapers, B2B, analytics, pipeline.
+**Context:** 21-module management interface for products, scrapers, B2B, analytics, pipeline.
 
 ## OVERVIEW
 Mobile-first data-heavy dashboard: product CRUD, scraper orchestration, B2B sync, pipeline management, business metrics.
@@ -15,12 +15,9 @@ app/admin/
 ├── b2b/              # Portal configuration
 ├── brands/           # Management, logos, SEO
 ├── categories/       # Hierarchy, taxonomy
-├── cohorts/          # Pipeline cohorts
 ├── customers/        # Profiles, support
 ├── design/           # Theme/design settings
 ├── enrichment/       # AI enrichment tools
-├── health/           # System health monitoring
-├── inventory/        # Stock management
 ├── migration/        # ShopSite sync tools
 ├── orders/           # Fulfillment, history
 ├── pages/            # CMS pages
@@ -33,7 +30,6 @@ app/admin/
 ├── reviews/          # Product reviews
 ├── services/         # Services catalog (rentals, refills)
 ├── settings/         # System settings
-├── tools/            # Utility tools
 └── users/            # Admin user management
 ```
 

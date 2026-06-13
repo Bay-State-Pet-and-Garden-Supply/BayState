@@ -7,7 +7,7 @@ import { enrichProductDetails } from './detail-enrichment';
 import { collectSourceBackedFallbacks } from '@/lib/product-source-fallbacks';
 import { getCachedVocabularySync, validateFacetValue } from './facet-vocabulary';
 
-export const LEGACY_TO_CANONICAL_FACETS: Record<string, string> = {
+const LEGACY_TO_CANONICAL_FACETS: Record<string, string> = {
     pet_type: 'animal_type',
     life_stage: 'life_stage',
     pet_size: 'breed_size',

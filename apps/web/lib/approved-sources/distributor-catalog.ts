@@ -248,7 +248,7 @@ export function normalizeDistributorSlug(slug: string): string {
 /**
  * Find a fixed catalog entry by any known slug or alias.
  */
-export function findDistributorInCatalog(
+function findDistributorInCatalog(
   slug: string,
 ): FixedDistributorEntry | undefined {
   const normalized = normalizeDistributorSlug(slug);
@@ -260,7 +260,7 @@ export function findDistributorInCatalog(
 /**
  * Build a distributor ApprovedSourcePlanEntry from a catalog entry.
  */
-export function buildDistributorPlanEntry(
+function buildDistributorPlanEntry(
   catalogEntry: FixedDistributorEntry,
 ): ApprovedSourcePlanEntry {
   return {

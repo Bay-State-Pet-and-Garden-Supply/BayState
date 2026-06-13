@@ -174,7 +174,7 @@ function summarizeAnimalSignals(signals: Iterable<AnimalSignal>): string {
     return Array.from(signals).sort().join(', ');
 }
 
-export function normalizeConsolidatedRecord(record: any): any {
+function normalizeConsolidatedRecord(record: any): any {
     if (!record || typeof record !== 'object' || Array.isArray(record)) {
         return { core: {}, facets: [], media: [], evidence: {} };
     }
@@ -213,7 +213,7 @@ export function normalizeConsolidatedRecord(record: any): any {
     };
 }
 
-export function mergeNestedCandidates(current: any, next: any): any {
+function mergeNestedCandidates(current: any, next: any): any {
     const normCurrent = normalizeConsolidatedRecord(current);
     const normNext = normalizeConsolidatedRecord(next);
 

@@ -23,7 +23,7 @@ core/
 │   ├── dataset.py
 │   ├── key_value_store.py
 │   └── request_queue.py
-└── database/                  # (empty - deprecated stubs removed)
+└── database/                  # (deprecated — only __init__.py placeholder remains)
 ```
 
 ## KEY SERVICES

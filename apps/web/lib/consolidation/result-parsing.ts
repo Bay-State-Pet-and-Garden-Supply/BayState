@@ -12,7 +12,7 @@ import {
 } from './taxonomy-validator';
 
 // Define the Zod schema representing the raw LLM output schema contract
-export const RawConsolidationSchema = z.object({
+const RawConsolidationSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     brand: z.string().min(1, 'Brand is required'),
     weight: z.string().nullable().optional(),

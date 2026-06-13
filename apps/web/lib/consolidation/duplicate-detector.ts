@@ -9,7 +9,7 @@ const DISAMBIGUATOR_FIELDS = ['flavor', 'color', 'scent', 'material', 'variant',
 /**
  * Searches product sources for a specific field (e.g., flavor, color).
  */
-export function findFieldInSources(sources: Record<string, unknown>, field: string): string | null {
+function findFieldInSources(sources: Record<string, unknown>, field: string): string | null {
     const normalizedSources = normalizeProductSources(sources);
     for (const sourcePayload of Object.values(normalizedSources)) {
         if (sourcePayload && typeof sourcePayload === 'object') {
@@ -54,7 +54,7 @@ export function findFieldInSources(sources: Record<string, unknown>, field: stri
 /**
  * Inserts a differentiator string into a product name before size/dimensions.
  */
-export function insertDifferentiator(name: string, differentiator: string): string {
+function insertDifferentiator(name: string, differentiator: string): string {
     const sizePatterns = [
         /\s+(\d+(?:\.\d+)?)\s*(?:lb|oz|ct|in|ft|gal|qt|pt|pk)\b\.?/i,
         /\s+X\s+\d+/,

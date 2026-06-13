@@ -144,7 +144,7 @@ function hasUsableProductEvidence(sr: SourceResultLike): boolean {
  * - Infers not_stocked for known no-match error messages
  * - Defaults to source_error for null outcomes without evidence
  */
-export function normalizeSourceResultOutcome(
+function normalizeSourceResultOutcome(
   sr: SourceResultLike,
 ): NormalizedSourceResult {
   const rawOutcome = sr.outcome ?? null;

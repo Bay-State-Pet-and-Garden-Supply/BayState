@@ -137,7 +137,7 @@ export interface ProductEnrichmentSummary {
 /**
  * Checks if a field is protected from enrichment.
  */
-export function isProtectedField(field: string): field is ProtectedField {
+function isProtectedField(field: string): field is ProtectedField {
   return PROTECTED_FIELDS.includes(field as ProtectedField);
 }
 
@@ -151,7 +151,7 @@ export function isEnrichableField(field: string): field is EnrichableField {
 /**
  * Validates an enrichment config, ensuring no protected fields are in overrides.
  */
-export function validateEnrichmentConfig(config: EnrichmentConfig): { valid: boolean; errors: string[] } {
+function validateEnrichmentConfig(config: EnrichmentConfig): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   if (config.field_overrides) {

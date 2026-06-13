@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { useJobConsole } from "@/hooks/useJobConsole";
 import type { EnrichmentAttempt } from "@/lib/realtime/types";
 
-export const statusIconMap: Record<string, typeof Activity> = {
+const statusIconMap: Record<string, typeof Activity> = {
   queued: Clock,
   pending: Clock,
   running: Loader2,
@@ -31,7 +31,7 @@ export const statusIconMap: Record<string, typeof Activity> = {
   cancelled: X,
 };
 
-export const statusColorMap: Record<string, string> = {
+const statusColorMap: Record<string, string> = {
   queued: "text-zinc-400 dark:text-zinc-500",
   pending: "text-zinc-400 dark:text-zinc-500",
   running: "text-emerald-500 animate-pulse",
@@ -42,7 +42,7 @@ export const statusColorMap: Record<string, string> = {
   cancelled: "text-zinc-400 dark:text-zinc-500",
 };
 
-export const statusBgMap: Record<string, string> = {
+const statusBgMap: Record<string, string> = {
   queued: "bg-zinc-50 border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800",
   pending: "bg-zinc-50 border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800",
   running: "bg-emerald-50/30 border-emerald-200 dark:bg-emerald-950/10 dark:border-emerald-900/30 shadow-[0_0_15px_rgba(16,185,129,0.05)]",
@@ -58,7 +58,7 @@ export function formatDate(dateStr?: string | null): string {
   return new Date(dateStr).toLocaleString();
 }
 
-export function getElapsed(startedAt?: string | null, completedAt?: string | null): string {
+function getElapsed(startedAt?: string | null, completedAt?: string | null): string {
   if (!startedAt) return "--";
   const start = new Date(startedAt).getTime();
   const end = completedAt ? new Date(completedAt).getTime() : Date.now();
@@ -111,7 +111,7 @@ interface EnrichmentAttemptCardProps {
   attempt: EnrichmentAttempt;
 }
 
-export function EnrichmentAttemptCard({ attempt }: EnrichmentAttemptCardProps) {
+function EnrichmentAttemptCard({ attempt }: EnrichmentAttemptCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {

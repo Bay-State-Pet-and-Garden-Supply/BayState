@@ -1,8 +1,8 @@
 # BayState agent notes
 
 ## Read scope-specific notes first
-- Root app boundaries: `apps/web` (Next.js/Bun coordinator + admin/storefront), `apps/scraper` (Python runner), `apps/mobile` (Expo/React Native; less active), `packages/api` (shared tRPC library `@baystate/api`), `conductor` (workflow docs only; no runtime code).
-- More specific instructions exist and override this file: `apps/web/AGENTS.md`, `apps/web/app/admin/AGENTS.md`, `apps/web/lib/consolidation/AGENTS.md`, `apps/scraper/AGENTS.md`, plus scraper subdirectory `AGENTS.md` files.
+- Root app boundaries: `apps/web` (Next.js/Bun coordinator + admin/storefront), `apps/scraper` (Python runner), `packages/api` (shared tRPC library `@baystate/api`), `conductor` (workflow docs only; no runtime code).
+- More specific instructions exist and override this file: `apps/web/app/admin/AGENTS.md`, `apps/web/lib/consolidation/AGENTS.md`, `apps/scraper/AGENTS.md`, plus scraper subdirectory `AGENTS.md` files.
 
 ## Monorepo commands that are easy to guess wrong
 - Package manager is Bun 1.3.5 (`packageManager`); prefer Bun over npm even where old READMEs show npm.
@@ -24,17 +24,17 @@
 ## Scraper (`apps/scraper`)
 - Runner is API-only: use `X-API-Key: bsr_*` to talk to the web coordinator; do not add direct database credentials or DB access to runner code.
 - Runtime flow is coordinator-runner: web queues jobs/callbacks, scraper polls or uses realtime, executes Playwright/crawl4ai, and posts results back.
-- Local config files exist under `scrapers/configs`, but new/production scraper configs are published through the BayState admin UI/API; avoid treating local YAML as the deployment source of truth.
-- Scraper configs should keep selectors/workflows in YAML; do not hardcode vendor selectors in Python handlers.
+- Local scraper configs are published through the BayState admin UI/API and fetched at runtime; avoid treating local YAML as the deployment source of truth.
+- Scraper configs use AI-driven enrichment via crawl4ai; static YAML-based scraping is deactivated.
 - Use Playwright/crawl4ai only; do not introduce Selenium or `SyncPlaywright` in production paths.
 - Use structured logging instead of `print()`, and classify retryable failures instead of bare `except:`.
 - Test/lint commands from `apps/scraper`: `python -m pytest`, `pytest -m "not benchmark and not live and not performance" --ignore=tests/benchmarks` (CI subset), `ruff check . --output-format=github`, `mypy . --ignore-missing-imports || true`.
 - `pytest.ini` defaults to `-m "not live"` and `asyncio_mode=auto`; live/benchmark/performance suites are intentionally excluded from normal CI.
-- Local scraper QA examples: `python runner.py --local --config scrapers/configs/phillips.yaml --test-mode` and add `--sku ...` or `--no-headless` for focused debugging.
+- Local scraper QA examples: `python daemon.py --env dev` and add `--test-mode` for focused debugging.
 - Docker Compose in `apps/scraper/docker-compose.yml` is production-oriented by default; for local development prefer `./run-dev.sh` or `python daemon.py --env dev`.
 
 ## Cross-project integration facts
-- `apps/web` is the coordinator; `apps/scraper` is a stateless runner. Scraper API endpoints include `/api/scraper/v1/poll`, `/heartbeat`, `/credentials`, and admin scraping callbacks.
+- `apps/web` is the coordinator; `apps/scraper` is a stateless runner. Scraper API endpoints include `/api/scraper/v1/heartbeat`, `/api/scraper/v1/credentials`, `/api/scraper/v1/claim-enrichment`, and admin scraping callbacks.
 - Product pipeline is Import/Sync → Scrape → AI consolidation → Review/Publish. Web pipeline logic is under `apps/web/lib/pipeline`; AI consolidation is under `apps/web/lib/consolidation`.
 - Scraper test assertions are shared across UI/API/runner: YAML `test_assertions` feed Admin Scraper Lab jobs and runner `--test-mode` assertion diffs.
 - Git commit style in existing guidance is conventional commits: `<type>(<scope>): <description>`.
