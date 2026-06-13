@@ -26,6 +26,7 @@ import { getUntriedAndErroredSources, isCascadeConfigured } from "./source-casca
 interface ProductRow {
   upc: string;
   brand_id: string | null;
+  cohort_id?: string | null;
   input: {
     name?: string | null;
     price?: number | null;
@@ -188,7 +189,7 @@ export async function buildApprovedSourcePlans(
   // ------------------------------------------------------------------
   const { data: products, error: productError } = await db
     .from("products_ingestion")
-    .select("upc, brand_id, input")
+    .select("upc, brand_id, cohort_id, input")
     .in("upc", upcs);
 
   if (productError) {
@@ -207,8 +208,36 @@ export async function buildApprovedSourcePlans(
   );
 
   // ------------------------------------------------------------------
-  // 2. Identify UPCs missing brand_id and reject them early
+  // 2. Identify UPCs missing brand_id and reject them early.
+  //    Fall back to cohort_batches.brand_id if product brand_id is null.
   // ------------------------------------------------------------------
+  const cohortIdsToFetch = new Set<string>();
+  for (const product of products ?? []) {
+    if (!product.brand_id && product.cohort_id) {
+      cohortIdsToFetch.add(product.cohort_id);
+    }
+  }
+
+  const cohortBrandMap = new Map<string, string>();
+  if (cohortIdsToFetch.size > 0) {
+    const { data: cohorts, error: cohortError } = await db
+      .from("cohort_batches")
+      .select("id, brand_id")
+      .in("id", Array.from(cohortIdsToFetch));
+
+    if (cohortError) {
+      console.warn(
+        `[Source Plan Builder] Failed to load cohort batches for brand fallback: ${cohortError.message}`
+      );
+    } else {
+      for (const cohort of cohorts ?? []) {
+        if (cohort.brand_id) {
+          cohortBrandMap.set(cohort.id, cohort.brand_id);
+        }
+      }
+    }
+  }
+
   const brandedUpcs: string[] = [];
   for (const upc of upcs) {
     const product = productMap.get(upc);
@@ -216,7 +245,12 @@ export async function buildApprovedSourcePlans(
       results[upc] = buildFailureResult(upc, "Product not found", "product_not_found");
       continue;
     }
-    if (!product.brand_id) {
+    const resolvedBrandId =
+      product.brand_id ||
+      (product.cohort_id ? cohortBrandMap.get(product.cohort_id) : null) ||
+      null;
+
+    if (!resolvedBrandId) {
       results[upc] = buildFailureResult(
         upc,
         "Product has no assigned brand. Assign a brand before extraction.",
@@ -224,6 +258,7 @@ export async function buildApprovedSourcePlans(
       );
       continue;
     }
+    product.brand_id = resolvedBrandId;
     brandedUpcs.push(upc);
   }
 

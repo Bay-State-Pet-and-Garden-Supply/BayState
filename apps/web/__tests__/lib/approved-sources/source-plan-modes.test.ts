@@ -507,4 +507,120 @@ describe('buildApprovedSourcePlans — automated cascade', () => {
     if (result.ok) throw new Error('Expected not ok');
     expect(result.code).toBe('product_not_found');
   });
+
+  // ===========================================================================
+  // Cohort Brand Fallback
+  // ===========================================================================
+
+  it('resolves product brand_id from its cohort when product.brand_id is null', async () => {
+    const responses = [
+      // 1. products_ingestion (brand_id is null, but cohort_id is set)
+      {
+        data: [
+          {
+            upc: 'UPC-1',
+            brand_id: null,
+            cohort_id: 'cohort-1',
+            input: { name: 'Cohort Product', price: 10 },
+          },
+        ],
+        error: null,
+      },
+      // 2. cohort_batches (resolving brand_id from cohort)
+      {
+        data: [
+          {
+            id: 'cohort-1',
+            brand_id: 'brand-1',
+          },
+        ],
+        error: null,
+      },
+      // 3. brands
+      {
+        data: [
+          {
+            id: 'brand-1',
+            name: 'TestBrand',
+            slug: 'testbrand',
+            official_domains: ['testbrand.com'],
+            preferred_domains: [],
+            source_cascade_configured_at: '2026-06-11T00:00:00Z',
+          },
+        ],
+        error: null,
+      },
+      // 4. brand_sources
+      {
+        data: [
+          {
+            id: 'bs-1',
+            brand_id: 'brand-1',
+            source_type: 'distributor',
+            source_slug: 'phillips',
+            display_name: 'Phillips',
+            domains: ['phillips.com'],
+            asset_domains: [],
+            crawl4ai_adapter_slug: 'phillips_adapter',
+            requires_auth: false,
+            credential_ref: null,
+            search_mode: 'upc_search',
+            allowed_fields: ['name', 'description', 'images'],
+            priority: 1,
+            enabled: true,
+          },
+        ],
+        error: null,
+      },
+    ];
+
+    const mockDb = createMockDbForSourcePlan(responses);
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1']);
+
+    const result = results['UPC-1'];
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected ok');
+    expect(result.plan.brand?.id).toBe('brand-1');
+    expect(result.plan.brand?.name).toBe('TestBrand');
+    expect(result.plan.priority.length).toBe(2);
+    expect(result.plan.priority[0].sourceSlug).toBe('phillips');
+    expect(result.plan.priority[1].sourceSlug).toBe('testbrand');
+  });
+
+  it('rejects when product.brand_id is null and cohort has no brand_id', async () => {
+    const responses = [
+      // 1. products_ingestion (brand_id is null, but cohort_id is set)
+      {
+        data: [
+          {
+            upc: 'UPC-1',
+            brand_id: null,
+            cohort_id: 'cohort-1',
+            input: { name: 'Cohort Product', price: 10 },
+          },
+        ],
+        error: null,
+      },
+      // 2. cohort_batches (no brand_id on cohort)
+      {
+        data: [
+          {
+            id: 'cohort-1',
+            brand_id: null,
+          },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [], error: null },
+    ];
+
+    const mockDb = createMockDbForSourcePlan(responses);
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1']);
+
+    const result = results['UPC-1'];
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('Expected not ok');
+    expect(result.code).toBe('missing_brand');
+  });
 });
