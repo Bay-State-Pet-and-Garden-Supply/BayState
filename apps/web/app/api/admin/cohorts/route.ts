@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('cohort_batches')
-    .select('*, brands(id, name, slug, logo_url, official_domains, preferred_domains)', { count: 'exact' })
+    .select('*, brands(id, name, slug, logo_url, official_domains, preferred_domains, source_cascade_configured_at, source_cascade_configured_by)', { count: 'exact' })
     .order('created_at', { ascending: false });
 
   if (status && status !== 'all') {
