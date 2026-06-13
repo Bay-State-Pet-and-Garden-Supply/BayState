@@ -195,6 +195,30 @@ class ApprovedSourceExecutor:
             if result.attempts:
                 combined_attempts.extend(result.attempts)
 
+        # Normalize missing outcomes: infer from result status when not explicitly set
+        for sr in combined_source_results:
+            if not sr.outcome:
+                # Check if this source had a successful or partial extraction
+                matching = [
+                    r for r in all_results
+                    if r.source_results and any(
+                        s.sourceSlug == sr.sourceSlug
+                        for s in r.source_results
+                    )
+                ]
+                if matching:
+                    match_status = matching[0].status
+                    if match_status in ("success", "partial"):
+                        sr.outcome = "found"
+                    elif match_status == "failed":
+                        # Try to distinguish no-match from genuine error
+                        has_no_match_warning = (
+                            matching[0].validation
+                            and matching[0].validation.warnings
+                            and any("No match" in (w or "") for w in matching[0].validation.warnings)
+                        )
+                        sr.outcome = "not_stocked" if has_no_match_warning else "source_error"
+
         best_result.source_results = combined_source_results
         best_result.attempts = combined_attempts
         best_result.llm_used = any(bool(r.llm_used) for r in all_results)

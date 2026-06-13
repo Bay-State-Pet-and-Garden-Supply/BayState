@@ -1031,3 +1031,64 @@ class TestExecutor:
 
         assert resolved is None  # Bypassed Phase 1 direct match and returned None instead of the incentive page
 
+
+
+    @patch(
+        "scrapers.approved_sources.adapters.bradley.BradleyAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    def test_missing_outcome_inferred_from_success_status(
+        self, mock_bradley_extract
+    ):
+        """When a SourceResultInfo has outcome=None but the result is successful,
+        the executor should infer outcome='found' in the merged source_results."""
+        # Build a success result but force outcome to None on its SourceResultInfo
+        base_result = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+        )
+        # Simulate outcome being null (as from a marketplace adapter that doesn't set it)
+        if base_result.source_results:
+            for sr in base_result.source_results:
+                sr.outcome = None
+
+        mock_bradley_extract.return_value = base_result
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="bradley",
+                displayName="Bradley Caldwell",
+                domains=["bradleycaldwell.com"],
+                assetDomains=["bradleycaldwell.com"],
+                adapterSlug="bradley_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=10,
+                runFirst=True,
+            ),
+        ]
+        plan = _make_plan(entries=entries)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        assert result.status == "success"
+        assert result.source_results is not None
+        assert len(result.source_results) == 1
+        # The null outcome should now be inferred as "found"
+        sr = result.source_results[0]
+        assert sr.outcome == "found", (
+            f"Expected outcome to be inferred as 'found', got {sr.outcome!r}"
+        )
+        assert sr.sourceSlug == "bradley"

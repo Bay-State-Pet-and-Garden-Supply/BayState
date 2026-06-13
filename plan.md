@@ -1,110 +1,142 @@
 # Implementation Plan
 
 ## Goal
-Fix the three live-tested scraper data-loss bugs so Orgill images normalize correctly, Central Pet extracts all available specs/features/dimensions, and adapter identifier fields survive result normalization.
+Fix Automated Source Cascade outcome classification so products with usable source data advance to `processed`, while true no-found source errors still surface in `needs_attention`.
 
 ## Tasks
-1. **Normalize Orgill image backslashes before quality upgrades**: Update Orgill image URL normalization to convert vendor backslashes to forward slashes before `/websmall/` and `_thumb.` replacements.
-   - File: `apps/scraper/scrapers/approved_sources/adapters/orgill.py`
-   - Changes: In `OrgillAdapter.normalize_images()`, add `url = url.replace("\\", "/")` as the first per-URL transform. Keep existing `/websmall/ -> /web/` and `_thumb. -> .` logic after the cleanup.
-   - Acceptance: A URL like `https://images1.orgill.com/web/10031\7618085.jpg` normalizes to `https://images1.orgill.com/web/10031/7618085.jpg`; existing thumb/websmall normalization still works.
 
-2. **Add a global image URL cleanup safety net**: Make the base adapter normalize obvious URL backslash corruption for adapters that do not override image normalization.
-   - File: `apps/scraper/scrapers/approved_sources/adapters/base.py`
-   - Changes: Change `BaseDistributorCrawl4AIAdapter.normalize_images()` from `return list(urls)` to returning a list where each string URL has backslashes replaced with `/`. Preserve non-empty strings only as currently expected; do not alter non-string inputs unless type hints/tests require it.
-   - Acceptance: Public adapters that inherit the base method no longer pass raw backslash URLs into policy filtering or image capture.
+1. **Restore the extraction glossary context**: Replace the current consolidation-focused `CONTEXT.md` with the Automated Source Cascade glossary.
+   - File: `CONTEXT.md`
+   - Changes: Restore terms for **Source Cascade**, **Distributor Source**, **SERP Fallback**, **Source Error**, **Not Stocked**, **Needs Attention**, and **Extraction Run**; revise **Needs Attention** to mean no usable source found data and one or more genuine source errors prevented a clean cascade.
+   - Acceptance: `CONTEXT.md` no longer describes consolidation field mapping and matches the extraction terms used by ADR 0002.
 
-3. **Add unit coverage for Orgill/backslash normalization**: Add deterministic tests for the Orgill override and, if task 2 is implemented, the base fallback.
-   - File: `apps/scraper/tests/unit/test_approved_sources_adapter_fixtures.py` or `apps/scraper/tests/unit/test_approved_sources_adapters.py`
-   - Changes: Add a test that instantiates `OrgillAdapter` with a minimal plan/entry and asserts `normalize_images(["https://images1.orgill.com/web/10031\\7618085_thumb.jpg"])` returns a URL with `/10031/7618085.jpg` and no `\\`.
-   - Acceptance: Focused unit test passes with `uv run --with-requirements requirements.txt pytest tests/unit/test_approved_sources_adapter_fixtures.py -q` from `apps/scraper`.
+2. **Update the source-error ADR to separate fallback blocking from final status**: Clarify that source errors block fallback/exhaustiveness, not successful processing.
+   - File: `docs/adr/0002-source-errors-block-serp.md`
+   - Changes:
+     - Keep rule: genuine distributor source errors block SERP fallback when no source has found data.
+     - Change final status rule: if any source found usable product data, the UPC advances to `processed`; if no source found data and any genuine source error occurred, it goes to `needs_attention`; if all sources are clean `not_stocked`, it advances to `processed` for later manual-entry flow.
+   - Acceptance: ADR no longer says every source error forces `Needs Attention` unconditionally.
 
-4. **Fix Central Pet weight extraction for mixed-content `<li>` nodes**: Replace the broken BeautifulSoup `string=` lookup with text-based `<li>` iteration.
-   - File: `apps/scraper/scrapers/approved_sources/adapters/central_pet.py`
-   - Changes: In the `# --- Weight ---` block, iterate `soup.find_all("li")`, inspect `li.get_text(" ", strip=True)`, and when it contains `Product Gross Weight`, prefer the child `<span>` text; otherwise remove the label via regex and store the remaining value in `product["weight"]`. Add `weight` to `matched` only once.
-   - Acceptance: Fixture/live HTML containing `<li>Product Gross Weight:<span>0.1100 lb</span></li>` yields `product["weight"] == "0.1100 lb"`.
+3. **Extract callback source-outcome normalization into a testable helper**: Add pure helper functions that normalize source outcomes before status calculation and persistence.
+   - New File: `apps/web/app/api/scraper/v1/enrichment-callback/source-outcomes.ts`
+   - Changes:
+     - Add `normalizeSourceResultOutcome(sourceResult)`:
+       - preserves explicit `found`, `not_stocked`, `source_error`, `skipped`
+       - infers `found` when outcome is null/missing and the result has usable product evidence, e.g. non-empty `product`, `confidence >= 0.7`, `matchedFields.length > 0`, or a product/core name
+       - infers `not_stocked` for known clean no-match messages such as `No matching product card found`, `No match found`, `No product match found`, `No result(s) found`
+       - otherwise falls back to `source_error`
+     - Add `normalizeSourceResults(sourceResults)` returning normalized records without mutating the validated payload.
+     - Add `determineSourceOutcomeStatus(normalizedResults)`:
+       - any `found` -> `processed`
+       - else any `source_error` -> `needs_attention`
+       - else -> `processed`
+   - Acceptance: Helper unit tests cover the production Amazon-null-outcome case, Bradley no-match message, genuine error, all not-stocked, and found-plus-error.
 
-5. **Extract Central Pet accordion specs/features from `.resp-tab-content`**: Add parsing for the current Central Pet responsive accordion content.
-   - File: `apps/scraper/scrapers/approved_sources/adapters/central_pet.py`
-   - Changes: Extend the `# --- Features ---` block to collect feature/spec lines from `.resp-tab-content` when `#tst_productDetail_features li` / `.product-features li` are absent. Split by `<li>` when present; otherwise split normalized text on known labels such as `Product Gross Weight`, `Product Net Weight`, `Product Height`, `Product Length`, `Product Width`, `Recommended For`. Avoid duplicating the weight line if it is already stored separately.
-   - Acceptance: Central Pet live/fixture HTML with `.resp-tab-content` yields `features` containing meaningful feature lines such as `Recommended For: Chew; Fetch; Interactive Play` and additional non-empty spec lines.
+4. **Use normalized source outcomes in the enrichment callback**: Change callback status and source-attempt persistence to consume normalized outcomes.
+   - File: `apps/web/app/api/scraper/v1/enrichment-callback/route.ts`
+   - Changes:
+     - Import the new helper functions.
+     - Replace existing `determineSourceOutcomeStatus()` with helper-based logic.
+     - Normalize `sourceResults` immediately after validation.
+     - Use normalized outcomes for:
+       - deciding `nextStatus`
+       - `enrichment_source_attempts.outcome`
+       - `error_message` generation
+       - `sources.enriched.source_results` if needed to keep persisted enriched data consistent
+     - If an approved-source result has no `source_results` but top-level result is a usable success, treat it as `processed`; if it is failed with no source details, treat it as `needs_attention`.
+   - Acceptance: UPC-like payload with Amazon product data + Bradley source error returns `next_status: "processed"`; no-found + source_error returns `needs_attention`.
 
-6. **Parse Central Pet dimensions from individual height/length/width labels**: Convert height/length/width values in the accordion into a single `dimensions` facet string.
-   - File: `apps/scraper/scrapers/approved_sources/adapters/central_pet.py`
-   - Changes: Replace or supplement the existing `soup.find("li", string=re.compile(r"Dimension", re.I))` lookup with text-based parsing. First keep supporting explicit `Dimension` labels. Then parse `Product Height`, `Product Length`, and `Product Width` from `.resp-tab-content`/`li` text and set `product["dimensions"]` to a normalized string such as `Height: 2.50 in; Length: 2.50 in; Width: 2.50 in` when any dimension component is found.
-   - Acceptance: Live Central Pet KONG page extracts the three dimension components reported by the diagnostic; old fixtures with a single `Dimension` label still pass.
+5. **Fix Bradley clean no-match classification at the adapter level**: Make Bradley classify missing product cards from search pages as `NO_MATCH`, not `EXTRACTION_FAILED`.
+   - File: `apps/scraper/scrapers/approved_sources/adapters/bradley.py`
+   - Changes:
+     - In search-result parsing, change `No matching product card found on search page for UPC ...` from `FailureCode.EXTRACTION_FAILED` to `FailureCode.NO_MATCH`.
+     - Review the regex fallback and PDP paths; only change cases that mean search executed but the product was not present. Leave true parser/network/HTML failures as `EXTRACTION_FAILED`.
+   - Acceptance: Bradley no-card search result is converted through `BaseDistributorCrawl4AIAdapter` into `build_no_match_result(... outcome="not_stocked")`.
 
-7. **Extract additional Central Pet package/spec fields**: Preserve currently visible package quantities beyond case quantity.
-   - File: `apps/scraper/scrapers/approved_sources/adapters/central_pet.py`
-   - Changes: In the `.product-spec` loop, add mappings for `sell pk qty` and `pallet qty` to flat keys such as `sell_pack_qty` and `pallet_qty`. Keep existing `case qty -> case_pack` behavior. If the result-builder mappings are not extended for these new keys in this pass, ensure they remain harmless extra flat fields.
-   - Acceptance: Adapter flat result includes `sell_pack_qty` and `pallet_qty` when those labels exist; no existing tests fail.
+6. **Ensure found source results always emit `outcome: "found"`**: Fix adapter/executor/result-builder gaps where successful results, especially marketplace/Amazon-like results, emit `outcome: null`.
+   - Files:
+     - `apps/scraper/scrapers/approved_sources/result_builder.py`
+     - `apps/scraper/scrapers/approved_sources/executor.py`
+     - Relevant Amazon/marketplace adapter file if found during implementation
+   - Changes:
+     - Confirm `build_success_result()` and `build_partial_result()` always produce source results with `outcome="found"`.
+     - In executor fallback classification, when `result.status in ("success", "partial")` and a `SourceResultInfo` has no outcome, set or infer `found` before combined result is returned.
+     - Locate the adapter path that produced `sourceType: "marketplace"`, `sourceSlug: "amazon"`, `confidence: 0.95`, `outcome: null`; set `outcome="found"` at the source.
+   - Acceptance: Scraper unit test for Amazon/marketplace found result asserts `source_results[0].outcome == "found"`.
 
-8. **Add/update Central Pet fixture coverage for weight/features/dimensions**: Make the offline tests guard the selector fixes.
-   - File: `apps/scraper/benchmarks/approved_sources/fixtures/html/central_pet/product_38777520.html`
-   - Changes: If the current fixture does not include `.resp-tab-content`, add a minimal representative accordion block with `Product Gross Weight`, `Product Height`, `Product Length`, `Product Width`, and `Recommended For` lines, while keeping the existing product identity fields.
-   - File: `apps/scraper/benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json`
-   - Changes: Add expected fields/facets for Central Pet where appropriate: `weight`, `features`, and `dimensions`. Do not require fields that are not present in every Central Pet fixture.
-   - File: `apps/scraper/tests/unit/test_approved_sources_adapter_fixtures.py`
-   - Changes: Add explicit assertions for Central Pet 38777520 that `extract_from_html()` returns `weight`, non-empty `features`, and `dimensions` when the fixture includes those blocks.
-   - Acceptance: `uv run --with-requirements requirements.txt pytest tests/unit/test_approved_sources_adapter_fixtures.py -q` passes.
+7. **Add callback regression tests for final status rules**: Cover the exact production failure modes.
+   - File: `apps/web/__tests__/app/api/scraper/v1/enrichment-callback-route.test.ts`
+   - Changes:
+     - Capture inserted rows for `enrichment_source_attempts` in the test mock so assertions can inspect persisted outcomes.
+     - Add tests:
+       - Amazon-like found result with `outcome: null` + Bradley no-match/source-error message -> product update `pipeline_status: "processed"`; persisted Amazon outcome `found`; Bradley normalized to `not_stocked` when message is clean no-match.
+       - Explicit `found` + genuine `source_error` -> `processed`, with source error still persisted in `enrichment_source_attempts`.
+       - All sources `not_stocked` -> `processed`.
+       - No found + genuine `source_error` -> `needs_attention` and concise `error_message`.
+       - Approved-source failed payload with no `source_results` -> `needs_attention`.
+   - Acceptance: Focused Jest file passes and fails on the current buggy callback logic before the fix.
 
-9. **Map `product_number` and `upc` through normalized product facts**: Stop silently dropping these adapter fields.
-   - File: `apps/scraper/scrapers/ai_search/enrichment_models.py`
-   - Changes: In `build_nested_product_facts()`:
-     - Add `"product_number": "item_number"` to `LEGACY_FACET_ALIASES` so Central Pet product numbers survive as `item_number` facets.
-     - Add `"upc"` to `single_facet_keys` so adapter UPCs survive as an `upc` facet.
-     - Consider adding an `EnrichedProductFacts.upc` property implementation that returns `self._get_facet("upc")` instead of `None` so existing convenience accessors work.
-   - Acceptance: `build_nested_product_facts({"product_number": "ABC123", "upc": "035585775203"})` produces facets `item_number=ABC123` and `upc=035585775203`; `facts.upc` returns the UPC if the property is updated.
+8. **Add scraper regression tests for Bradley and null found outcomes**: Prevent adapter/result-builder drift.
+   - Files:
+     - `apps/scraper/tests/unit/test_bradley_card_matching.py`
+     - `apps/scraper/tests/unit/test_approved_sources_executor.py`
+     - `apps/scraper/tests/unit/test_approved_sources_result_builder.py`
+   - Changes:
+     - Add/adjust Bradley fixture test where search page has no matching card but no parser crash; assert `FailureCode.NO_MATCH` and final source result outcome `not_stocked`.
+     - Add executor test where a successful adapter result with missing source-result outcome is normalized to `found` and does not become a source error.
+     - Keep existing genuine exception/no-adapter tests asserting `source_error`.
+   - Acceptance: Scraper unit tests pass with `python3 -m pytest` for the targeted files.
 
-10. **Add result-builder tests for identifier preservation**: Lock in the mapping behavior for all adapters.
-    - File: `apps/scraper/tests/unit/test_enrichment_models.py`
-    - Changes: Add a test for `build_nested_product_facts()` that passes `product_number`, `upc`, and an existing `item_number`; assert facets include `item_number` and `upc`. Include the `facts.upc` assertion if the property is updated.
-    - File: `apps/scraper/tests/unit/test_approved_sources_result_builder.py`
-    - Changes: Extend `TestBuildSuccessResult.test_returns_valid_result` or add a new test asserting `build_success_result(... product_fields={"name": ..., "product_number": ..., "upc": ...})` retains `item_number` and `upc` facets and still sets `validation.upc_match` correctly.
-    - Acceptance: `uv run --with-requirements requirements.txt pytest tests/unit/test_enrichment_models.py tests/unit/test_approved_sources_result_builder.py -q` passes.
+9. **Prepare a production remediation query/script for already-stuck products**: Correct rows created by the bad classification after code is fixed.
+   - New File: `docs/runbooks/repair-source-cascade-status.md`
+   - Changes:
+     - Document a read-only verification query listing `needs_attention` products with usable enriched data or source attempts whose `raw_result.product` is non-null / confidence >= 0.7.
+     - Document a controlled repair SQL plan:
+       - update `enrichment_source_attempts.outcome` to `found` when `raw_result` shows product data/confidence but outcome is `source_error`
+       - update Bradley clean no-match source attempts to `not_stocked` when `error_message ILIKE '%No matching product card found%'
+       - update `products_ingestion.pipeline_status` from `needs_attention` to `processed` only for rows with a found source attempt or high-confidence enriched data
+     - Include transaction and rollback notes; do not auto-run the repair from app code.
+   - Acceptance: Runbook includes SELECT-before-UPDATE queries and a validation query showing affected UPC counts.
 
-11. **Refresh live diagnostic fixtures for Orgill**: Use the known-good Orgill UPC supplied during live testing so workers can validate real extraction after fixes.
-    - File: `apps/scraper/tests/live/test_all_adapters_live.py`
-    - Changes: Update the Orgill `TEST_SKUS` entry to UPC `755625321923`, name `Landscapers Select 34609 PCL-P Shovel, 16 ga, Hardwood Handle, 45 in L Handle`, brand `LANDSCAPERS SELECT`.
-    - File: `apps/scraper/tests/live/run_adapter_test.py`
-    - Changes: Mirror the same Orgill test UPC/name/brand if this live helper remains in the tree.
-    - Acceptance: Live Orgill diagnostic returns the shovel product and no longer logs 404 for `...10031\7618085.jpg` due to backslash corruption. If the source image itself is unavailable, the URL should at least be normalized with `/` rather than `\`.
-
-12. **Run focused verification**: Execute offline checks first, then live spot checks only if credentials/browser dependencies are available.
-    - File: N/A
-    - Changes: No code change; validation step.
-    - Acceptance:
-      - Offline: from `apps/scraper`, run `uv run --with-requirements requirements.txt pytest tests/unit/test_enrichment_models.py tests/unit/test_approved_sources_result_builder.py tests/unit/test_approved_sources_adapter_fixtures.py -q`.
-      - Live Orgill: `uv run --with-requirements requirements.txt python tests/live/run_adapter_test.py orgill --upc 755625321923 --name "Landscapers Select Shovel" --brand "LANDSCAPERS SELECT"`.
-      - Live Central Pet: `uv run --with-requirements requirements.txt python tests/live/run_adapter_test.py central_pet` and verify additional fields now include `weight_lbs`/`package_weight`, `dimensions`, and `features` facets if the live page exposes them.
+10. **Run focused validation**: Validate both code behavior and current production symptom.
+   - Files: test/validation commands only
+   - Changes: None beyond prior tasks.
+   - Acceptance:
+     - `cd apps/web && bun run tsc --noEmit` has no new errors beyond known pre-existing Recharts issue, if still present.
+     - `node apps/web/scripts/run-jest.cjs --testPathPatterns="enrichment-callback-route"` passes.
+     - Targeted scraper tests pass with `python3 -m pytest apps/scraper/tests/unit/test_bradley_card_matching.py apps/scraper/tests/unit/test_approved_sources_executor.py apps/scraper/tests/unit/test_approved_sources_result_builder.py`.
+     - Manual/Supabase verification: a payload shaped like UPC `850067859918` computes `processed`, not `needs_attention`.
 
 ## Files to Modify
-- `apps/scraper/scrapers/approved_sources/adapters/orgill.py` - clean backslashes in Orgill image URL normalization.
-- `apps/scraper/scrapers/approved_sources/adapters/base.py` - optional/base global backslash cleanup for image URLs.
-- `apps/scraper/scrapers/approved_sources/adapters/central_pet.py` - fix weight selector, add accordion feature extraction, parse dimensions, and optionally preserve sell/pallet quantities.
-- `apps/scraper/scrapers/ai_search/enrichment_models.py` - map `product_number` and `upc` into facets and update `EnrichedProductFacts.upc` property.
-- `apps/scraper/tests/unit/test_enrichment_models.py` - add unit tests for identifier facet mapping.
-- `apps/scraper/tests/unit/test_approved_sources_result_builder.py` - add/extend result-builder identifier preservation tests.
-- `apps/scraper/tests/unit/test_approved_sources_adapter_fixtures.py` or `apps/scraper/tests/unit/test_approved_sources_adapters.py` - add adapter-level tests for Orgill URL normalization and Central Pet extraction.
-- `apps/scraper/benchmarks/approved_sources/fixtures/html/central_pet/product_38777520.html` - add representative accordion content if absent from existing fixture.
-- `apps/scraper/benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json` - update expected Central Pet fields/facets if fixture content is enhanced.
-- `apps/scraper/tests/live/test_all_adapters_live.py` - update Orgill live test SKU to known current product.
-- `apps/scraper/tests/live/run_adapter_test.py` - mirror Orgill live helper SKU if kept.
+
+- `CONTEXT.md` - restore Automated Source Cascade glossary and corrected Needs Attention definition.
+- `docs/adr/0002-source-errors-block-serp.md` - clarify source errors block fallback/exhaustiveness, not products with found data.
+- `apps/web/app/api/scraper/v1/enrichment-callback/route.ts` - consume normalized source results and apply found-wins status logic.
+- `apps/web/__tests__/app/api/scraper/v1/enrichment-callback-route.test.ts` - add regression tests and source-attempt insert assertions.
+- `apps/scraper/scrapers/approved_sources/adapters/bradley.py` - classify no matching product card as `NO_MATCH`.
+- `apps/scraper/scrapers/approved_sources/result_builder.py` - verify/adjust found outcome emission for success/partial source results.
+- `apps/scraper/scrapers/approved_sources/executor.py` - normalize missing source-result outcomes from successful adapter results to `found`.
+- `apps/scraper/tests/unit/test_bradley_card_matching.py` - Bradley no-match regression coverage.
+- `apps/scraper/tests/unit/test_approved_sources_executor.py` - executor outcome normalization coverage.
+- `apps/scraper/tests/unit/test_approved_sources_result_builder.py` - result-builder outcome coverage.
 
 ## New Files
-- None required.
+
+- `apps/web/app/api/scraper/v1/enrichment-callback/source-outcomes.ts` - pure source outcome normalization and final status helpers.
+- `docs/runbooks/repair-source-cascade-status.md` - manual production data repair/verification runbook for already-stuck products.
 
 ## Dependencies
-- Tasks 1-3 are independent of Central Pet and result-builder work.
-- Tasks 4-8 should be completed together because Central Pet tests depend on the selector changes and fixture expectations.
-- Tasks 9-10 should be completed together because result-builder tests depend on the new mappings.
-- Task 12 depends on all code/test updates.
-- Task 11 can be done any time before live validation but should not block offline unit tests.
+
+- Task 1 and Task 2 should happen before implementation or in the same PR so docs match the new final-status semantics.
+- Task 3 must happen before Task 4 and Task 7 because callback code/tests should use the same pure helper.
+- Task 5 and Task 6 can be implemented in parallel with Task 4, but validation depends on all three.
+- Task 9 should be written after Tasks 3-6 so the remediation rules match the final code behavior.
+- Task 10 depends on all code/test changes.
 
 ## Risks
-- `upc` as a facet may require a matching facet definition downstream; if the web/API schema rejects unknown facet slugs, confirm `upc` is an allowed facet or add a compatible identifier field instead.
-- Mapping `product_number` to `item_number` could duplicate `item_number` if both are present; implementation should prefer explicit `item_number` and use `product_number` only as an alias/fallback.
-- Central Pet accordion text can vary by product; parsing should be label-driven and tolerant rather than hard-coded to one KONG page layout.
-- Live Central Pet searched UPC `38777520` differs from the page UPC `035585775203`; avoid tightening identifier matching in this change or the existing successful search flow may become a false no-match.
-- Orgill image capture may still fail if the vendor image truly does not exist or requires auth/session handling, but the visible corruption (`\`) must be removed first.
-- Updating live test UPCs changes diagnostic expectations and may affect historical docs; keep fixture tests deterministic and live tests clearly marked as live/current-catalog checks.
+
+- The original ADR intentionally said any source error creates `needs_attention`; this plan deliberately revises that rule based on production behavior and Oracle's recommendation. Confirm this product decision remains accepted.
+- Outcome inference in the callback must be conservative: infer `found` only from clear product evidence/confidence, not from arbitrary partial metadata.
+- Clean no-match message matching should not hide genuine parser failures. Prefer fixing Bradley's `FailureCode` first and use callback message normalization only as a backward-compatibility safety net.
+- Existing production rows were already persisted with incorrect outcomes; code changes alone will not move them to `processed` unless callbacks are replayed or the repair runbook is applied.
+- Amazon/marketplace is currently being used as source data. If Amazon should not be allowed long-term, that is a separate source-policy decision and should not be mixed into this status bug fix.

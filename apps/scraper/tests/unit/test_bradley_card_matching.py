@@ -178,3 +178,37 @@ def test_bradley_pdp_image_filtering() -> None:
     
     # Recommended product image should be excluded
     assert not any("028006" in url for url in image_urls)
+
+
+def test_bradley_no_match_search_returns_no_match_not_error() -> None:
+    """When a search page has no matching product card and no explicit
+    'Sorry, no results' message, classify as NO_MATCH not EXTRACTION_FAILED.
+    """
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Search Results</title></head>
+    <body>
+      <div class="search-results">
+        <h3>Search results for "999999999999"</h3>
+        <p class="text-gray-500">No products matched your search criteria.</p>
+      </div>
+    </body>
+    </html>
+    """
+
+    plan = _make_minimal_plan(upc="999999999999")
+    entry = _make_entry()
+    adapter = BradleyAdapter(entry, plan)
+
+    result = adapter.extract_from_html(
+        html_content,
+        "999999999999",
+        "https://www.bradleycaldwell.com/search?term=999999999999",
+    )
+
+    assert not result.success
+    assert result.failure_code is not None
+    assert result.failure_code.value == "NO_MATCH"
+    assert "No matching product card found" in (result.failure_message or "")
+    assert result.outcome is None or result.outcome == "not_stocked"

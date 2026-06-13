@@ -77,6 +77,7 @@ function createMockSupabase(options: {
   const retryInsertions: unknown[] = [];
   const jobUpdates: unknown[] = [];
   const productUpdates: unknown[] = [];
+  const sourceAttemptInserts: unknown[] = [];
   const storageUploads: Array<{ path: string; bytes: Uint8Array; options: Record<string, unknown> }> = [];
 
   const upload = jest.fn((path: string, bytes: Uint8Array, opts: Record<string, unknown>) => {
@@ -139,7 +140,10 @@ function createMockSupabase(options: {
             eq: jest.fn().mockResolvedValue({ error: null }),
           })),
         })),
-        insert: jest.fn().mockResolvedValue({ error: null }),
+        insert: jest.fn((payload: unknown) => {
+          sourceAttemptInserts.push(payload);
+          return Promise.resolve({ error: null });
+        }),
       };
     }
 
@@ -179,6 +183,7 @@ function createMockSupabase(options: {
     jobUpdates,
     productUpdates,
     storageUploads,
+    sourceAttemptInserts,
     upload,
     getPublicUrl,
   };
@@ -631,5 +636,304 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     expect(updatedSources.amazon._url).toBe('https://www.amazon.com/dp/B0FH8RJ3NH');
     expect(updatedSources.amazon._scraped_at).toBe('2026-05-28T20:05:11.249700+00:00');
     expect(updatedSources.amazon._provenance).toEqual({ some: 'provenance_data' });
+  });
+
+  // -----------------------------------------------------------------------
+  // Regression tests for source-outcome normalization status logic
+  // -----------------------------------------------------------------------
+
+  it('regression: Amazon-like found (outcome:null, product data, 0.95 confidence) + Bradley source_error -> processed, Amazon persisted as found', async () => {
+    const existingSources = {
+      enriched: {},
+      amazon: { _url: 'https://www.amazon.com/dp/B0FRV9FBP7', _scraped_at: '2026-05-20T00:00:00.000Z' },
+    };
+
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: false,
+          mode: 'mixed',
+          config: { source_type: 'approved_source_extraction', cascade_version: 'v1' },
+        },
+      },
+      productsIngestionData: {
+        sources: existingSources,
+        brand_id: 'brand-woof',
+      },
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const body = {
+      _attempt_id: 'attempt-1',
+      schema_version: 'v1',
+      upc: '850067859918',
+      source: { url: 'approved_source_extraction', source_slug: 'amazon' },
+      status: 'success',
+      extracted_at: '2026-06-13T01:50:06.894Z',
+      mode: 'mixed',
+      product: { name: 'WOOF Air-Dried Puzzle Treats', image_urls: ['https://example.com/img.png'] },
+      confidence: { overall: 0.95, fields: { name: 0.95 } },
+      validation: { warnings: [], missing_required: [] },
+      attempts: [{ mode: 'structured', status: 'success' }],
+      decision: 'deterministic_success',
+      llm_used: false,
+      source_results: [
+        {
+          sourceSlug: 'amazon',
+          sourceType: 'marketplace',
+          confidence: 0.95,
+          evidenceUrl: 'https://www.amazon.com/dp/B0FRV9FBP7',
+          matchedFields: ['name', 'brand', 'description', 'image_urls'],
+          outcome: null, // The bug: null outcome despite having data
+          product: { name: 'WOOF Air-Dried Puzzle Treats' },
+        },
+        {
+          sourceSlug: 'bradley',
+          sourceType: 'distributor',
+          confidence: 0,
+          evidenceUrl: 'https://www.bradleycaldwell.com/search?term=850067859918',
+          outcome: 'source_error',
+          errorCode: 'extraction_failed',
+          errorMessage: 'No matching product card found on search page for UPC 850067859918',
+        },
+      ],
+    };
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(body),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    // found-wins: Amazon found product data -> processed despite Bradley error
+    expect(payload.next_status).toBe('processed');
+
+    // Source-attempts should have been persisted
+    expect(mockSupabase.sourceAttemptInserts.length).toBeGreaterThanOrEqual(1);
+    const inserts = mockSupabase.sourceAttemptInserts.flat() as any[];
+    const amazonRow = inserts.find((r: any) => r.source_slug === 'amazon');
+    const bradleyRow = inserts.find((r: any) => r.source_slug === 'bradley');
+    expect(amazonRow).toBeDefined();
+    expect(bradleyRow).toBeDefined();
+    // Amazon null outcome should be normalized to 'found'
+    expect(amazonRow.outcome).toBe('found');
+    // Bradley source_error should be preserved
+    expect(bradleyRow.outcome).toBe('source_error');
+  });
+
+  it('regression: explicit found + genuine source_error -> processed', async () => {
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: false,
+          mode: 'mixed',
+          config: { source_type: 'approved_source_extraction' },
+        },
+      },
+      productsIngestionData: {
+        sources: { enriched: {} },
+        brand_id: 'brand-1',
+      },
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const body = buildCallbackBody({
+      status: 'success',
+      product: { name: 'Found Product', image_urls: [] },
+      confidence: { overall: 0.9, fields: {} },
+      source_results: [
+        {
+          sourceSlug: 'phillips',
+          sourceType: 'distributor',
+          confidence: 0.9,
+          evidenceUrl: 'https://shop.phillipspet.com/product/1',
+          outcome: 'found',
+        },
+        {
+          sourceSlug: 'bradley',
+          sourceType: 'distributor',
+          confidence: 0,
+          evidenceUrl: 'https://www.bradleycaldwell.com/search?term=test',
+          outcome: 'source_error',
+          errorCode: 'network_timeout',
+          errorMessage: 'Connection timed out',
+        },
+      ],
+    });
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(body),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    // found-wins: explicit found -> processed even with genuine error
+    expect(payload.next_status).toBe('processed');
+  });
+
+  it('regression: all sources not_stocked -> processed', async () => {
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: false,
+          mode: 'mixed',
+          config: { source_type: 'approved_source_extraction' },
+        },
+      },
+      productsIngestionData: {
+        sources: { enriched: {} },
+        brand_id: 'brand-1',
+      },
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const body = buildCallbackBody({
+      status: 'failed',
+      product: { image_urls: [] },
+      confidence: { overall: 0, fields: {} },
+      source_results: [
+        {
+          sourceSlug: 'bradley',
+          sourceType: 'distributor',
+          confidence: 0,
+          evidenceUrl: 'https://www.bradleycaldwell.com/search?term=test',
+          outcome: 'not_stocked',
+        },
+        {
+          sourceSlug: 'central_pet',
+          sourceType: 'distributor',
+          confidence: 0,
+          evidenceUrl: 'https://www.centralpet.com/Search?criteria=test',
+          outcome: 'not_stocked',
+        },
+      ],
+    });
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(body),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    // All not_stocked -> processed (clean cascade, manual entry handles later)
+    expect(payload.next_status).toBe('processed');
+  });
+
+  it('regression: no found + genuine source_error -> needs_attention with error_message', async () => {
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: false,
+          mode: 'mixed',
+          config: { source_type: 'approved_source_extraction' },
+        },
+      },
+      productsIngestionData: {
+        sources: { enriched: {} },
+        brand_id: 'brand-1',
+      },
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const body = buildCallbackBody({
+      status: 'failed',
+      confidence: { overall: 0, fields: {} },
+      source_results: [
+        {
+          sourceSlug: 'bradley',
+          sourceType: 'distributor',
+          confidence: 0,
+          outcome: 'source_error',
+          errorCode: 'auth_expired',
+          errorMessage: 'Credentials expired for Bradley',
+        },
+      ],
+    });
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(body),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    // No found + source_error -> needs_attention
+    expect(payload.next_status).toBe('needs_attention');
+
+    // Should have a concise error message
+    expect(mockSupabase.productUpdates.length).toBeGreaterThanOrEqual(1);
+    const updatePayload = mockSupabase.productUpdates[0] as any;
+    expect(updatePayload.error_message).toContain('Source errors');
+    expect(updatePayload.error_message).toContain('bradley');
+  });
+
+  it('regression: approved-source failed payload with no source_results -> needs_attention', async () => {
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: false,
+          mode: 'mixed',
+          config: { source_type: 'approved_source_extraction' },
+        },
+      },
+      productsIngestionData: {
+        sources: { enriched: {} },
+        brand_id: 'brand-1',
+      },
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    // Payload without source_results array at all
+    const body = buildCallbackBody({
+      status: 'failed',
+      confidence: { overall: 0, fields: {} },
+      // No source_results override — buildCallbackBody includes one by default
+    });
+
+    // Omit source_results from the body to test no-source-results path
+    const { source_results: _removed, ...bodyWithoutSources } = body;
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(bodyWithoutSources),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    // Approved source with no source_results and no top-level product data -> needs_attention
+    expect(payload.next_status).toBe('needs_attention');
   });
 });

@@ -314,7 +314,10 @@ class TestBuildFailedResult:
         assert result.decision == "failed"
         assert result.llm_used is False
         assert result.source.url == "approved_source_extraction"
-        assert len(result.source_results) == 0  # generic failure, no per-source results
+        # When source_slug is provided, build_failed_result emits a source_error result
+        assert len(result.source_results) == 1, "build_failed_result with source_slug should emit a source_error result"
+        assert result.source_results[0].outcome == "source_error"
+        assert result.source_results[0].errorCode == "extraction_failed"
         assert any("All sources failed" in w for w in result.validation.warnings)
 
     def test_prefers_evidence_url_when_available(self):
@@ -345,3 +348,70 @@ class TestBuildFailedResult:
 
         assert result.requested_extraction_mode == "distributor_only"
         assert result.mode == "mixed"
+
+
+class TestSourceResultOutcomes:
+    """Verify every builder function emits the correct outcome on source_results."""
+
+    def test_success_emits_found_outcome(self):
+        result = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.85,
+        )
+        assert len(result.source_results) == 1
+        sr = result.source_results[0]
+        assert sr.outcome == "found"
+        assert sr.sourceSlug == "bradley"
+        assert sr.confidence == 0.85
+        assert len(sr.matchedFields) == 2
+
+    def test_partial_emits_found_outcome(self):
+        result = build_partial_result(
+            upc="010199",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=010199",
+            product_fields={"name": "Some Product"},
+            matched_fields=["name"],
+            overall_confidence=0.45,
+        )
+        assert len(result.source_results) == 1
+        sr = result.source_results[0]
+        assert sr.outcome == "found"
+
+    def test_no_match_emits_not_stocked_outcome(self):
+        result = build_no_match_result(
+            upc="999999",
+            source_slug="bradley",
+            evidence_url="https://www.bradleycaldwell.com/search?term=999999",
+        )
+        assert len(result.source_results) == 1
+        sr = result.source_results[0]
+        assert sr.outcome == "not_stocked"
+
+    def test_auth_required_emits_source_error_outcome(self):
+        result = build_auth_required_result(
+            upc="072705115310",
+            source_slug="phillips",
+        )
+        assert len(result.source_results) == 1
+        sr = result.source_results[0]
+        assert sr.outcome == "source_error"
+
+    def test_failed_with_source_slug_emits_source_error_outcome(self):
+        result = build_failed_result(
+            upc="001135",
+            source_slug="bradley",
+            error_message="All sources failed",
+        )
+        # build_failed_result with source_slug should emit source_error
+        assert len(result.source_results) == 1
+        sr = result.source_results[0]
+        assert sr.outcome == "source_error"
+        assert sr.errorCode == "extraction_failed"
+        assert sr.errorMessage == "All sources failed"

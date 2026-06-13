@@ -20,6 +20,12 @@ import {
 } from "@/lib/enrichment/merge-enriched-source";
 import { safeValidateEnrichmentResultV1 } from "@/lib/enrichment/validation";
 import { normalizeEnrichmentResultForSources } from "@/lib/enrichment/normalize-result";
+import {
+  normalizeSourceResults,
+  determineSourceOutcomeStatus,
+  buildSourceErrorMessage,
+  hasTopLevelProductData,
+} from "./source-outcomes";
 import type {
   EnrichmentResultV1,
   RequestedExtractionMode,
@@ -46,46 +52,9 @@ interface AttemptLike {
   attempt_number?: number | null;
 }
 
-/**
- * Determines final pipeline status from per-source outcomes.
- *
- * Rules (per ADR 0002):
- * - Any source_error &#8594; needs_attention (can't trust the cascade was exhaustive)
- * - All sources attempted cleanly (found or not_stocked) &#8594; processed
- */
-function determineSourceOutcomeStatus(
-  sourceResults: Array<{ outcome?: string | null }>,
-): { status: string } {
-  const hasSourceError = sourceResults.some(
-    (r) => r.outcome === "source_error",
-  );
-
-  if (hasSourceError) {
-    return { status: "needs_attention" };
-  }
-
-  return { status: "processed" };
-}
-
-/**
- * Builds a concise error message summarizing source errors for needs_attention.
- */
-function buildSourceErrorMessage(
-  sourceResults: Array<{ sourceSlug: string; outcome?: string | null; errorCode?: string | null }>,
-): string {
-  const errors = sourceResults
-    .filter((r) => r.outcome === "source_error")
-    .map((r) => {
-      const code = r.errorCode ? ` (${r.errorCode})` : "";
-      return `${r.sourceSlug}${code}`;
-    });
-
-  if (errors.length === 0) {
-    return "Source errors encountered during extraction";
-  }
-
-  return `Source errors: ${errors.join(", ")}`;
-}
+// Legacy retry/status helpers are in the functions below.
+// determineSourceOutcomeStatus and buildSourceErrorMessage
+// are now imported from ./source-outcomes.
 
 function isRequestedExtractionMode(value: unknown): value is RequestedExtractionMode {
   return typeof value === "string" && REQUESTED_EXTRACTION_MODES.includes(value as RequestedExtractionMode);
@@ -307,28 +276,31 @@ export async function POST(request: NextRequest) {
     }
 
     // ------------------------------------------------------------------
-    // ------------------------------------------------------------------
-    // Persist source-level outcomes to enrichment_source_attempts
-    // (only for non-test jobs — test jobs don't have brand_id mocks)
+    // Normalize source outcomes and determine next pipeline status
     // ------------------------------------------------------------------
     const sourceResults = enrichedResult.source_results;
     const hasSourceResults = Array.isArray(sourceResults) && sourceResults.length > 0;
 
-    // ------------------------------------------------------------------
-    // Determine next pipeline status
-    // ------------------------------------------------------------------
+    // Normalize outcomes immediately — handles null outcomes, misclassified no-match
+    // messages, and the found-wins policy.
+    const normalizedResults = hasSourceResults
+      ? normalizeSourceResults(sourceResults!)
+      : [];
+
     const isApprovedSource = isApprovedSourceResult(enrichedResult as any);
     let nextStatus: string;
     let shouldQueueRetry: boolean;
     let nextAttemptNumber = (attemptData.attempt_number ?? 1) + 1;
 
     if (isApprovedSource) {
-      // Approved source results use source-outcome status determination
-      if (hasSourceResults && sourceResults!.some((r) => r.outcome)) {
-        nextStatus = determineSourceOutcomeStatus(sourceResults!).status;
+      if (hasSourceResults && normalizedResults.length > 0) {
+        // Use normalized source outcomes (found-wins policy)
+        nextStatus = determineSourceOutcomeStatus(normalizedResults).status;
+      } else if (hasTopLevelProductData(enrichedResult as any)) {
+        // No per-source results but we have usable product data at the top level
+        nextStatus = "processed";
       } else {
-        // Approved source result without outcome data — runner may need update.
-        // Treat as needs_attention to avoid silently processing incomplete data.
+        // No data anywhere — genuine failure
         nextStatus = "needs_attention";
       }
       // No auto-requeue for approved source extraction (manual re-extraction only)
@@ -389,26 +361,26 @@ export async function POST(request: NextRequest) {
           console.error("Failed to delete existing source attempts:", deleteError);
         }
 
-        // Build rows from source_results
-        const sourceAttemptRows = sourceResults!.map((sr) => {
-          const planEntry = planEntryBySlug.get(sr.sourceSlug);
+        // Build rows from normalized source results
+        const sourceAttemptRows = normalizedResults.map((nr) => {
+          const planEntry = planEntryBySlug.get(nr.sourceSlug ?? "");
           return {
             job_id: attemptData.job_id,
             attempt_id: attemptData.id,
             upc: enrichedResult.upc,
             brand_id: brandId,
-            source_type: sr.sourceType ?? "distributor",
-            source_slug: sr.sourceSlug,
-            display_name: planEntry?.displayName ?? sr.sourceSlug,
+            source_type: nr.sourceType ?? "distributor",
+            source_slug: nr.sourceSlug ?? "",
+            display_name: planEntry?.displayName ?? nr.sourceSlug ?? nr.sourceType ?? "unknown",
             priority: planEntry?.priority ?? 100,
-            outcome: sr.outcome ?? "source_error",
-            confidence: sr.confidence ?? null,
-            matched_fields: sr.matchedFields ?? null,
-            evidence_url: sr.evidenceUrl ?? null,
-            error_code: sr.errorCode ?? null,
-            error_message: sr.errorMessage ?? null,
-            raw_result: sr as unknown as Record<string, unknown>,
-            attempted_at: sr.attemptedAt ?? new Date().toISOString(),
+            outcome: nr.outcome,
+            confidence: nr.confidence ?? null,
+            matched_fields: nr.matchedFields ?? null,
+            evidence_url: nr.evidenceUrl ?? null,
+            error_code: nr.errorCode ?? null,
+            error_message: nr.errorMessage ?? null,
+            raw_result: nr as unknown as Record<string, unknown>,
+            attempted_at: nr.attemptedAt ?? new Date().toISOString(),
           };
         });
 
@@ -459,16 +431,22 @@ export async function POST(request: NextRequest) {
       });
       const durableSources = durableSourcesResult.value;
 
+      let errorMessage: string | null = null;
+      if (nextStatus === "needs_attention") {
+        if (hasSourceResults) {
+          errorMessage = buildSourceErrorMessage(normalizedResults);
+        } else {
+          errorMessage = "No source results returned — runner may need update.";
+        }
+      } else if (nextStatus === "imported" && enrichedResult.status === "failed") {
+        errorMessage = enrichedResult.validation?.warnings?.[0] ?? "Enrichment failed";
+      }
+
       const updatePayload: Record<string, unknown> = {
         sources: durableSources,
         pipeline_status: nextStatus,
         confidence_score: mergedEnriched.confidence_score,
-        error_message:
-          nextStatus === "needs_attention" && hasSourceResults
-            ? buildSourceErrorMessage(sourceResults!)
-            : nextStatus === "imported" && enrichedResult.status === "failed"
-              ? enrichedResult.validation?.warnings?.[0] ?? "Enrichment failed"
-              : null,
+        error_message: errorMessage,
         updated_at: new Date().toISOString(),
       };
 

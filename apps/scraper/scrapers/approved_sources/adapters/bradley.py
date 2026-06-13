@@ -138,7 +138,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     result.failure_message = f"No match found for UPC {upc}"
                 else:
                     result.success = False
-                    result.failure_code = FailureCode.EXTRACTION_FAILED
+                    result.failure_code = FailureCode.NO_MATCH
                     result.failure_message = f"No matching product card found on search page for UPC {upc}"
                 return result
 
