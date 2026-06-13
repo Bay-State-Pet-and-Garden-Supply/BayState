@@ -89,7 +89,7 @@ export async function isCascadeConfigured(
  *   - `configured`: true if brand is cascade-ready
  *   - `reason`: human-readable explanation when not configured
  */
-async function getCascadeReadiness(
+export async function getCascadeReadiness(
   db: SupabaseClient,
   brandIds: string[],
 ): Promise<Record<string, { configured: boolean; reason?: string }>> {
