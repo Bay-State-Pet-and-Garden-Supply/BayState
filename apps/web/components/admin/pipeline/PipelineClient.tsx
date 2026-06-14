@@ -757,8 +757,8 @@ export function PipelineClient({
 
         if (res.ok) {
           const data = await res.json();
-          toast.success(`Submitted ${data.product_count} products for grouping`, {
-            description: 'Products will be classified into manufacturer product lines.',
+          toast.success(`Classified ${data.product_count} products`, {
+            description: `${data.assigned_count ?? data.product_count} products assigned to ${data.product_lines_count ?? 0} product lines.`,
           });
           setSelectedUpcs(new Set());
           handleStageChange('grouping');

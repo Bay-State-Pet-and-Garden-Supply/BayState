@@ -1456,9 +1456,9 @@ export async function processBatchQueue(
             executionMode = fullRow?.execution_mode;
         }
 
-        const isDirectChat = executionMode === 'direct_chat_chunks';
+        const isDirectChat = executionMode === 'direct_chat_chunks' || executionMode === 'product_line_classification';
         if (!isDirectChat) {
-            return { success: false, error: 'Only direct-chat jobs support explicit queue processing' };
+            return { success: false, error: 'Only direct-chat and classification jobs support explicit queue processing' };
         }
 
         // Process chunk
@@ -1509,7 +1509,7 @@ export async function processAllQueues(options?: { limit?: number }): Promise<{
     const { data: activeJobs } = await supabase
         .from('batch_jobs')
         .select('id')
-        .eq('execution_mode', 'direct_chat_chunks')
+        .in('execution_mode', ['direct_chat_chunks', 'product_line_classification'])
         .in('status', ['pending', 'in_progress']);
 
     if (activeJobs && activeJobs.length > 0) {
