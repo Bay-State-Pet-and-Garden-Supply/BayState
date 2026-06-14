@@ -443,8 +443,9 @@ export async function buildApprovedSourcePlans(
         runFirst: false,
       };
 
-      // Separate distributor entries from official_brand for prioritization
-      if (source.source_type === "official_brand") {
+      // Separate: marketplace and official_brand don't block each other.
+      // Only real distributors (distributor, internal, licensed_feed) count as blocking.
+      if (source.source_type === "official_brand" || source.source_type === "marketplace") {
         entries.push(entry);
       } else {
         distributorEntries.push(entry);

@@ -1,191 +1,171 @@
-# BayState Product Pipeline
+# Code Context: Pipeline Imported Tab — "Run" / "Start Extraction" Flow
 
-End-to-end product data pipeline: extracts product information from distributor
-and brand websites, then normalizes it into consistent ShopSite-ready records
-through AI-powered grouping and consolidation.
+## Files Retrieved
 
-## Language
+1. **`apps/web/app/admin/pipeline/page.tsx`** (lines 1-100) — Main pipeline page (server component). Default stage is `'imported'`. Fetches products by stage via `getProductsByStage()`, passes `PipelineClient` props.
 
-### Extraction Pipeline
+2. **`apps/web/components/admin/pipeline/PipelineClient.tsx`** (lines 1-1761) — Main orchestrator. Renders `StageTabs`, switches content view by `currentStage`. For `imported`, renders `ImportedResultsView`.
 
-**Source Cascade**:
-A per-brand ordered list of data sources (distributor websites) the system walks
-top-to-bottom for every UPC, running all sources and keeping all results.
-_Avoid_: Hierarchy, waterfall, priority chain.
+3. **`apps/web/components/admin/pipeline/ImportedResultsView.tsx`** (lines 1-610) — Imported tab UI. Two-column layout: left sidebar (cohort list via `PipelineSidebarTable`), right area (management panels). Sub-components: `ManagementPanel` (single cohort), `BulkManagementPanel` (multi-cohort).
 
-**Source Plan**:
-The per-UPC execution plan built from the brand's Source Cascade. Contains the
-ordered list of sources to try, crawl policies, and the product's brand/input data.
-_Avoid_: Extraction config, enrichment config.
+4. **`apps/web/components/admin/pipeline/management/ManagementPanel.tsx`** (lines 1-250) — Right sidebar for a single cohort in Imported tab. Contains the **"Start Extraction"** button.
 
-**Distributor Source**:
-A wholesale distributor website that lists products with retail data (Bradley,
-Phillips, Pet Food Experts, etc.). May require authentication.
-_Avoid_: Scraper, supplier site.
+5. **`apps/web/components/admin/pipeline/management/BulkManagementPanel.tsx`** (lines 1-200) — Right sidebar for multi-cohort selection. Contains **"Start Bulk Extraction"** button.
 
-**Official Brand Site**:
-The brand's own website. Used only for SERP-based AI discovery as a last resort.
-_Avoid_: Brand page, manufacturer site.
+6. **`apps/web/components/admin/pipeline/StageTabs.tsx`** (lines 1-80) — Tab bar. Tabs: imported, extracting, processed, grouping, merging, reviewing, publishing, failed, needs_attention.
 
-**SERP Fallback**:
-AI-powered search engine discovery of product pages on the brand's official site.
-Only triggered when all Distributor Sources in the cascade ran without error AND
-none found the product.
-_Avoid_: AI extraction, LLM search.
+7. **`apps/web/components/admin/pipeline/FloatingActionsBar.tsx`** (lines 1-200) — Bulk actions bar. **NOT shown for `imported` stage** (see `PipelineClient.tsx` line ~1700: `currentStage !== "imported"`).
 
-**Source Error**:
-A genuine malfunction — auth expired, site structure changed, network timeout.
-Blocks SERP Fallback because we can't be sure the source didn't have the product.
-Distinct from "not stocked."
-_Avoid_: Failure, crash.
+8. **`apps/web/app/api/admin/pipeline/bulk/route.ts`** (lines 1-110) — `POST /api/admin/pipeline/bulk`. The single API endpoint called when clicking "Start Extraction". Validates status transition, calls `bulkUpdateStatus()`.
 
-**Not Stocked**:
-A clean outcome where a distributor source ran successfully but the product wasn't
-found in their catalog. Does NOT block SERP Fallback.
-_Avoid_: Not found, missing.
+9. **`apps/web/lib/pipeline.ts`** (lines 845-945) — `bulkUpdateStatus()` function. Fetches current products, validates transitions (via `validateTransition` from `core.ts`), updates `products_ingestion.pipeline_status` to `'extracting'`, clears `exported_at`, logs to audit.
 
-**Needs Attention**:
-Pipeline status for UPCs where NO source found usable product data AND at least one
-source had a genuine error (Source Error) that prevented a clean cascade. Products
-where any source successfully found data advance to `processed` even if other
-sources in the cascade errored.
-_Avoid_: Failed, blocked, errored.
+10. **`apps/web/lib/pipeline/core.ts`** (lines 1-50) — Status transition state machine. `imported → extracting` is a valid transition.
 
-**Extraction Run**:
-A single execution of the Source Cascade against one or more UPCs. "Run all, keep
-all" — every enabled source is attempted regardless of early successes.
-_Avoid_: Scrape job, enrichment job.
+11. **`apps/web/lib/pipeline/types.ts`** (lines 1-380) — Pipeline types, `STAGE_CONFIG`, `PERSISTED_PIPELINE_STATUSES`, `PIPELINE_TABS`. Imported tab label: **"Imported"**, description: *"New products waiting for brand assignment, source setup, or extraction."*
 
-**Re-extraction**:
-A subsequent Extraction Run that only retries sources that previously failed or
-were never attempted (skips already-successful sources).
-_Avoid_: Re-scrape, retry.
+12. **`apps/web/app/api/admin/pipeline/scrape/route.ts`** (lines 1-20) — **DEPRECATED** (410 Gone). Returns error: *"Manual scraper selection has been replaced by the automated Source Cascade."* Only remaining caller is `scraper-network-dashboard.tsx` (a separate runner admin page, not the main pipeline UI).
 
-**Manual Product Entry**:
-Future fallback when no automated source finds the product. A manager manually
-provides the product URL or product data.
+13. **`apps/web/app/admin/pipeline/batch-actions.ts`** (lines 1-95) — Server actions `updateProductsBatch()` and `updateCohortBatch()` for brand assignment from Imported tab.
 
----
+14. **`apps/web/app/api/admin/brands/[id]/source-cascade/route.ts`** (lines 1-200) — `GET /api/admin/brands/{id}/source-cascade` — Polled by `ManagementPanel` to check if cascade is configured (enables the "Start Extraction" button).
 
-### Consolidation Pipeline
+15. **`apps/web/lib/approved-sources/source-plan.ts`** (lines 1-550) — `buildApprovedSourcePlans()` builds per-UPC source plans using brand sources from `brand_sources` table. Used by the scraper coordinator (not directly by the "Start Extraction" button).
 
-A downstream pipeline stage that normalizes multi-source product data into consistent
-ShopSite export-ready records using LLM consolidation. Products flow through after
-extraction completes (status `processed`).
+16. **`apps/web/components/admin/pipeline/ActiveEnrichmentsTab.tsx`** (lines 1-170) — Extracting tab view. Shows active enrichment jobs. Uses `useJobSubscription` for realtime.
 
-**Product Group**:
-A manufacturer product line — a family of SKU variants that share a brand,
-category, and naming pattern but differ by flavor, size, count, or material.
-Example: all UPCs under "Blue Buffalo Life Protection Dry Dog Food."
-_Avoid_: Cohort, UPC prefix group, product family.
+17. **`apps/web/app/api/admin/pipeline/runs/route.ts`** (lines 1-250) — `GET /api/admin/pipeline/runs`. Aggregates consolidation and enrichment runs. Legacy enrichment runs still shown from `enrichment_jobs` table.
 
-**Subproduct Group**:
-A flavor or protein variant family within a Product Group. Example: all
-"Chicken & Brown Rice" variants (5 lb., 15 lb., 30 lb.) within the Blue Buffalo
-Life Protection line. Normally handled implicitly during consolidation; explicitly
-detected only when a Product Group exceeds 30 UPCs and needs to be split for
-token limits.
-_Avoid_: Sub-family, variant cluster.
+## Key Code
 
-**Product Line Label**:
-The human-readable canonical name for a Product Group, drawn from an
-accumulated taxonomy stored in the `product_lines` table (referenced by
-stable UUID via `products_ingestion.product_line_id`). Assigned by AI
-classification during the Grouping stage.
-_Avoid_: Group name, cluster label, product line name.
+### What the Imported tab contains
 
-**Grouping**:
-The pipeline stage between `processed` and `merging`. AI classification assigns
-each product a Product Line Label, forming Product Groups. The operator reviews
-and adjusts the groups before triggering consolidation.
-_Avoid_: Classification stage, clustering, cohorting.
+The Imported tab shows **products grouped into cohorts/batches** (from `products_ingestion` table). Each product is a `PipelineProduct` with `upc`, `input` (raw data), `sources`, `consolidated`, `cohort_id`, and `pipeline_status`. The UI organizes them by cohort. Products in `pipeline_status = 'imported'` or `'awaiting_brand'` appear here.
 
-**Group Consolidation**:
-A single LLM call that processes every product in a Product Group together,
-producing one consolidated record per UPC. The LLM sees the full group and
-generates inherently consistent names, brands, categories, and descriptions.
-_Avoid_: Batch merge, multi-product consolidation, joint merge.
+### Actions available in Imported tab
 
-**Singleton**:
-A product that was classified with confidence below 0.80 during Grouping and
-is consolidated individually (the legacy per-product path).
-_Avoid_: Ungrouped, orphan, straggler.
+| Action | Where | What it calls |
+|--------|-------|--------------|
+| **Import Integra** (CSV) | Sidebar button | `IntegraImportDialog` |
+| **Add Product** (manual) | Sidebar button | `ManualAddProductDialog` |
+| **Start Extraction** | `ManagementPanel` (single cohort) | `POST /api/admin/pipeline/bulk` |
+| **Start Bulk Extraction** | `BulkManagementPanel` (multi-cohort) | `POST /api/admin/pipeline/bulk` |
+| **Split & Assign Brand** | Bottom bar (selected products) | `POST /api/admin/pipeline/bulk/brand` |
+| **Edit Batch** | Cohort accordion + sidebar | `CohortEditDialog` |
+| **Assign Brand** | `CohortBrandPicker` in sidebar | `updateCohortBatch()` / `updateProductsBatch()` server actions |
 
-**Ungrouped**:
-The fallback bucket for products that failed classification (confidence < 0.80).
-These products are consolidated as Singletons.
-_Avoid_: Orphans, stragglers, no-group.
+### The "Start Extraction" call chain (ManagementPanel, lines 65-108)
 
-## Relationships
+```
+ManagementPanel.handleStartExtraction()
+  │
+  ├─ Checks: brand assigned? brand.source_cascade_configured_at set?
+  │    (button disabled if not configured)
+  │
+  ├─ POST /api/admin/pipeline/bulk
+  │    Body: { upcs: [...], toStatus: "extracting", resetResults: true }
+  │
+  ├─ app/api/admin/pipeline/bulk/route.ts
+  │    ├─ Validates auth
+  │    ├─ Validates toStatus ∈ PERSISTED_PIPELINE_STATUSES
+  │    ├─ Calls bulkUpdateStatus(upcs, 'extracting', userId, resetResults=true)
+  │         │
+  │         └─ lib/pipeline.ts:bulkUpdateStatus()
+  │              ├─ Fetches current products
+  │              ├─ Validates transitions (imported → extracting ✓)
+  │              ├─ UPDATE products_ingestion
+  │              │    SET pipeline_status = 'extracting',
+  │              │        updated_at = NOW(),
+  │              │        exported_at = NULL
+  │              │    WHERE upc IN (...)
+  │              ├─ (resetResults=true but target≠imported/processed → no data clear)
+  │              └─ Logs audit entry
+  │
+  └─ UI: toast("Extraction started"), onRefresh(), products disappear from Imported tab
+```
 
-- A **Brand** has one **Source Cascade** (ordered list of Distributor Sources + Official Brand Site as terminal fallback)
-- A **Source Cascade** produces a **Source Plan** for each UPC
-- A **Source Plan** is executed as an **Extraction Run** against one or more UPCs
-- A **Re-extraction** only retries sources that did not succeed on the prior run
-- A **Source Error** on any Distributor Source blocks **SERP Fallback** for that UPC when no source has found data
-- A **UPC** with a **Source Error** AND no found data gets **Needs Attention** status
-- A **UPC** with at least one `found` source outcome advances to **processed**
+### What the "Start Extraction" button does NOT call
 
-- A **Product Group** contains one or more UPCs sharing the same **Product Line Label**
-- A **Product Line Label** is a normalized, human-readable identifier for a **Product Group**
-- The **Grouping** stage uses AI classification to assign each product a **Product Line Label**
-- Products that fail classification (confidence < 0.80) become **Singletons** and are consolidated individually
-- **Group Consolidation** processes every product in a **Product Group** in a single LLM call
-- Re-extraction preserves the existing **Product Line Label** (no re-classification)
-- After migration, UPC-prefix **cohorts** are deprecated; **Product Groups** (via `product_line_id`) replace them
+- **NOT** `POST /api/admin/pipeline/scrape` — This endpoint is deprecated (returns 410 Gone). Its only remaining caller is `scraper-network-dashboard.tsx` (the Scraper Network Dashboard under `/admin/pipeline/runners/scraper-network`), which is a separate runner operator/page that the main pipeline Imported tab never reaches.
+- **NOT** `POST /api/admin/enrichment/jobs` — This route directory exists but is **empty** (no route handler). The deprecated `/pipeline/scrape` endpoint references it as the replacement, but it's not implemented.
+- **NOT** `POST /api/admin/consolidation/submit` — That's the "Consolidate" button from the Processed/Groups tab.
 
-## Example dialogue
+### Cascade readiness check
 
-> **Dev:** "Can two products from different brands end up in the same Product Group?"
-> **Domain expert:** "No. The classification prompt includes brand as a key signal.
-> Two products with different brands will always get different Product Line Labels,
-> even if their names are similar."
+`ManagementPanel` checks cascade readiness _independently_ of the bulk action:
 
-> **Dev:** "What if the AI classifies a product with 0.75 confidence — just below the threshold?"
-> **Domain expert:** "It becomes a Singleton. The operator can still manually assign
-> it to a group from the Grouping UI if the classification was clearly wrong. The
-> 0.80 threshold is a default, not a hard gate."
+```
+GET /api/admin/brands/{brandId}/source-cascade
+  → checks brands.source_cascade_configured_at is set
+  → checks at least one enabled distributor source exists
+  → returns { configured: true/false }
+```
 
-> **Dev:** "What if a Product Group has 40 UPCs — too many for one LLM call?"
-> **Domain expert:** "The system auto-splits large groups by Subproduct Group
-> (flavor families). The Chicken variants get one consolidation call, the Beef
-> variants get another. Products within each split share the same Product Line
-> Label and still benefit from group-level consistency."
+This is purely a **frontend gate** — the "Start Extraction" button is disabled if cascade is not configured. The bulk API itself does NOT validate cascade readiness; it just changes status.
 
-> **Dev:** "If Bradley returns a 503 and Phillips finds nothing, does SERP still run?"
-> **Domain expert:** "No. A Source Error on Bradley blocks the SERP Fallback even
-> though Phillips ran clean. We don't know if Bradley had the product — we couldn't
-> check. The UPC goes to Needs Attention instead."
+### What happens after status changes to 'extracting'
 
-> **Dev:** "What if Phillips finds the product with high confidence, but Bradley got a 503?"
-> **Domain expert:** "Then Phillips found it, so it goes to processed. Bradley's 503
-> is recorded in the source attempt history, but since we have usable data, we don't
-> hold the whole product hostage."
+The `PipelineClient` detects `currentStage === 'extracting'` and renders `ActiveEnrichmentsTab` instead of `ImportedResultsView`. The extracting tab shows:
+- Active/queued enrichment jobs from the `enrichment_jobs` table
+- A message: *"Products are now extracted through the automated source cascade. Active extraction runs are tracked per-source, not as batch jobs."*
 
-> **Dev:** "What if all distributors ran clean but none had the product?"
-> **Domain expert:** "Then SERP runs as fallback. If that also turns up nothing, the
-> product advances to processed with no enrichment data. The manager will eventually
-> add it manually through the new entry flow."
+**However**, the "Start Extraction" button in the ManagementPanel **does not create enrichment jobs or trigger any actual scraping**. It only changes `pipeline_status` to `'extracting'`. The actual extraction is picked up by the scraper runner coordinator, which polls for products in `extracting` status and uses `buildApprovedSourcePlans()` (from `lib/approved-sources/source-plan.ts`) to create source plans from the brand's configured cascade.
 
-> **Dev:** "What if a brand has no Source Cascade configured?"
-> **Domain expert:** "Extraction can't start until the cascade is set up. The UI tells
-> the manager exactly which brand needs configuration."
+### The deprecated (old) enrichment pipeline
 
-## Flagged ambiguities
+The old flow was:
+1. User clicked "Scrape" or similar → `POST /api/admin/pipeline/scrape` with `{ upcs, scrapers }`
+2. Server created an `enrichment_jobs` + `enrichment_attempts` row
+3. Scraper runner claimed the job via heartbeat/progress protocol
+4. Runner scraped the configured scrapers
+5. Runner posted results back to the callback
 
-### Extraction pipeline
+This whole flow is now **deprecated**. The `/api/admin/pipeline/scrape` endpoint returns 410 Gone. The old `enrichment_jobs` table is still used for display in the Extracting tab via `ActiveEnrichmentsTab` + `useJobSubscription`, and the `runs/route.ts` still aggregates them for the monitoring views.
 
-- "extraction mode" (mixed/distributor_only/ai_only) was a user-selected toggle — resolved: removed entirely, the cascade determines what runs
-- "enrichment" vs "extraction" — resolved: these describe the same pipeline stage; "extraction" is the preferred term for the data-gathering phase
-- "scraper" vs "source" — resolved: "source" describes the data provider, "scraper" describes the technical adapter; in user-facing language, always use "source"
-- "Source Error → Needs Attention" was originally stated as unconditional — resolved: Source Errors block SERP fallback and force Needs Attention only when NO source found usable product data. If any source found data, the product advances to processed regardless of errors on other sources.
+## Architecture
 
-### Consolidation pipeline
+```
+User clicks "Start Extraction" on Imported tab
+         │
+         ▼
+  ManagementPanel (single cohort) or BulkManagementPanel (multi-cohort)
+         │
+         ├── Checks cascade config via GET /api/admin/brands/{id}/source-cascade
+         │     (This is just a frontend UX gate — the button is disabled if false)
+         │
+         └── POST /api/admin/pipeline/bulk { upcs, toStatus: "extracting", resetResults: true }
+               │
+               ▼
+         app/api/admin/pipeline/bulk/route.ts
+               │
+               └── bulkUpdateStatus() in lib/pipeline.ts
+                     │
+                     └── UPDATE products_ingestion SET pipeline_status = 'extracting'
+                           │
+                           ▼
+                     Products now visible in Extracting tab (ActiveEnrichmentsTab)
+                     Actual extraction: Scraper runner polls/claims these products
+                     via the coordinator mechanism (heartbeat, source plans)
+```
 
-- "product group" vs "product line" vs "product family" — resolved: "Product Group" is the canonical term; "product line" is the specific label string assigned to a group; "product family" is deprecated
-- "cohort" vs "Product Group" — resolved: UPC-prefix cohorts are legacy; Product Groups replace them entirely
-- "ungrouped" vs "singleton" — resolved: "Ungrouped" is the bucket of products that failed classification; "Singleton" is the consolidation strategy applied to each product in that bucket
-- "merge" vs "consolidation" — resolved: "consolidation" is the canonical term for the LLM normalization step; "merge" implies combining records
-- "product_line" column — repurposed: the existing `products_ingestion.product_line_id` column now references `product_lines.id` via FK instead of storing a raw string
-- TwoPhaseConsolidationService — removed: the new group-based architecture makes post-hoc consistency checking redundant
-- Subproduct Groups are implicit except for oversized groups (>30 UPCs), where explicit detection runs for splitting
+The scraper runner actually processes extracting products using:
+1. `lib/pipeline-scraping.ts` — builds `ScrapeOptions` and calls `buildApprovedSourcePlans()`
+2. `lib/approved-sources/source-plan.ts` — builds per-UPC source plans from `brand_sources` table
+3. `lib/approved-sources/source-cascade.ts` — determines which sources are configured, untried, or errored
+4. Runner scrapes via crawl4ai/Playwright and posts results
+
+## Start Here
+
+Open **`apps/web/components/admin/pipeline/management/ManagementPanel.tsx`** — this is where the "Start Extraction" button lives for the Imported tab. Follow the `handleStartExtraction` function (lines 65-108) to trace the exact API call.
+
+## Key Findings
+
+1. **The "Start Extraction" button only calls `POST /api/admin/pipeline/bulk` with `toStatus: 'extracting'`** — it simply transitions the pipeline status. It does NOT call the old scrape endpoint.
+
+2. **The old `POST /api/admin/pipeline/scrape` is fully deprecated (410 Gone)** and only still called from the Scraper Network Dashboard (`scraper-network-dashboard.tsx`), which is a separate runner admin/monitoring page under `/admin/pipeline/runners/scraper-network`. The main pipeline Imported tab never hits this endpoint.
+
+3. **The `POST /api/admin/enrichment/jobs` route directory exists but is completely empty** — no route handler is defined. The deprecated scrape endpoint's error message references it, but it was never implemented.
+
+4. **There is a gap**: The "Start Extraction" button merely changes `pipeline_status` to `'extracting'`. It does NOT directly create enrichment jobs or queue scraping. The actual extraction depends on the scraper runner coordinator mechanism to pick up these products. If the scraper runner coordinator is not working or not connected, products will appear stuck in `extracting` status.
+
+5. **The cascade readiness check** (`GET /api/admin/brands/{id}/source-cascade`) is a frontend-only UX gate. The bulk API does not re-validate cascade readiness — it just changes status.
