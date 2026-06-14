@@ -443,9 +443,11 @@ export async function buildApprovedSourcePlans(
         runFirst: false,
       };
 
-      // Separate: marketplace and official_brand don't block each other.
-      // Only real distributors (distributor, internal, licensed_feed) count as blocking.
-      if (source.source_type === "official_brand" || source.source_type === "marketplace") {
+      // Separate official_brand entries for terminal fallback.
+      // Per CONTEXT.md: "Run all, keep all — every enabled source is attempted
+      // regardless of early successes." The official brand SERP always runs as
+      // the terminal source even if distributors found the product.
+      if (source.source_type === "official_brand") {
         entries.push(entry);
       } else {
         distributorEntries.push(entry);
