@@ -107,26 +107,36 @@ export async function POST(request: NextRequest) {
         const result = await bulkUpdateStatus(upcs, toStatus, auth.user.id, resetResults);
 
         if (!result.success) {
-            // Check if error indicates invalid transitions
             if (result.error && result.error.includes('Invalid status transition')) {
-                // Extract invalid UPCs from error message
                 const invalidMatch = result.error.match(/UPC\(s\): (.+)$/);
                 const invalidUpcs = invalidMatch ? invalidMatch[1].split(', ') : [];
-
-                return NextResponse.json(
-                    {
-                        error: 'Invalid transitions',
-                        invalidUpcs,
-                    },
-                    { status: 400 }
-                );
+                return NextResponse.json({ error: 'Invalid transitions', invalidUpcs }, { status: 400 });
             }
+            return NextResponse.json({ error: result.error }, { status: 500 });
+        }
 
-            // Other errors return 500
-            return NextResponse.json(
-                { error: result.error },
-                { status: 500 }
-            );
+        // Create enrichment_job for the Extracting tab to display
+        if (toStatus === 'extracting') {
+            try {
+                const adminClient = await createAdminClient();
+                const jobId = `cascade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                await adminClient.from('enrichment_jobs').insert({
+                    id: jobId,
+                    mode: 'distributor_only',
+                    model: 'source-cascade',
+                    status: 'pending',
+                    upcs: upcs,
+                    total_count: upcs.length,
+                    completed_count: 0,
+                    failed_count: 0,
+                    config: { source_kind: 'static_scraper', auto: true },
+                    test_metadata: {},
+                    test_mode: false,
+                    token_usage: {},
+                });
+            } catch (err) {
+                console.warn('[Pipeline Bulk] enrichment_job create failed:', err);
+            }
         }
 
         return NextResponse.json({
