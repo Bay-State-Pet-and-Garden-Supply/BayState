@@ -1,320 +1,206 @@
 # Implementation Plan
 
 ## Goal
-Add an AI-driven `grouping` stage that classifies products into manufacturer Product Groups, lets operators review/edit groups, then consolidates each approved Product Group in one multi-product LLM call.
+Redesign the Grouping pipeline frontend as a persisted, async workflow from Processed classification through Grouping review/edit/consolidation to Merging, with clear progress, run separation, singleton handling, and group-origin visibility.
 
 ## Tasks
+1. **Add grouping run semantics to the pipeline run contract**
+   - File: `apps/web/lib/pipeline/run-types.ts`
+   - Changes: Add `"grouping"` to `PipelineRunKind`, add `PIPELINE_RUN_KIND_LABELS.grouping = "Product Grouping"`, and add a grouping-specific stage label helper for product-line classification runs.
+   - File: `apps/web/app/api/admin/pipeline/runs/route.ts`
+   - Changes: Map `batch_jobs.execution_mode === "product_line_classification"` to `kind: "grouping"` instead of `"consolidation"`; label it `Product Grouping`; keep normal consolidation/group-consolidation jobs as `kind: "consolidation"`; include `executionMode`, counts, progress, and `nextAction` appropriate to grouping (`wait`, `review_errors`, no `apply_results`).
+   - Acceptance: `/api/admin/pipeline/runs` returns classification jobs with `kind: "grouping"`; `ActiveConsolidationsTab` no longer receives them because it filters `kind === "consolidation"`.
 
-1. **Validate current schema assumptions and create the primary DB migration**
-   - File: `apps/web/supabase/migrations/<timestamp>_product_line_grouping_stage.sql`
-   - Changes:
-     - Verify actual schema before writing SQL: generated types currently show `products_ingestion.product_line` but no `product_line_id`; design says `product_line_id` exists. If the column is absent, add `product_line_id uuid null` and keep `product_line text` as a denormalized/backcompat display label.
-     - Create `public.product_lines` with stable UUID `id`, `canonical_name`, `normalized_key`, optional `brand_id`, optional category/facet metadata, `created_at`, `updated_at`, and unique constraint/index for canonical identity (recommend `unique (brand_id, normalized_key)`).
-     - Add FK from `products_ingestion.product_line_id` to `product_lines.id`.
-     - Add grouping metadata to `products_ingestion`: `product_line_confidence numeric`, `product_line_assignment_source text check ('ai','manual','migration')`, `product_line_raw_label text`, `product_line_rationale text`, and optional `product_line_review_required boolean default false`.
-     - Add indexes on `products_ingestion(product_line_id)`, `products_ingestion(pipeline_status, product_line_id)`, and `product_lines(normalized_key)`.
-     - Add `grouping` to enum `pipeline_status_five`.
-     - Update `batch_jobs_execution_mode_check` to include `product_line_classification`.
-     - Add `batch_job_items` subject metadata for group-level work items: `item_kind text default 'upc' check ('upc','product_group','subproduct_group')`, `subject_key text`, and backfill `subject_key = upc` for existing rows. Decide in this migration whether `upc` remains non-null or becomes nullable for group items; recommended: make `upc` nullable and use `(batch_job_id, subject_key)` uniqueness for new item kinds while preserving the legacy `(batch_job_id, upc)` index for per-UPC items.
-   - Acceptance: local Supabase migration applies cleanly; generated `database.types.ts` can represent `grouping`, `product_lines`, product-line metadata, and the updated batch item shape.
-
-2. **Regenerate and update Supabase/database types**
-   - File: `apps/web/lib/supabase/database.types.ts`
-   - Changes: Regenerate after migration so `pipeline_status_five`, `products_ingestion`, `product_lines`, `batch_jobs.execution_mode`, and `batch_job_items` match DB schema.
-   - Acceptance: TypeScript sees `grouping`, `product_line_id`, grouping metadata fields, `product_lines`, and `product_line_classification` without casts.
-
-3. **Add `grouping` to pipeline status plumbing**
-   - File: `apps/web/lib/pipeline/types.ts`
-   - Changes: Add `grouping` to `PERSISTED_PIPELINE_STATUSES`, `PIPELINE_TABS`, `STAGE_CONFIG`, and `PipelineProduct` fields (`product_line_id`, denormalized `product_line`, confidence/source/raw label/rationale/review flag).
-   - File: `apps/web/lib/pipeline/core.ts`
-   - Changes: Update `STATUS_TRANSITIONS` to allow `processed -> grouping`, `grouping -> merging`, `grouping -> processed`, and `grouping -> failed`; remove direct `processed -> merging` for normal UI flow unless retained as legacy singleton/backcompat path.
-   - File: `apps/web/lib/pipeline/derivation.ts`
-   - Changes: Add `grouping` to `WORKFLOW_PIPELINE_TABS`, tab derivation, and active-job concepts if grouping jobs should show as active.
-   - File: `apps/web/lib/validation/pipeline-schemas.ts`
-   - Changes: Ensure Zod schemas accept `grouping` and new product-line fields.
-   - Acceptance: pipeline status tests pass and a product with `pipeline_status: 'grouping'` renders/validates as a first-class stage.
-
-4. **Replace cohort-shaped pipeline queries with Product Group queries**
-   - File: `apps/web/lib/pipeline.ts`
-   - Changes:
-     - Replace `cohort_batches(...)` joins and `cohort_id` filters with `product_lines(...)` joins and `product_line_id` filters.
-     - Keep `product_line` string filter temporarily mapped to `product_lines.canonical_name` or `products_ingestion.product_line` for backward-compatible URLs.
-     - Update hydration helpers (`normalizeCohortMetadata`, `withCohortBatchMetadata`, etc.) into Product Line equivalents.
-   - File: `apps/web/lib/pipeline/queries.ts`
-   - Changes: Include product-line metadata and support filtering/counting by `product_line_id`.
-   - Acceptance: imported/processed/grouping/reviewing product queries no longer require `cohort_batches`, and URL filters can target Product Lines.
-
-5. **Update consolidation type contracts**
-   - File: `apps/web/lib/consolidation/types.ts`
-   - Changes:
-     - Extend `BatchExecutionMode` with `product_line_classification`.
-     - Add `ProductLineClassificationInput`, `ProductLineClassificationResult`, `ProductGroupSubmission`, `GroupConsolidationResult`, and `GroupConsolidationPayload` types.
-     - Update `BatchJobItem` to include `item_kind`, `subject_key`, nullable `upc`, and group-level parsed result shape.
-     - Remove or mark `productLineContext` as deprecated; it is replaced by persisted Product Groups.
-   - Acceptance: new services can type classification and group consolidation without `Record<string, unknown>` everywhere.
-
-6. **Build Product Line taxonomy and dedup utilities**
-   - New File: `apps/web/lib/consolidation/product-lines.ts`
-   - Changes: Add helpers to load known `product_lines`, normalize labels, upsert product lines, assign products to a line, mark manual assignments, and preserve denormalized display label.
-   - New File: `apps/web/lib/consolidation/product-line-dedup.ts`
-   - Changes: Implement post-classification fuzzy dedup: normalize labels, compute similarity, auto-merge high-confidence near duplicates, flag ambiguous merges (<0.95 similarity) for operator review.
-   - Acceptance: unit tests cover exact match, punctuation/case variants, high-similarity auto-merge, and ambiguous non-merge.
-
-7. **Create classification prompt and parser**
-   - New File: `apps/web/lib/consolidation/product-line-classification.ts`
-   - Changes:
-     - Build minimal evidence from sources/input: highest-signal name, brand, category, and explicit family/product-line fields.
-     - Include known `product_lines` taxonomy in prompt as allowed vocabulary.
-     - Output/parse JSON `{ product_line, confidence, rationale }`.
-     - Apply 0.80 threshold: confidence below threshold becomes `Ungrouped`/singleton metadata, not a Product Group assignment.
-     - Use `getConsolidationConfig()` so provider follows the consolidation provider setting.
-   - New File: `apps/web/lib/consolidation/product-line-classification.test.ts` or `apps/web/lib/consolidation/__tests__/product-line-classification.test.ts`
-   - Acceptance: parser rejects invalid JSON/missing fields/out-of-range confidence and threshold behavior is tested.
-
-8. **Add classification batch execution using `batch_jobs`**
+2. **Filter grouping batches out of consolidation history**
+   - File: `apps/web/app/api/admin/consolidation/jobs/route.ts`
    - File: `apps/web/lib/consolidation/batch-service.ts`
-   - Changes:
-     - Add `submitProductLineClassificationBatch(products, metadata)` that creates `batch_jobs.execution_mode = 'product_line_classification'` and one `batch_job_items` row per UPC.
-     - Add routing/status/retrieval helpers for classification jobs.
-     - Ensure classification jobs do not use consolidation parsers or apply service.
-   - File: `apps/web/lib/consolidation/direct-chat-service.ts`
-   - Changes: Add processing path for `product_line_classification` items using classification prompt/parser, with retry behavior parallel to consolidation.
-   - File: `apps/web/lib/consolidation/gemini-batch-service.ts`
-   - Changes: Add classification payload preparation/retrieval when provider is Gemini, or explicitly route provider-compatible classification through the same provider abstraction used by consolidation.
-   - Acceptance: a classification batch can be submitted, processed/synced, and persists product-line assignments and metadata.
+   - Changes: Ensure `listBatchJobs()` or the route filters out `execution_mode === "product_line_classification"` by default; optionally add an explicit mode filter if grouping history needs a separate caller later.
+   - Acceptance: Classification/grouping batches do not appear in Merging history and cannot expose an Apply button there.
 
-9. **Implement grouping apply/finalization service**
-   - New File: `apps/web/lib/consolidation/grouping-service.ts`
-   - Changes:
-     - Orchestrate classification results: parse item outputs, run fuzzy dedup, upsert `product_lines`, update `products_ingestion.product_line_id` and metadata, and set `pipeline_status = 'grouping'` for processed products.
-     - Preserve existing `product_line_id` on re-extraction unless operator manually changes it.
-     - Provide manual operations: move UPCs to product line, merge product lines, split/create product line, rename product line.
-   - Acceptance: service supports AI assignment and manual override without touching consolidated product data.
+3. **Make classification submission truly async**
+   - File: `apps/web/app/api/admin/grouping/submit/route.ts`
+   - Changes: Stop processing all classification items and finalizing inside submit. Validate UPCs, create the `product_line_classification` batch, persist useful metadata (`source_upcs`, `brand_id`, `workflow: "grouping"`), and return `{ success, batch_id, product_count, status }` immediately.
+   - File: `apps/web/app/api/admin/grouping/[batchId]/route.ts`
+   - Changes: Keep GET as the progress endpoint that processes a bounded chunk via `processBatchQueue`, returns aggregate status, and includes per-item statuses (`upc`, `status`, `error_message`). When all items are complete, finalize idempotently and return `finalize_summary` with assigned/group/ungrouped counts. Mark finalization in `batch_jobs.metadata.grouping_finalized_at`/`grouping_finalize_summary` to survive reloads and avoid duplicate finalization.
+   - Acceptance: POST `/api/admin/grouping/submit` returns quickly with a batch id; polling GET advances progress in chunks; refresh/navigation can recover progress from `batch_jobs` and `batch_job_items`.
 
-10. **Redesign prompt building for group consolidation**
-    - File: `apps/web/lib/consolidation/prompt-builder.ts`
-    - Changes:
-      - Keep existing single-product prompt builders for singleton fallback.
-      - Add `generateGroupConsolidationSystemPrompt(categories, vocabulary)` with multi-product output contract: `{ "products": { "UPC": { ...existing fields... } } }`.
-      - Add `buildGroupUserPrompt(productLine, productsWithEvidence)` that includes all source evidence for all UPCs in a Product Group and instructions for consistent brand/category/name/description patterns.
-      - Add oversized-group prompt support for explicit Subproduct Group splitting only when group has >30 UPCs.
-    - File: `apps/web/lib/consolidation/__tests__/prompt-builder.test.ts`
-    - Changes: Add tests for group output contract, source evidence inclusion, and no use of obsolete `productLineContext` sibling hints.
-    - Acceptance: group prompts include every UPC and require every UPC in output.
+4. **Move ungrouped products into the Grouping stage**
+   - File: `apps/web/lib/consolidation/product-lines.ts`
+   - Changes: Update `assignProductToLine()` so products currently in `processed` move to `pipeline_status = "grouping"` even when `productLineId` is `null`; preserve `product_line_id = null` for Ungrouped/Singleton candidates; set review metadata from the caller.
+   - File: `apps/web/lib/consolidation/grouping-service.ts`
+   - Changes: Ensure all low-confidence, failed, or missing-label classification branches call `assignProductToLine(..., null, { reviewRequired: true, ... })` so Ungrouped products appear in Grouping as Needs Review.
+   - Acceptance: Low-confidence/failed classifications leave `product_line_id = null` but have `pipeline_status = "grouping"` and appear from `/api/admin/grouping/groups` under `ungrouped`.
 
-11. **Add group result parser with completeness validation**
-    - New File: `apps/web/lib/consolidation/group-result-parsing.ts`
-    - Changes:
-      - Parse `{ products: { [upc]: result } }`.
-      - Validate every input UPC appears exactly once; reject partial/extra/duplicate outputs.
-      - Reuse `normalizeConsolidationResult`, taxonomy validation, and `RawConsolidationSchema` logic from `result-parsing.ts` per UPC.
-      - Return flattened `ConsolidationResult[]` for downstream apply.
-    - File: `apps/web/lib/consolidation/result-parsing.ts`
-    - Changes: Export shared raw schema/helpers currently private if needed.
-    - Acceptance: parser tests cover complete group, missing UPC, extra UPC, invalid per-UPC schema, and category normalization.
+5. **Expose derived review/ready state from the grouping groups API**
+   - File: `apps/web/app/api/admin/grouping/groups/route.ts`
+   - Changes: Return groups split or annotated as `ready` vs `needs_review` using the resolved rule: a group is ready when every product has `product_line_review_required === false` and a non-null `product_line_assignment_source`; Ungrouped products are always Needs Review until accepted as Singletons. Include counts: `ready_group_count`, `needs_review_group_count`, `accepted_singleton_count`, `needs_review_singleton_count`, `total_grouped`, `total_ungrouped`.
+   - Acceptance: Grouping UI can render Review sections without reimplementing readiness rules inconsistently.
 
-12. **Implement group consolidation execution**
-    - File: `apps/web/lib/consolidation/batch-service.ts`
-    - Changes:
-      - Add `submitGroupConsolidationBatch(groups, metadata)` accepting `{ groups: [{ product_line_id, upcs }] }`.
-      - Create one batch item per Product Group/subgroup with `item_kind = 'product_group'` or `subproduct_group`, `subject_key = product_line_id` or subgroup key, and `product_source` containing all UPC sources.
-      - Route Product Groups >30 UPCs to explicit subgroup detection before creating consolidation items.
-      - Keep singleton fallback path for products without accepted Product Group assignment.
-    - File: `apps/web/lib/consolidation/direct-chat-service.ts`
-    - Changes: For group-consolidation items, call group prompt and parse with `parseGroupConsolidationText`; store group parsed result on the item.
-    - File: `apps/web/lib/consolidation/gemini-batch-service.ts`
-    - Changes: Ensure Gemini batch preparation supports one request per group item and can retrieve/parse group JSON output.
-    - Acceptance: a group batch with 2+ UPCs stores one item and later retrieves flattened per-UPC results.
+6. **Add grouping review actions for approve and singleton acceptance**
+   - File: `apps/web/app/api/admin/grouping/groups/[productLineId]/route.ts`
+   - File: `apps/web/lib/consolidation/grouping-service.ts`
+   - Changes: Add actions:
+     - `approve`: clear `product_line_review_required` for all products in a Product Group or selected UPCs.
+     - `accept_singleton`: for Ungrouped UPCs, keep `product_line_id = null`, set `product_line_review_required = false`, set `product_line_assignment_source = "manual"`, and keep `pipeline_status = "grouping"`.
+     - Keep existing `reassign`, `ungroup`, `merge`, `split`, `rename` actions.
+   - Acceptance: A flagged group can become Ready without adding DB columns; an Ungrouped product can become an accepted Singleton and be included in consolidation.
 
-13. **Update retrieval and apply to flatten group outputs**
-    - File: `apps/web/lib/consolidation/batch-service.ts`
-    - Changes: Update `retrieveResults(batchId)` to detect group-consolidation items (via `item_kind` or metadata) and flatten parsed group outputs to `ConsolidationResult[]`.
-    - File: `apps/web/lib/consolidation/apply-service.ts`
-    - Changes:
-      - Keep per-UPC apply logic mostly intact by consuming flattened results.
-      - Add safety that group-consolidated products move from `merging` to `reviewing` only if every UPC in the group passed validation; otherwise failed UPCs return to `grouping` or `processed` with `error_message` according to agreed UX.
-      - Preserve `product_line_id` and grouping metadata during apply.
-    - Acceptance: apply works for legacy singleton results and group-consolidated results; partial group output never reaches apply.
+7. **Support mixed Group + Singleton consolidation from Grouping**
+   - File: `apps/web/app/api/admin/grouping/consolidate/route.ts` (new)
+   - Changes: Add a dedicated Grouping consolidation endpoint that accepts `{ product_line_ids?: string[], singleton_upcs?: string[] }` or derives all approved groups/singletons when requested. Validate that selected groups/singletons are Ready, warn/skip remaining Needs Review items, submit one persisted consolidation batch, and move approved products to `pipeline_status = "merging"` when the consolidation run starts.
+   - File: `apps/web/lib/consolidation/batch-service.ts`
+   - Changes: Extend `submitGroupConsolidationBatch()` or add `submitGroupingConsolidationBatch()` to create a single `batch_jobs` run containing `item_kind: "product_group"` items for Product Groups and `item_kind: "upc"` items for accepted Singletons. Preserve backend per-UPC consolidation for Singletons; do not remove legacy backend functions.
+   - File: `apps/web/app/api/admin/consolidation/submit/route.ts`
+   - Changes: Stop using synchronous group-processing for the Grouping UI path, or delegate grouping-origin submissions to the new endpoint. Keep legacy `upcs[]` mode for backend Singleton fallback and compatibility.
+   - Acceptance: Clicking “Consolidate All Approved (M groups + S singletons)” creates one trackable run; groups and accepted Singletons are included; Needs Review items are skipped with a warning payload.
 
-14. **Expose grouping and group consolidation APIs**
-    - New File: `apps/web/app/api/admin/grouping/submit/route.ts`
-    - Changes: Authenticated endpoint to submit selected processed UPCs for Product Line classification.
-    - New File: `apps/web/app/api/admin/grouping/[batchId]/route.ts`
-    - Changes: Return classification batch status and summary.
-    - New File: `apps/web/app/api/admin/grouping/groups/route.ts`
-    - Changes: List Product Groups and Ungrouped/Singleton products for the `grouping` stage.
-    - New File: `apps/web/app/api/admin/grouping/groups/[productLineId]/route.ts`
-    - Changes: Rename/merge/split/reassign products; mark assignments manual.
-    - File: `apps/web/app/api/admin/consolidation/submit/route.ts`
-    - Changes:
-      - Change primary request body to `{ groups: [{ product_line_id, upcs }] }`.
-      - Keep legacy `{ upcs }` path only for singleton fallback/backward compatibility and mark as deprecated in comments.
-      - Stop reading `productLineContext` from request body.
-    - File: `apps/web/app/api/admin/consolidation/scraped/route.ts`
-    - Changes: Remove or rewrite; current route depends on `TwoPhaseConsolidationService` and `input.productLineContext`.
-    - Acceptance: admin can submit grouping, inspect groups, edit groups, and submit selected groups to consolidation via APIs.
+8. **Make group consolidation progress pollable from Grouping**
+   - File: `apps/web/app/api/admin/grouping/consolidate/[batchId]/route.ts` (new) or reuse `apps/web/app/api/admin/consolidation/[batchId]/process/route.ts`
+   - Changes: Provide a Grouping-friendly progress response for consolidation runs: aggregate status, per-item status, item labels (`Product Line Label` for groups, UPC for Singletons), counts, and completion summary. For DeepSeek/direct-chat, process bounded chunks via `processBatchQueue`; for other modes, report provider status without blocking.
+   - Acceptance: Grouping tab can show “Consolidating group 2 of 4…” with per-group completion and survive reload/navigation through persisted `batch_jobs`/`batch_job_items`.
 
-15. **Add big-bang backfill script for non-published products**
-    - New File: `apps/web/scripts/backfill-product-lines.ts`
-    - Changes:
-      - Select all non-published products (`exported_at is null`) across active pipeline statuses.
-      - Submit classification batches in chunks, process/sync until complete, run dedup, persist Product Lines, and move appropriate products to `grouping` if they are at/after `processed` and not currently in a protected active state.
-      - Add `--dry-run`, `--limit`, `--status`, and `--resume-batch-id` options.
-      - Log estimated cost/counts before execution.
-    - File: `apps/web/package.json`
-    - Changes: Add package-level script such as `"product-lines:backfill": "bun scripts/backfill-product-lines.ts"`.
-    - Acceptance: dry run reports counts without writes; real run can resume and does not classify `exported_at` products.
+9. **Refactor Processed tab action model to one primary Consolidate path**
+   - File: `apps/web/components/admin/pipeline/FloatingActionsBar.tsx`
+   - Changes: Rename Processed bulk action label from `Group selected` to `Consolidate selected`; remove the Processed fallback that calls legacy `onConsolidate`; rename props as needed so the primary action calls the grouping submission path only.
+   - File: `apps/web/components/admin/pipeline/PipelineClient.tsx`
+   - Changes: Replace Processed-stage keyboard shortcut `c` to start grouping classification, not legacy per-UPC consolidation. Remove Processed UI wiring that exposes the old frontend path, while keeping backend per-UPC APIs intact for Singletons.
+   - File: `apps/web/components/admin/pipeline/ProcessedResultsView.tsx`
+   - Changes: Remove/replace single-product “Merge” and bulk “Start Merging” dialogs that call `/api/admin/consolidation/submit`; any Processed consolidation action should submit to grouping classification.
+   - Acceptance: In Processed, operators see one clear “Consolidate” action and no competing “Merge”/legacy consolidation path.
 
-16. **Replace cohort utilities and routes with Product Line equivalents**
-    - New File: `apps/web/lib/admin/product-line-utils.ts`
-    - Changes: Product Line assignment/filter helpers replacing `groupUpcsByPrefix` and cohort assignment.
-    - File: `apps/web/lib/admin/cohort-utils.ts`
-    - Changes: Deprecate or remove after callers migrate.
-    - File: `apps/web/lib/pipeline/cohorts.ts`
-    - Changes: Replace `recohortProducts` usage with Product Line preservation/reassignment logic, or delete after callers migrate.
-    - Files: `apps/web/app/api/admin/cohorts/route.ts`, `apps/web/app/api/admin/cohorts/[id]/route.ts`, `apps/web/app/api/admin/cohorts/[id]/process/route.ts`, `apps/web/app/api/admin/cohorts/recommendations/route.ts`
-    - Changes: Remove, redirect, or replace with Product Line grouping APIs after frontend migration.
-    - File: `apps/web/lib/pipeline-scraping.ts`
-    - Changes: Replace cohort lookups with durable `brand_id`, `product_line_id`, and/or Product Line metadata so extraction/source planning no longer depends on cohorts.
-    - Acceptance: no production code path requires `cohort_batches` or `cohort_members` for pipeline operation.
+10. **Add Processed tab classification progress UI**
+   - File: `apps/web/components/admin/pipeline/PipelineClient.tsx`
+   - Changes: Track active grouping runs from `/api/admin/pipeline/runs` and the latest submitted `batch_id`; poll `/api/admin/grouping/[batchId]` for item statuses and finalization summary; refresh counts when products move from `processed` to `grouping`.
+   - File: `apps/web/components/admin/pipeline/ProcessedResultsView.tsx`
+   - Changes: Add props for `classificationRun`, `classifyingUpcs`, `classificationSummary`, and `onViewGroups`; render an inline banner above the product list with progress text “Classifying N of M products...” and a progress bar. On completion, transform it into “✅ N products → M groups, U ungrouped [View Groups →]”.
+   - File: `apps/web/components/admin/pipeline/ProductTable.tsx` or `ProcessedResultsView.tsx`
+   - Changes: Render an in-row “Classifying...” spinner/status for UPCs whose batch item status is `pending` or `running`; remove the row or refresh list after finalization moves it out of Processed.
+   - Acceptance: While a grouping run is active, the Processed tab shows persisted progress and each in-flight selected row is visibly classifying.
 
-17. **Remove TwoPhaseConsolidationService and consistency-rule references**
-    - Files: `apps/web/lib/consolidation/two-phase-service.ts`, `apps/web/lib/consolidation/consistency-rules.ts`
-    - Changes: Delete or leave only if tests/legacy routes still need temporary compatibility; target is removal.
-    - File: `apps/web/lib/consolidation/index.ts`
-    - Changes: Stop exporting `TwoPhaseConsolidationService` and `buildDefaultConsistencyRules`.
-    - Files: `apps/web/lib/consolidation/__tests__/consistency-rules.test.ts` and any two-phase tests
-    - Changes: Remove tests or replace with group-output completeness/schema validation tests.
-    - Acceptance: grep for `TwoPhaseConsolidationService` and `buildDefaultConsistencyRules` returns no active imports.
+11. **Redesign GroupingResultsView as a step-based workspace**
+   - File: `apps/web/components/admin/pipeline/GroupingResultsView.tsx`
+   - Changes: Replace the flat card list with a three-phase layout: `Review`, `Edit`, `Consolidate`. Use “Needs Review” terminology only; do not use “Needs Attention” in Grouping UI. Render a summary header with ready groups, groups needing review, accepted Singletons, and unaccepted Ungrouped products.
+   - New Files:
+     - `apps/web/components/admin/pipeline/grouping/GroupingStepHeader.tsx` - step labels and counts.
+     - `apps/web/components/admin/pipeline/grouping/GroupingReviewStep.tsx` - Needs Review and Ready sections.
+     - `apps/web/components/admin/pipeline/grouping/GroupingEditStep.tsx` - direct editing workspace.
+     - `apps/web/components/admin/pipeline/grouping/GroupingConsolidateStep.tsx` - approved payload summary and consolidation CTA.
+     - `apps/web/components/admin/pipeline/grouping/GroupingRunProgress.tsx` - classification/consolidation run banner and per-item status.
+   - Acceptance: The Grouping tab visibly guides operators through Review → Edit → Consolidate and no longer feels like a dead-end list.
 
-18. **Build Grouping stage frontend**
-    - New File: `apps/web/components/admin/pipeline/GroupingResultsView.tsx`
-    - Changes: Workspace view showing Product Group cards, Ungrouped bucket, confidence/rationale, review-required flags, product previews, and selected group actions.
-    - New Files (as needed): `GroupingGroupCard.tsx`, `GroupingReassignDialog.tsx`, `GroupingMergeDialog.tsx`, `GroupingSplitDialog.tsx`, `GroupingRenameDialog.tsx` under `apps/web/components/admin/pipeline/grouping/`.
-    - File: `apps/web/components/admin/pipeline/PipelineClient.tsx`
-    - Changes:
-      - Render `GroupingResultsView` when `currentStage === 'grouping'`.
-      - Add `handleGroupProducts(upcs)` on Processed tab to call `/api/admin/grouping/submit`.
-      - Add `handleConsolidateGroups(groups)` on Grouping tab to call `/api/admin/consolidation/submit` with `{ groups }`.
-      - Remove cohort edit state from grouping/processed flows once Product Line UI replaces it.
-    - File: `apps/web/components/admin/pipeline/ProcessedResultsView.tsx`
-    - Changes: Replace direct “Consolidate/Merge selected” action with “Group Products” for normal selected processed products; keep singleton consolidation only for explicit ungrouped fallback if required.
-    - File: `apps/web/components/admin/pipeline/StageTabs.tsx`, `StatusBadge.tsx`, `PipelineFilters.tsx`
-    - Changes: Add `Grouping` tab/status and product-line filters based on `product_line_id`.
-    - Acceptance: operator can select processed products, submit grouping, review/edit groups, and consolidate selected groups.
+12. **Implement Review phase behavior**
+   - File: `apps/web/components/admin/pipeline/grouping/GroupingReviewStep.tsx` (new)
+   - Changes: Show two sections: `Needs Review` for Ungrouped/Singleton candidates and flagged groups; `Ready` for auto-approved groups. Add controls to approve flagged groups, accept Ungrouped products as Singletons, manually assign an Ungrouped product to an existing group, or create a new group via split/create flow.
+   - File: `apps/web/components/admin/pipeline/GroupingResultsView.tsx`
+   - Changes: Wire review actions to the API actions from Task 6, then refetch group data and counts.
+   - Acceptance: Operators can clear all Needs Review items without leaving the Grouping tab.
 
-19. **Update active job monitoring and run displays**
-    - Files: `apps/web/components/admin/pipeline/ActiveRunsTab.tsx`, `ActiveConsolidationsTab.tsx`, `components/admin/pipeline/consolidation/*`, `apps/web/lib/pipeline/run-types.ts`
-    - Changes: Display product-line classification jobs and group-consolidation jobs with correct counts (`group_count`, `product_count`, failed group/item counts). Avoid labeling group items as UPCs.
-    - API Files: `apps/web/app/api/admin/consolidation/jobs/route.ts` and pipeline run endpoints if present.
-    - Acceptance: Merging tab and run history distinguish classification, singleton consolidation, and group consolidation.
+13. **Implement Edit phase behavior with accessible alternatives**
+   - File: `apps/web/components/admin/pipeline/grouping/GroupingEditStep.tsx` (new)
+   - Changes: Provide drag-and-drop reassignment using native drag events or existing primitives (avoid adding a DnD dependency unless explicitly approved). Also provide checkbox selection and a bulk action toolbar for keyboard/accessibility: move selected to group, ungroup selected, split selected into new group, merge group into another, approve selected/group. Use inline click-to-rename for Product Line Labels and dialogs for merge/split confirmations.
+   - File: `apps/web/app/api/admin/grouping/groups/[productLineId]/route.ts`
+   - Changes: Ensure existing `rename`, `merge`, `split`, `reassign`, and `ungroup` responses are sufficient for the new UI; add detailed error bodies where missing.
+   - Acceptance: All drag/drop actions have an equivalent bulk/keyboard path; group names can be edited inline; destructive merge/split actions require explicit confirmation.
 
-20. **Update generated docs/comments and remove stale productLineContext assumptions**
-    - File: `apps/web/lib/consolidation/AGENTS.md`
-    - Changes: Update data flow, structure list, output contract, and anti-patterns for grouping, group item granularity, and Product Line classification.
-    - File: `apps/web/app/admin/AGENTS.md`
-    - Changes: Update pipeline vocabulary to include `grouping` and Product Groups instead of cohorts.
-    - Acceptance: internal docs match implemented flow and no longer claim consolidation is one request per SKU in the normal grouped path.
+14. **Implement Consolidate phase and progress handoff**
+   - File: `apps/web/components/admin/pipeline/grouping/GroupingConsolidateStep.tsx` (new)
+   - Changes: Render “Consolidate All Approved (M groups + S singletons)” with a warning summary for skipped Needs Review items. On click, call the new grouping consolidation endpoint, then show progress inside the Grouping tab instead of auto-navigating.
+   - File: `apps/web/components/admin/pipeline/grouping/GroupingRunProgress.tsx` (new)
+   - Changes: Show “Consolidating group X of Y...” and per-group/singleton completion indicators. On completion, show “Results ready in Merging →” and call `onStageChange("merging")` only when the operator clicks.
+   - File: `apps/web/components/admin/pipeline/PipelineClient.tsx`
+   - Changes: Remove the old `handleConsolidateGroups` synchronous wait/autonavigate behavior and replace it with batch start/progress state passed into GroupingResultsView.
+   - Acceptance: Consolidation progress stays visible in Grouping, and completion copy says “Results ready in Merging,” not “in review.”
 
-21. **Update tests for schema, pipeline, services, and UI**
-    - Files: `apps/web/lib/pipeline/core.test.ts`, `derivation.test.ts`, `types.test.ts`, `queries.test.ts`
-    - Changes: Add `grouping` status, transitions, tab derivation, and product-line filtering tests.
-    - Files: `apps/web/lib/consolidation/__tests__/product-line-classification.test.ts`, `product-line-dedup.test.ts`, `group-result-parsing.test.ts`, `prompt-builder.test.ts`
-    - Changes: Cover classification parsing, threshold, taxonomy label selection, fuzzy dedup, group prompt, and partial-output rejection.
-    - Files: `apps/web/__tests__/app/api/admin/pipeline/route.test.ts`, existing cohort tests, and new grouping API tests
-    - Changes: Replace cohort expectations with Product Line grouping behavior; add API tests for submit/list/edit/consolidate groups.
-    - Files: `apps/web/components/admin/pipeline/__tests__/*` or colocated tests if pattern exists
-    - Changes: Add UI tests for Grouping tab rendering and actions.
-    - Acceptance: `bun run web test -- --testPathPatterns="pipeline|consolidation|grouping"` passes.
+15. **Show Product Group origin in Merging**
+   - File: `apps/web/lib/consolidation/batch-service.ts`
+   - Changes: Store group-origin metadata on group consolidation jobs/items: Product Line Label, `product_line_id`, and member UPCs; for Singletons, store singleton origin.
+   - File: `apps/web/app/api/admin/pipeline/runs/route.ts`
+   - Changes: Include recent item metadata for group-origin consolidation runs so the Merging UI can render group labels.
+   - File: `apps/web/components/admin/pipeline/ActiveConsolidationsTab.tsx`
+   - File: `apps/web/components/admin/pipeline/consolidation/DirectConsolidationJobView.tsx`
+   - File: `apps/web/components/admin/pipeline/consolidation/BatchConsolidationJobView.tsx`
+   - File: `apps/web/components/admin/pipeline/consolidation/BatchHistorySection.tsx`
+   - Changes: Render origin badges like `Group: Blue Buffalo Life Protection` or `Singleton` for group-origin jobs/items. Keep Apply behavior unchanged.
+   - Acceptance: Merging clearly shows where group-consolidated products came from and still applies results through the existing Apply flow.
 
-22. **Run focused validation and rollout checklist**
-    - File: no code file; release checklist in PR description or `docs/adr/0004-group-based-consolidation.md` if desired.
-    - Changes:
-      - Run `bun run web typecheck` and focused Jest suites.
-      - Run DB migration on local Supabase reset.
-      - Run backfill script in `--dry-run`, then on a small `--limit` sample.
-      - Validate one DeepSeek and one Gemini provider path if both are configured.
-      - Verify exported/published products are not classified by the big-bang backfill.
-    - Acceptance: sample Product Group reaches `grouping`, is manually edited, submits group consolidation, rejects partial output if simulated, and applies to `reviewing`.
+16. **Update stage copy and status badges for the new workflow**
+   - File: `apps/web/lib/pipeline/types.ts`
+   - Changes: Update `processed`, `grouping`, and `merging` descriptions to match the new flow: Processed sends products to Grouping, Grouping reviews Product Groups/Singletons, Merging contains consolidation results ready to apply.
+   - File: `apps/web/components/admin/pipeline/StageTabs.tsx`
+   - File: `apps/web/components/admin/pipeline/StatusBadge.tsx`
+   - Changes: Ensure the Grouping badge/description uses “Grouping” and “Needs Review” copy where appropriate; avoid “Needs Attention” except for extraction status.
+   - Acceptance: Hover/help text matches the workflow and does not conflate Grouping review with the later `reviewing` pipeline stage.
+
+17. **Add focused tests for workflow contracts and UI states**
+   - File: `apps/web/__tests__/lib/consolidation/batch-service.test.ts`
+   - Changes: Add tests for mixed group+singleton batch construction and metadata.
+   - File: `apps/web/__tests__/lib/pipeline.test.ts` or new `apps/web/__tests__/lib/pipeline-runs.test.ts`
+   - Changes: Test `product_line_classification` maps to `kind: "grouping"` and does not request `apply_results`.
+   - New Files:
+     - `apps/web/__tests__/components/admin/pipeline/grouping-results-view.test.tsx` - Review/Edit/Consolidate sections, Needs Review vs Ready derived states, accept singleton/approve actions.
+     - `apps/web/__tests__/components/admin/pipeline/processed-grouping-progress.test.tsx` - inline progress banner and in-row “Classifying...” state.
+   - Acceptance: Tests cover the UX contract decisions and prevent classification jobs from reappearing in Merging.
+
+18. **Run validation and manual QA**
+   - File: no code file; validation commands only.
+   - Changes: Run `bun run web typecheck`; run focused Jest suites with `bun run web test -- --testPathPatterns="pipeline|grouping|consolidation"`; run `bun run web build` if type/tests pass.
+   - Acceptance: Typecheck/tests pass; manual QA verifies: Processed submit returns quickly, progress survives refresh, Ungrouped appears in Grouping, Needs Review can be cleared, consolidation progress appears in Grouping, Merging shows group-origin badges, and Apply still moves products onward as before.
 
 ## Files to Modify
-
-- `apps/web/supabase/migrations/<timestamp>_product_line_grouping_stage.sql` - schema for Product Lines, grouping status, batch item subject metadata, execution mode.
-- `apps/web/lib/supabase/database.types.ts` - regenerated Supabase types.
-- `apps/web/lib/pipeline/types.ts` - `grouping` status, Product Line fields, stage config.
-- `apps/web/lib/pipeline/core.ts` - status transitions.
-- `apps/web/lib/pipeline/derivation.ts` - tab derivation and workflow tabs.
-- `apps/web/lib/validation/pipeline-schemas.ts` - validation for new status/fields.
-- `apps/web/lib/pipeline.ts` - replace cohort joins/filters with Product Line joins/filters.
-- `apps/web/lib/pipeline/queries.ts` - Product Line filtering and query hydration.
-- `apps/web/lib/pipeline-scraping.ts` - remove cohort dependency from extraction/source-plan context.
-- `apps/web/lib/consolidation/types.ts` - new execution mode, group/classification types, batch item subject metadata.
-- `apps/web/lib/consolidation/batch-service.ts` - classification submit/status/retrieve and group consolidation submit/retrieve.
-- `apps/web/lib/consolidation/direct-chat-service.ts` - process classification items and group consolidation items.
-- `apps/web/lib/consolidation/gemini-batch-service.ts` - support provider-following classification and group consolidation for Gemini.
-- `apps/web/lib/consolidation/prompt-builder.ts` - group prompt and output contract.
-- `apps/web/lib/consolidation/result-parsing.ts` - export shared per-UPC validation helpers.
-- `apps/web/lib/consolidation/apply-service.ts` - consume flattened group outputs, preserve Product Line assignment.
-- `apps/web/lib/consolidation/index.ts` - export new services and remove two-phase exports.
-- `apps/web/app/api/admin/consolidation/submit/route.ts` - accept `{ groups }` and deprecate `upcs` normal path.
-- `apps/web/app/api/admin/consolidation/scraped/route.ts` - remove/rewrite legacy two-phase route.
-- `apps/web/app/api/admin/cohorts/**` - remove/replace with Product Line grouping routes.
-- `apps/web/lib/admin/cohort-utils.ts` - deprecate/remove after Product Line replacement.
-- `apps/web/lib/pipeline/cohorts.ts` - remove/replace recohorting logic.
-- `apps/web/components/admin/pipeline/PipelineClient.tsx` - add grouping flow and render Grouping view.
-- `apps/web/components/admin/pipeline/ProcessedResultsView.tsx` - trigger grouping instead of direct consolidation.
-- `apps/web/components/admin/pipeline/StageTabs.tsx` - add Grouping tab.
-- `apps/web/components/admin/pipeline/StatusBadge.tsx` - add Grouping badge.
-- `apps/web/components/admin/pipeline/PipelineFilters.tsx` - Product Line filter by `product_line_id`.
-- `apps/web/components/admin/pipeline/ActiveRunsTab.tsx`, `ActiveConsolidationsTab.tsx`, `components/admin/pipeline/consolidation/*` - display classification/group job types.
-- `apps/web/package.json` - add package-level backfill script.
-- `apps/web/lib/consolidation/AGENTS.md`, `apps/web/app/admin/AGENTS.md` - update local guidance.
-- Existing tests under `apps/web/lib/pipeline/*.test.ts`, `apps/web/lib/consolidation/__tests__/*.test.ts`, and `apps/web/__tests__/**` - update expectations.
+- `apps/web/lib/pipeline/run-types.ts` - add `grouping` run kind and grouping stage labels.
+- `apps/web/app/api/admin/pipeline/runs/route.ts` - map classification runs separately and expose group-origin item metadata.
+- `apps/web/app/api/admin/consolidation/jobs/route.ts` - exclude grouping/classification runs from Merging history.
+- `apps/web/lib/consolidation/batch-service.ts` - async grouping metadata, mixed group+singleton batch creation, group-origin metadata.
+- `apps/web/app/api/admin/grouping/submit/route.ts` - make classification submit async and return a batch id immediately.
+- `apps/web/app/api/admin/grouping/[batchId]/route.ts` - process/poll/finalize classification batches with persisted summary and per-item status.
+- `apps/web/lib/consolidation/product-lines.ts` - move null-product-line Ungrouped products into `grouping` status.
+- `apps/web/lib/consolidation/grouping-service.ts` - ensure Ungrouped review flags, approve actions, accept singleton behavior, and manual assignment semantics.
+- `apps/web/app/api/admin/grouping/groups/route.ts` - return derived Ready/Needs Review group/singleton data and counts.
+- `apps/web/app/api/admin/grouping/groups/[productLineId]/route.ts` - add `approve` and `accept_singleton` actions and harden edit responses.
+- `apps/web/app/api/admin/consolidation/submit/route.ts` - keep legacy backend per-UPC path but stop using synchronous group UI flow; delegate grouping-origin submissions as needed.
+- `apps/web/components/admin/pipeline/PipelineClient.tsx` - orchestrate active grouping/classification and group-consolidation progress, remove frontend legacy Processed consolidation path.
+- `apps/web/components/admin/pipeline/FloatingActionsBar.tsx` - make Processed primary action “Consolidate selected” and route it to grouping.
+- `apps/web/components/admin/pipeline/ProcessedResultsView.tsx` - remove legacy Merge dialogs/buttons, add classification progress banner and in-row state props.
+- `apps/web/components/admin/pipeline/ProductTable.tsx` - render “Classifying...” row status for in-flight UPCs if row rendering is centralized there.
+- `apps/web/components/admin/pipeline/GroupingResultsView.tsx` - refactor into step-based workspace and wire new subcomponents/actions.
+- `apps/web/components/admin/pipeline/ActiveConsolidationsTab.tsx` - consume only consolidation runs and pass group-origin metadata into job cards.
+- `apps/web/components/admin/pipeline/consolidation/DirectConsolidationJobView.tsx` - display group/singleton origin badges for direct-chat group consolidation jobs.
+- `apps/web/components/admin/pipeline/consolidation/BatchConsolidationJobView.tsx` - display group/singleton origin badges for batch-style jobs if applicable.
+- `apps/web/components/admin/pipeline/consolidation/BatchHistorySection.tsx` - keep grouping history out and show group-origin badges for real consolidation history.
+- `apps/web/lib/pipeline/types.ts` - update stage descriptions.
+- `apps/web/components/admin/pipeline/StageTabs.tsx` - ensure tab descriptions/counts fit the new flow.
+- `apps/web/components/admin/pipeline/StatusBadge.tsx` - ensure Grouping/Merging visual status remains clear.
 
 ## New Files
-
-- `apps/web/lib/consolidation/product-lines.ts` - Product Line taxonomy load/upsert/assignment helpers.
-- `apps/web/lib/consolidation/product-line-dedup.ts` - fuzzy dedup and ambiguity flagging.
-- `apps/web/lib/consolidation/product-line-classification.ts` - evidence extraction, prompt, parser, classification orchestration helpers.
-- `apps/web/lib/consolidation/grouping-service.ts` - apply/finalize classification results and manual group edits.
-- `apps/web/lib/consolidation/group-result-parsing.ts` - parse and validate multi-product group outputs.
-- `apps/web/lib/consolidation/subgroup-detection.ts` - explicit subgroup split only for oversized Product Groups.
-- `apps/web/lib/admin/product-line-utils.ts` - admin Product Line assignment/filter utilities replacing cohorts.
-- `apps/web/app/api/admin/grouping/submit/route.ts` - submit Product Line classification job.
-- `apps/web/app/api/admin/grouping/[batchId]/route.ts` - grouping job status/summary.
-- `apps/web/app/api/admin/grouping/groups/route.ts` - list grouping-stage Product Groups and Ungrouped bucket.
-- `apps/web/app/api/admin/grouping/groups/[productLineId]/route.ts` - rename/merge/split/reassign Product Groups.
-- `apps/web/components/admin/pipeline/GroupingResultsView.tsx` - Grouping stage workspace.
-- `apps/web/components/admin/pipeline/grouping/GroupingGroupCard.tsx` - Product Group card UI.
-- `apps/web/components/admin/pipeline/grouping/GroupingReassignDialog.tsx` - manual product reassignment.
-- `apps/web/components/admin/pipeline/grouping/GroupingMergeDialog.tsx` - merge Product Lines.
-- `apps/web/components/admin/pipeline/grouping/GroupingSplitDialog.tsx` - split Product Line from selected UPCs.
-- `apps/web/components/admin/pipeline/grouping/GroupingRenameDialog.tsx` - rename Product Line.
-- `apps/web/scripts/backfill-product-lines.ts` - big-bang non-published classification/backfill runner.
-- New tests: `product-line-classification.test.ts`, `product-line-dedup.test.ts`, `group-result-parsing.test.ts`, grouping API tests, Grouping UI tests.
+- `apps/web/app/api/admin/grouping/consolidate/route.ts` - submit approved Product Groups plus accepted Singletons to one trackable consolidation run.
+- `apps/web/app/api/admin/grouping/consolidate/[batchId]/route.ts` - optional Grouping-friendly progress wrapper for group consolidation runs if existing consolidation process/status endpoints are insufficient.
+- `apps/web/components/admin/pipeline/grouping/GroupingStepHeader.tsx` - Review/Edit/Consolidate step navigation and counts.
+- `apps/web/components/admin/pipeline/grouping/GroupingReviewStep.tsx` - Needs Review and Ready review gate UI.
+- `apps/web/components/admin/pipeline/grouping/GroupingEditStep.tsx` - drag/drop plus bulk/keyboard editing workspace.
+- `apps/web/components/admin/pipeline/grouping/GroupingConsolidateStep.tsx` - approved payload summary and consolidation CTA.
+- `apps/web/components/admin/pipeline/grouping/GroupingRunProgress.tsx` - classification/consolidation progress banners and completion handoff.
+- `apps/web/__tests__/components/admin/pipeline/grouping-results-view.test.tsx` - Grouping workspace UI contract tests.
+- `apps/web/__tests__/components/admin/pipeline/processed-grouping-progress.test.tsx` - Processed tab classification progress tests.
+- `apps/web/__tests__/lib/pipeline-runs.test.ts` - run-kind mapping tests if not added to an existing suite.
 
 ## Dependencies
-
-- Tasks 1-2 must land before any TypeScript service or UI changes that reference `grouping`, `product_lines`, or `product_line_id`.
-- Task 3 must land before frontend routes/tabs can safely navigate to `grouping`.
-- Tasks 6-9 depend on schema/types from Tasks 1-2.
-- Tasks 10-13 depend on group/classification types from Task 5.
-- Task 14 depends on Tasks 8-13.
-- Task 18 depends on Tasks 3, 4, and 14.
-- Task 15 should run only after Tasks 6-9 are implemented and tested.
-- Task 16 (cohort removal) should be last among functional changes because cohorts are still used by import, extraction, admin routes, and tests.
-- Task 17 can occur once `scraped/route.ts` and all two-phase imports are removed/replaced.
-- Task 21 spans all implementation phases and should be updated alongside each feature task.
+- Task 1 must happen before Tasks 2, 10, and 15 so frontend consumers can distinguish grouping runs from consolidation runs.
+- Tasks 3 and 4 must happen before Processed progress UI can be correct; otherwise progress is still blocking and Ungrouped products stay invisible.
+- Tasks 5 and 6 must happen before the Grouping Review/Edit UI can accurately derive Ready vs Needs Review or accept Singletons.
+- Tasks 7 and 8 depend on Tasks 5 and 6 because consolidation must only include approved groups and accepted Singletons.
+- Tasks 9 and 10 depend on Task 3 because the Processed tab needs an async batch id and pollable status.
+- Tasks 11 through 14 depend on Tasks 5 through 8 because the step UI needs backend actions and progress contracts.
+- Task 15 depends on Task 7 because group-origin metadata must be written at submission time.
+- Task 17 should be implemented alongside Tasks 1, 3, 5, 6, 7, 10, and 11 rather than left entirely to the end.
+- Task 18 depends on all implementation tasks.
 
 ## Risks
-
-- **Schema mismatch:** documentation says `product_line_id` exists, but current generated types show only `product_line`. The first implementation step must verify the live schema and either repurpose an existing ID column or add it idempotently.
-- **Big-bang migration cost:** classifying all non-published products can be expensive and slow, especially if Gemini is configured. The backfill script needs dry-run counts, chunking, resumability, and operator-visible cost estimates.
-- **Provider-following classification latency:** if the admin setting points to Gemini batch, grouping may take much longer than direct DeepSeek. UI copy and job monitoring must make this clear.
-- **Batch item model change:** making `batch_job_items` support group subjects may affect existing direct-chat/Gemini assumptions. Legacy per-UPC paths need regression tests.
-- **Cohort dependency spread:** cohorts are used outside consolidation. Removing them before replacing import/extraction/admin callers can break source planning and filters.
-- **Partial LLM output:** one group response can omit UPCs. Parser must reject partial outputs before apply; otherwise products silently remain inconsistent.
-- **Fuzzy dedup false merges:** similar Product Line Labels can represent distinct lines. Ambiguous dedup must be reviewable and reversible.
-- **Renames and stable identity:** `product_lines.id` should be the durable identity; denormalized labels must not become source-of-truth in new code.
-- **Status enum migrations:** adding Postgres enum values can be irreversible in some environments. Migration order must add enum value before any data writes.
-- **TwoPhase removal:** removing post-hoc consistency checks is acceptable only if group-output schema/completeness validation is strong and tested.
+- **No background worker for direct-chat processing:** Current direct-chat jobs are advanced by explicit processing calls. The progress UI must poll/process in bounded chunks or rely on an existing sync mechanism; otherwise runs will remain pending after async submit.
+- **Finalization idempotency:** Auto-finalizing classification from a polling endpoint can run more than once after reloads unless metadata or another guard records completion.
+- **Singleton semantics:** Accepted Singletons have `product_line_id = null`; all consolidation payload builders and UI filters must include them intentionally or they will be skipped.
+- **Status timing:** Moving approved products to `merging` when consolidation starts will remove them from Grouping counts. The Grouping progress panel must be driven by persisted run state, not just current `pipeline_status`, so progress remains visible.
+- **Merging tab shape:** The current Merging tab is a job queue, not a normal product list. “Products show group origin” should be implemented in job item/result cards unless the Merging product-list UI is separately reintroduced.
+- **Accessibility:** Drag-and-drop must not be the only editing path. Bulk selection and keyboard-compatible move/merge/split actions are required.
+- **Terminology drift:** Do not use “Needs Attention” in Grouping; that term already means extraction errors. Do not say “sent to review” after consolidation; use “Results ready in Merging.”
+- **Backend compatibility:** Remove the old per-product Processed button from the frontend only. Keep backend `upcs[]` consolidation for Singleton fallback and any scripts/tests that still depend on it.
+- **Realtime vs polling:** Existing realtime channels are consolidation-oriented. If grouping progress relies on polling, ensure intervals are modest and stop after completion to avoid duplicate processing/cost.

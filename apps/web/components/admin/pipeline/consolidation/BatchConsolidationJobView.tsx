@@ -181,6 +181,15 @@ export function BatchConsolidationJobView({
               {job.description || `Merging Job ${job.id.slice(0, 8)}`}
             </h3>
             <StatusBadge status={job.status} />
+            {job.groupLabel && (
+              <Badge
+                variant="secondary"
+                className="rounded-none border border-brand-forest-green/30 bg-brand-forest-green/5 font-semibold text-[10px] h-5 tracking-widest text-brand-forest-green"
+              >
+                <svg className="mr-1 h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                {job.groupLabel}
+              </Badge>
+            )}
             <Badge
               variant="secondary"
               className="rounded-none border border-amber-300 bg-amber-50 font-semibold text-[10px] h-5 tracking-widest text-amber-700"

@@ -1111,6 +1111,9 @@ export async function submitGroupConsolidationBatch(
                 group_count: groups.length,
                 product_count: totalProducts,
                 is_group_consolidation: true,
+                group_label: groups.length === 1
+                    ? groups[0].product_line_name
+                    : `${totalProducts} products (${groups.length} groups)`,
                 llm_model: model,
                 llm_base_url: runtime.llm_base_url,
             },

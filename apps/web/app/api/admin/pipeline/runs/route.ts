@@ -6,6 +6,7 @@ import {
   mapEnrichmentJobStatusToRunStatus,
   getConsolidationStageLabel,
   getEnrichmentStageLabel,
+  getClassificationStageLabel,
   PIPELINE_RUN_KIND_LABELS,
 } from "@/lib/pipeline/run-types";
 import type {
@@ -138,17 +139,22 @@ export async function GET(request: NextRequest) {
         failedItems,
       );
 
+      const isClassification = job.execution_mode === 'product_line_classification';
+      const batchMetadata = (job.metadata as Record<string, unknown> | null) || {};
+      const isGroupConsolidation = batchMetadata.is_group_consolidation === true;
+      const groupLabel = isGroupConsolidation
+        ? (batchMetadata.group_label as string) || 'Group consolidation'
+        : undefined;
+
       return {
         id: job.id,
-        kind: "consolidation" as PipelineRunKind,
-        label: job.description || `Consolidation Job`,
+        kind: isClassification ? "grouping" as PipelineRunKind : "consolidation" as PipelineRunKind,
+        label: isClassification ? "Product Grouping" : (job.description || 'Consolidation Job'),
         status: normalizedStatus,
         provider: job.provider || undefined,
         executionMode: job.execution_mode || "direct_chat_chunks",
-        model:
-          (job.metadata as Record<string, unknown> | null)?.llm_model as
-            | string
-            | undefined,
+        model: batchMetadata.llm_model as string | undefined,
+        groupLabel,
         totalItems: total,
         completedItems,
         failedItems,
@@ -159,23 +165,29 @@ export async function GET(request: NextRequest) {
         startedAt: job.created_at,
         updatedAt: job.updated_at || undefined,
         completedAt: job.completed_at || undefined,
-        currentStageLabel: getConsolidationStageLabel(
-          normalizedStatus,
-          pendingCount,
-          runningCount,
-          total,
-          job.execution_mode,
-        ),
+        currentStageLabel: isClassification
+          ? getClassificationStageLabel(normalizedStatus, pendingCount, runningCount, total)
+          : getConsolidationStageLabel(
+              normalizedStatus,
+              pendingCount,
+              runningCount,
+              total,
+              job.execution_mode,
+            ),
         nextAction:
-          normalizedStatus === "completed"
-            ? "apply_results"
-            : normalizedStatus === "completed_with_errors"
+          isClassification
+            ? (normalizedStatus === "completed" || normalizedStatus === "completed_with_errors"
+                ? "review_errors"
+                : normalizedStatus === "running" ? "wait" : undefined)
+            : (normalizedStatus === "completed"
               ? "apply_results"
-              : normalizedStatus === "failed" && failedItems > 0
-                ? "retry_failed"
-                : normalizedStatus === "failed"
-                  ? "review_errors"
-                  : undefined,
+              : normalizedStatus === "completed_with_errors"
+                ? "apply_results"
+                : normalizedStatus === "failed" && failedItems > 0
+                  ? "retry_failed"
+                  : normalizedStatus === "failed"
+                    ? "review_errors"
+                    : undefined),
       } satisfies PipelineRunSummary;
     },
   );

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { submitProductLineClassificationBatch, getBatchStatus, processBatchQueue } from '@/lib/consolidation/batch-service';
-import { finalizeClassificationBatch } from '@/lib/consolidation/grouping-service';
+import { submitProductLineClassificationBatch } from '@/lib/consolidation/batch-service';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/admin/grouping/submit
  * Submit products for AI-driven product line classification.
- * Creates a classification batch, processes items immediately, and auto-finalizes
- * (run dedup, upsert product_lines, move products to grouping stage).
+ *
+ * Creates a classification batch and returns immediately with a batch_id.
+ * Processing and auto-finalization happen asynchronously via the
+ * GET /api/admin/grouping/[batchId] polling endpoint.
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth(request);
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
         const supabase = await createAdminClient();
         const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('upc, sources, input, brand_id')
+            .select('upc, sources, input')
             .in('upc', upcs);
 
         if (fetchError) {
@@ -51,52 +52,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
-        // Process classification items immediately (like consolidation does)
-        let processedItemCount = 0;
-        let completedItemCount = 0;
-        let failedItemCount = 0;
-        const chunkSize = 10;
-        const maxIterations = Math.ceil(productsWithSources.length / chunkSize) + 3;
-
-        for (let iteration = 0; iteration < maxIterations; iteration += 1) {
-            const processResult = await processBatchQueue(result.batch_id, { limit: chunkSize });
-            if ('success' in processResult && !processResult.success) {
-                console.warn('[Grouping API] Processing error:', processResult.error);
-                break;
-            }
-
-            if ('processed' in processResult) {
-                processedItemCount += processResult.processed;
-                completedItemCount += processResult.completed;
-                failedItemCount += processResult.failed;
-
-                if (processResult.processed === 0 || processResult.status.is_complete || processResult.status.is_failed) {
-                    break;
-                }
-            }
-        }
-
-        // Auto-finalize: run dedup, persist product lines, move products to grouping
-        let finalizeResult;
-        try {
-            // Determine brand_id from the first product (all should share the same brand)
-            const brandId = products[0]?.brand_id || null;
-            finalizeResult = await finalizeClassificationBatch(result.batch_id, brandId);
-        } catch (finalizeErr) {
-            console.error('[Grouping API] Finalization error:', finalizeErr);
-        }
-
         return NextResponse.json({
             success: true,
             batch_id: result.batch_id,
+            provider: result.provider,
             product_count: result.product_count,
-            processed_count: processedItemCount,
-            completed_count: completedItemCount,
-            failed_count: failedItemCount,
-            assigned_count: finalizeResult?.assignedCount ?? completedItemCount,
-            ungrouped_count: finalizeResult?.ungroupedCount ?? 0,
-            product_lines_count: finalizeResult?.productLinesCount ?? 0,
-            message: `${finalizeResult?.assignedCount ?? completedItemCount} products classified into ${finalizeResult?.productLinesCount ?? 0} product lines`,
+            message: `${result.product_count} products submitted for product line classification`,
         });
     } catch (error) {
         console.error('[Grouping API] Submit error:', error);

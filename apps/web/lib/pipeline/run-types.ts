@@ -24,6 +24,7 @@
 export type PipelineRunKind =
   | "enrichment"
   | "consolidation"
+  | "grouping"
   | "apply_results";
 
 // =============================================================================
@@ -83,6 +84,8 @@ export interface PipelineRunSummary {
   executionMode?: string;
   /** LLM model used (e.g. "deepseek-chat"). Displayed as a badge. */
   model?: string;
+  /** Group origin label for group-consolidated runs (e.g. "Blue Buffalo Life Protection"). */
+  groupLabel?: string;
 
   /** Total items to process */
   totalItems: number;
@@ -129,6 +132,7 @@ export interface PipelineRunSummary {
 export const PIPELINE_RUN_KIND_LABELS: Record<PipelineRunKind, string> = {
   enrichment: "Product Enrichment",
   consolidation: "Product Consolidation",
+  grouping: "Product Grouping",
   apply_results: "Apply Results",
 };
 
@@ -243,6 +247,30 @@ export function getConsolidationStageLabel(
     return `${pendingCount} product${pendingCount === 1 ? "" : "s"} still queued`;
   }
   return "Waiting for items";
+}
+
+/**
+ * Build the currentStageLabel for a classification (grouping) run.
+ */
+export function getClassificationStageLabel(
+  status: PipelineRunStatus,
+  pendingCount: number,
+  runningCount: number,
+  totalItems: number,
+): string {
+  if (status === "completed" || status === "completed_with_errors") {
+    return "Classification complete — review results";
+  }
+  if (status === "failed") {
+    return "Classification failed — review errors";
+  }
+  if (runningCount > 0) {
+    return "Classifying products...";
+  }
+  if (pendingCount > 0 && totalItems > 0) {
+    return `${pendingCount} product${pendingCount === 1 ? "" : "s"} queued for classification`;
+  }
+  return "Waiting for classification";
 }
 
 /**

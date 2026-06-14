@@ -86,17 +86,17 @@ export async function assignProductToLine(
         product_line: metadata.canonicalName ?? null,
     };
 
-    // Only set pipeline_status to 'grouping' if the product is currently 'processed'
-    if (productLineId) {
-        const { data: product } = await supabase
-            .from('products_ingestion')
-            .select('pipeline_status')
-            .eq('upc', upc)
-            .maybeSingle();
+    // Move products from 'processed' to 'grouping' regardless of whether
+    // a product line was assigned. Ungrouped products (product_line_id = null)
+    // also go to grouping so they appear in the Grouping tab for review.
+    const { data: product } = await supabase
+        .from('products_ingestion')
+        .select('pipeline_status')
+        .eq('upc', upc)
+        .maybeSingle();
 
-        if (product?.pipeline_status === 'processed') {
-            update.pipeline_status = 'grouping';
-        }
+    if (product?.pipeline_status === 'processed') {
+        update.pipeline_status = 'grouping';
     }
 
     await supabase

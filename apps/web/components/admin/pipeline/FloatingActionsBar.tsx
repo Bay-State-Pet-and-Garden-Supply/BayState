@@ -20,7 +20,7 @@ const BULK_ACTIONS: Record<
   imported: { label: '', nextStage: null },
   extracting: { label: '', nextStage: null },
   processed: {
-    label: 'Group selected',
+    label: 'Consolidate selected',
     nextStage: 'grouping',
     resetLabel: 'Return to Imported',
     previousStage: 'imported',
@@ -57,7 +57,6 @@ interface FloatingActionsBarProps {
   onSelectAll: () => void;
   onBulkAction: (nextStage: PersistedPipelineStatus) => void;
   onResetStage?: (previousStage: PersistedPipelineStatus) => void;
-  onConsolidate?: () => void;
   onGroupProducts?: () => void;
   onConsolidateGroups?: () => void;
   onAssignBrand?: () => void;
@@ -78,7 +77,6 @@ export function FloatingActionsBar({
   onSelectAll,
   onBulkAction,
   onResetStage,
-  onConsolidate,
   onGroupProducts,
   onConsolidateGroups,
   onAssignBrand,
@@ -108,11 +106,6 @@ export function FloatingActionsBar({
 
     if (currentStage === 'grouping' && onConsolidateGroups) {
       onConsolidateGroups();
-      return;
-    }
-
-    if (currentStage === 'processed' && onConsolidate) {
-      onConsolidate();
       return;
     }
 
@@ -181,7 +174,7 @@ export function FloatingActionsBar({
               </Button>
             ) : null}
 
-            {!isPublishing && (bulkAction.nextStage || (currentStage === 'processed' && onConsolidate)) ? (
+            {!isPublishing && bulkAction.nextStage ? (
               <span className="flex items-center gap-2">
                 {currentStage === 'processed' && consolidationInfo ? (
                   <Badge

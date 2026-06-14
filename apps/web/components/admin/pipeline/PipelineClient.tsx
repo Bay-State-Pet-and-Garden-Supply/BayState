@@ -162,6 +162,18 @@ export function PipelineClient({
   >(null);
   const [legacyPreferenceLoaded, setLegacyPreferenceLoaded] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [classificationRun, setClassificationRun] = useState<{
+    batchId: string;
+    isActive: boolean;
+    progress: number;
+    classifyingCount: number;
+    totalCount: number;
+    summary: {
+      assignedCount?: number;
+      ungroupedCount?: number;
+      productLinesCount?: number;
+    } | null;
+  } | null>(null);
   const [editingCohort, setEditingCohort] = useState<{
     id: string;
     name: string | null;
@@ -757,11 +769,18 @@ export function PipelineClient({
 
         if (res.ok) {
           const data = await res.json();
-          toast.success(`Classified ${data.product_count} products`, {
-            description: `${data.assigned_count ?? data.product_count} products assigned to ${data.product_lines_count ?? 0} product lines.`,
-          });
+          if (data.batch_id) {
+            setClassificationRun({
+              batchId: data.batch_id,
+              isActive: true,
+              progress: 0,
+              classifyingCount: 0,
+              totalCount: data.product_count || upcs.length,
+              summary: null,
+            });
+          }
           setSelectedUpcs(new Set());
-          handleStageChange('grouping');
+          toast.success(`Classifying ${data.product_count} products...`);
           await fetchCounts();
         } else {
           const error = await res.json();
@@ -773,7 +792,7 @@ export function PipelineClient({
         setIsLoading(false);
       }
     },
-    [fetchCounts, handleStageChange],
+    [fetchCounts],
   );
 
   // Handle group consolidation from Grouping tab
@@ -1047,7 +1066,7 @@ export function PipelineClient({
         if (e.key.toLowerCase() === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (currentStage === "processed") {
             e.preventDefault();
-            handleConsolidate(Array.from(selectedUpcs));
+            handleGroupProducts(Array.from(selectedUpcs));
           }
         } else if (
           e.key === "Delete" ||
@@ -1069,6 +1088,46 @@ export function PipelineClient({
     handleConsolidate,
     handleDelete,
   ]);
+
+  // Poll classification batch progress
+  useEffect(() => {
+    if (!classificationRun?.isActive || !classificationRun.batchId) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await adminFetch(`/api/admin/grouping/${classificationRun.batchId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.is_complete || data.finalize_summary) {
+          const summary = data.finalize_summary || {};
+          setClassificationRun(prev => prev ? {
+            ...prev,
+            isActive: false,
+            progress: 100,
+            summary: {
+              assignedCount: summary.assignedCount ?? summary.assigned_count ?? prev.classifyingCount,
+              ungroupedCount: summary.ungroupedCount ?? summary.ungrouped_count ?? 0,
+              productLinesCount: summary.productLinesCount ?? summary.product_lines_count ?? 0,
+            },
+          } : null);
+          await fetchCounts();
+          return;
+        }
+        
+        setClassificationRun(prev => prev ? {
+          ...prev,
+          progress: data.progress_percent || 0,
+          classifyingCount: data.completed_requests || 0,
+          totalCount: data.total_requests || prev.totalCount,
+        } : null);
+      } catch {
+        // Polling error — will retry on next interval
+      }
+    }, 2500);
+    
+    return () => clearInterval(interval);
+  }, [classificationRun?.isActive, classificationRun?.batchId, fetchCounts]);
 
   // Handle bulk status transition (non-scrape stages)
   const handleBulkAction = async (nextStage: PersistedPipelineStatus) => {
@@ -1272,7 +1331,7 @@ export function PipelineClient({
           ) : currentStage === "grouping" ? (
             <GroupingResultsView
               onConsolidateGroups={handleConsolidateGroups}
-              onStageChange={handleStageChange}
+              onStageChange={(stage: string) => handleStageChange(stage as any)}
             />
           ) : currentStage === "merging" ? (
             <ActiveConsolidationsTab />
@@ -1338,6 +1397,9 @@ export function PipelineClient({
                   : undefined
               }
               isSearching={isSearching}
+              classificationRun={classificationRun}
+              classifyingUpcs={new Set()}
+              onViewGroups={() => handleStageChange('grouping')}
             />
           ) : currentStage === "reviewing" ? (
             <div data-testid="reviewing-results" className="contents">
@@ -1634,7 +1696,6 @@ export function PipelineClient({
           onSelectAll={handleSelectAll}
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
-          onConsolidate={() => handleConsolidate(Array.from(selectedUpcs))}
           onGroupProducts={() => handleGroupProducts(Array.from(selectedUpcs))}
           consolidationInfo={consolidationConfig}
           onAssignBrand={() => setIsBulkAssignBrandOpen(true)}

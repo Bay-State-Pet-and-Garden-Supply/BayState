@@ -298,17 +298,17 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   processed: {
     label: "Processed",
     color: "#3B82F6",
-    description: "Extraction is complete. Review source data here before sending products to Merging.",
+    description: "Extraction is complete. Products ready for grouping and consolidation.",
   },
   grouping: {
     label: "Grouping",
     color: "#7C3AED",
-    description: "AI is classifying products into manufacturer product lines. Review and adjust groups before consolidation.",
+    description: "Review product groups and approve for consolidation. Edit misclassified groups, accept ungrouped products as singletons.",
   },
   merging: {
     label: "Merging",
     color: "#8B5CF6",
-    description: "AI merge jobs are combining source data into draft product records.",
+    description: "AI consolidation complete. Review and apply consolidated product records.",
   },
   reviewing: {
     label: "Reviewing",

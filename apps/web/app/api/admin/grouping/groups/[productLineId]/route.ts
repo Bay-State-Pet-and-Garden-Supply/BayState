@@ -5,6 +5,8 @@ import {
     mergeProductLines,
     splitProductLine,
     renameProductLine,
+    approveGroup,
+    acceptSingletons,
 } from '@/lib/consolidation/grouping-service';
 
 /**
@@ -17,6 +19,8 @@ import {
  *   - merge: Merge another Product Group into this one ({ action: 'merge', target_product_line_id: string })
  *   - split: Split selected UPCs into a new Product Line ({ action: 'split', upcs: string[], new_product_line_name: string })
  *   - rename: Rename this Product Line ({ action: 'rename', new_name: string })
+ *   - approve: Clear review_required for products ({ action: 'approve', upcs?: string[] })
+ *   - accept_singleton: Accept ungrouped products as singletons ({ action: 'accept_singleton', upcs: string[] })
  */
 export async function PATCH(
     request: NextRequest,
@@ -84,9 +88,24 @@ export async function PATCH(
                 return NextResponse.json({ success: true });
             }
 
+            case 'approve': {
+                const { upcs } = body;
+                const approvedCount = await approveGroup(productLineId, upcs);
+                return NextResponse.json({ success: true, approved_count: approvedCount });
+            }
+
+            case 'accept_singleton': {
+                const { upcs } = body;
+                if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
+                    return NextResponse.json({ error: 'upcs array is required' }, { status: 400 });
+                }
+                const acceptedCount = await acceptSingletons(upcs);
+                return NextResponse.json({ success: true, accepted_count: acceptedCount });
+            }
+
             default:
                 return NextResponse.json(
-                    { error: `Unknown action: ${action}. Supported actions: reassign, ungroup, merge, split, rename` },
+                    { error: `Unknown action: ${action}. Supported actions: reassign, ungroup, merge, split, rename, approve, accept_singleton` },
                     { status: 400 }
                 );
         }

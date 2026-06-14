@@ -78,6 +78,20 @@ interface ProcessedResultsViewProps {
   cohortBrands?: Record<string, string>;
   cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
+  // Classification progress (from Grouping flow)
+  classificationRun?: {
+    isActive: boolean;
+    progress: number;
+    classifyingCount: number;
+    totalCount: number;
+    summary: {
+      assignedCount?: number;
+      ungroupedCount?: number;
+      productLinesCount?: number;
+    } | null;
+  } | null;
+  classifyingUpcs?: Set<string>;
+  onViewGroups?: () => void;
 }
 
 interface SourceDetails extends Record<string, unknown> {
@@ -165,6 +179,9 @@ export function ProcessedResultsView({
   cohortBrands = {},
   cohortBrandObjects = {},
   onEditCohort,
+  classificationRun,
+  classifyingUpcs = new Set(),
+  onViewGroups,
 }: ProcessedResultsViewProps) {
   // 1. Data Sorting
   const sortedProducts = useMemo(() => {
@@ -300,9 +317,7 @@ export function ProcessedResultsView({
   // 3. UI control states
   const [submitting, setSubmitting] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
-  const [showConsolidationDialog, setShowConsolidationDialog] = useState(false);
   
-  const [confirmConsolidateProduct, setConfirmConsolidateProduct] = useState<PipelineProduct | null>(null);
   const [confirmClearProduct, setConfirmClearProduct] = useState<PipelineProduct | null>(null);
 
   const [confirmDeleteSourceOpen, setConfirmDeleteSourceOpen] = useState(false);
@@ -345,34 +360,6 @@ export function ProcessedResultsView({
   // 4. Bulk operations callbacks
   const canBulkSubmit = selectedUpcs.size > 0 && !submitting;
 
-  const handleSubmitForConsolidation = useCallback(async () => {
-    if (!canBulkSubmit) return;
-
-    setSubmitting(true);
-    try {
-      const res = await adminFetch("/api/admin/consolidation/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ upcs: Array.from(selectedUpcs) }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || "Failed to start merging");
-      }
-
-      toast.success(
-        `${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} sent to Merging`
-      );
-      onRefresh(true);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to start merging");
-    } finally {
-      setSubmitting(false);
-      setShowConsolidationDialog(false);
-    }
-  }, [canBulkSubmit, selectedUpcs, onRefresh]);
-
   const handleClearResults = useCallback(async () => {
     const upcs = Array.from(selectedUpcs);
     setSubmitting(true);
@@ -403,30 +390,6 @@ export function ProcessedResultsView({
   }, [selectedUpcs, onRefresh]);
 
   // 5. Single product action callbacks
-  const handleSingleConsolidate = async (product: PipelineProduct) => {
-    setSubmitting(true);
-    try {
-      const res = await adminFetch("/api/admin/consolidation/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ upcs: [product.upc] }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || "Failed to start merging");
-      }
-
-      toast.success(`Product ${product.upc} sent to Merging`);
-      onRefresh(true);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to start merging");
-    } finally {
-      setSubmitting(false);
-      setConfirmConsolidateProduct(null);
-    }
-  };
-
   const handleSingleClearResults = async (product: PipelineProduct) => {
     setSubmitting(true);
     try {
@@ -525,7 +488,7 @@ export function ProcessedResultsView({
         return;
       }
 
-      if (confirmDeleteSourceOpen || showClearDialog || showConsolidationDialog || confirmConsolidateProduct || confirmClearProduct) {
+      if (confirmDeleteSourceOpen || showClearDialog || confirmClearProduct) {
         return;
       }
 
@@ -555,7 +518,7 @@ export function ProcessedResultsView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeSourceItem, confirmDeleteSourceOpen, showClearDialog, showConsolidationDialog, confirmConsolidateProduct, confirmClearProduct, handleDeleteSourceClick, sourceKeys]);
+  }, [activeSourceItem, confirmDeleteSourceOpen, showClearDialog, confirmClearProduct, handleDeleteSourceClick, sourceKeys]);
 
   return (
     <div className="flex flex-1 min-h-0 border border-border rounded-none overflow-hidden bg-background max-w-full">
@@ -599,10 +562,59 @@ export function ProcessedResultsView({
           ) : null}
         </div>
 
+        {/* Classification Progress Banner */}
+        {classificationRun ? (
+          <div className="px-3 py-2 border-b border-border bg-blue-50 dark:bg-blue-950/20">
+            {classificationRun.isActive ? (
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">
+                    <span>Classifying {classificationRun.classifyingCount} of {classificationRun.totalCount} products...</span>
+                    <span>{classificationRun.progress}%</span>
+                  </div>
+                  <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-1.5">
+                    <div
+                      className="bg-blue-600 dark:bg-blue-400 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${classificationRun.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : classificationRun.summary ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-green-600 dark:text-green-400" />
+                  <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                    {classificationRun.summary.assignedCount ?? 0} products → {classificationRun.summary.productLinesCount ?? 0} groups
+                    {classificationRun.summary.ungroupedCount && classificationRun.summary.ungroupedCount > 0
+                      ? `, ${classificationRun.summary.ungroupedCount} ungrouped`
+                      : ''}
+                  </span>
+                </div>
+                {onViewGroups ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onViewGroups}
+                    className="h-7 text-[10px] font-bold"
+                  >
+                    View Groups →
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* Bulk Action Header bar */}
         <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border text-xs">
           <div className="flex items-center gap-1 text-muted-foreground font-medium">
             <span>{products.length} processed</span>
+            {classificationRun?.isActive && (
+              <span className="ml-2 text-blue-600 dark:text-blue-400 animate-pulse text-[10px]">
+                ({classificationRun.classifyingCount}/{classificationRun.totalCount} classifying...)
+              </span>
+            )}
             {selectedUpcs.size > 0 && (
               <span className="text-foreground font-bold">({selectedUpcs.size} selected)</span>
             )}
@@ -610,15 +622,6 @@ export function ProcessedResultsView({
           <div className="flex items-center gap-1.5">
             {selectedUpcs.size > 0 && (
               <>
-                <Button
-                  size="sm"
-                  onClick={() => setShowConsolidationDialog(true)}
-                  disabled={submitting}
-                  className="h-7 text-[10px] font-bold px-2"
-                >
-                  <Sparkles className="size-3 mr-1" />
-                  Merge
-                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -722,15 +725,6 @@ export function ProcessedResultsView({
                   >
                     <RefreshCw className="size-3.5 mr-1.5" />
                     Re-scrape
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-8 text-[11px] font-bold bg-primary text-primary-foreground hover:bg-primary/95"
-                    onClick={() => setConfirmConsolidateProduct(selectedProduct)}
-                    disabled={submitting}
-                  >
-                    <Sparkles className="size-3.5 mr-1.5" />
-                    Merge
                   </Button>
                   <Button
                     size="sm"
@@ -1093,32 +1087,6 @@ export function ProcessedResultsView({
         onConfirm={handleClearResults}
         confirmLabel="Return to Imported"
         variant="destructive"
-      />
-
-      {/* 2. Bulk Merging Dialog */}
-      <ConfirmationDialog
-        open={showConsolidationDialog}
-        onOpenChange={setShowConsolidationDialog}
-        title="Start Merging"
-        description={`${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} will be sent to the AI merging queue. Source data will be combined into draft product records.`}
-        onConfirm={handleSubmitForConsolidation}
-        confirmLabel="Start Merging"
-        variant="default"
-      />
-
-      {/* 3. Single Product Merging Dialog */}
-      <ConfirmationDialog
-        open={!!confirmConsolidateProduct}
-        onOpenChange={(open) => !open && setConfirmConsolidateProduct(null)}
-        title="Start Merging"
-        description={`Product ${confirmConsolidateProduct?.upc} will be sent to the AI merging queue. Source data will be combined into a draft product record.`}
-        onConfirm={async () => {
-          if (confirmConsolidateProduct) {
-            await handleSingleConsolidate(confirmConsolidateProduct);
-          }
-        }}
-        confirmLabel="Start Merging"
-        variant="default"
       />
 
       {/* 4. Single Product Reset Dialog */}

@@ -98,6 +98,7 @@ export function ActiveConsolidationsTab({
       runningCount: run.runningItems,
       recentItems: [],
       metadata: run.model ? { llm_model: run.model } : {},
+      groupLabel: run.groupLabel,
     };
   }
 

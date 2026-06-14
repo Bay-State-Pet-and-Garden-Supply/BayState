@@ -53,6 +53,8 @@ export interface ConsolidationJob {
  runningCount?: number;
  recentItems?: ConsolidationJobItemActivity[];
  metadata: Record<string, unknown> | null;
+ /** Human-readable group origin label (set for group-consolidated runs). */
+ groupLabel?: string;
 }
 
 export interface ConsolidationHistoryJob {

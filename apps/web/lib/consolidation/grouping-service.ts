@@ -100,6 +100,7 @@ export async function finalizeClassificationBatch(
                 confidence: 0,
                 rawLabel: item.error_message ?? 'Classification failed',
                 rationale: item.error_message ?? 'No result produced',
+                reviewRequired: true,
                 canonicalName: undefined,
             });
             continue;
@@ -126,6 +127,7 @@ export async function finalizeClassificationBatch(
                 confidence: 0,
                 rawLabel: null as any,
                 rationale: rationale || 'No product line name in classification output',
+                reviewRequired: true,
                 canonicalName: undefined,
             });
             continue;
@@ -145,6 +147,7 @@ export async function finalizeClassificationBatch(
                 confidence,
                 rawLabel,
                 rationale: rationale || `Confidence ${confidence.toFixed(2)} below threshold 0.80`,
+                reviewRequired: true,
                 canonicalName: rawLabel,
             });
             continue;
@@ -323,6 +326,68 @@ export async function splitProductLine(
     const line = await upsertProductLine(newProductLineName);
     await reassignProductsToLine(upcs, line.id, line.canonical_name);
     return { productLineId: line.id, movedCount: upcs.length };
+}
+
+/**
+ * Approve a product group (or specific products within it).
+ * Clears product_line_review_required for all products in the group
+ * or for the specified UPCs only.
+ *
+ * @param lineId - The product line ID.
+ * @param upcs - Optional limited set of UPCs to approve. If omitted, approves all.
+ * @returns The number of products approved.
+ */
+export async function approveGroup(
+    lineId: string,
+    upcs?: string[],
+): Promise<number> {
+    const supabase = await createAdminClient();
+
+    let query = supabase
+        .from('products_ingestion')
+        .update({
+            product_line_review_required: false,
+        })
+        .eq('product_line_id', lineId);
+
+    if (upcs && upcs.length > 0) {
+        query = query.in('upc', upcs);
+    }
+
+    const { data, error } = await query.select('upc');
+    if (error) {
+        throw new Error(`Failed to approve products: ${error.message}`);
+    }
+    return data?.length ?? 0;
+}
+
+/**
+ * Accept ungrouped products as Singletons.
+ * Marks them as reviewed with manual assignment source.
+ * Does NOT assign a product_line_id — they remain ungrouped singletons.
+ *
+ * @param upcs - The UPCs to accept as singletons.
+ * @returns The number of products accepted.
+ */
+export async function acceptSingletons(
+    upcs: string[],
+): Promise<number> {
+    const supabase = await createAdminClient();
+
+    const { data, error } = await supabase
+        .from('products_ingestion')
+        .update({
+            product_line_review_required: false,
+            product_line_assignment_source: 'manual',
+        })
+        .in('upc', upcs)
+        .is('product_line_id', null)
+        .select('upc');
+
+    if (error) {
+        throw new Error(`Failed to accept singletons: ${error.message}`);
+    }
+    return data?.length ?? 0;
 }
 
 /**
