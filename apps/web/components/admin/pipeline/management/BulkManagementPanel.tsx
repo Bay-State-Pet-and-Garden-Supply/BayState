@@ -28,6 +28,8 @@ export function BulkManagementPanel({
   onSuccess,
 }: BulkManagementPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [liveReadiness, setLiveReadiness] = useState<Record<string, { configured: boolean; reason?: string }> | null>(null);
+  const [checkingReadiness, setCheckingReadiness] = useState(false);
 
   // Calculate statistics for selected cohorts
   const selectedCohortsList = useMemo(() => {
@@ -44,18 +46,70 @@ export function BulkManagementPanel({
     return selectedCohortsList.reduce((acc, curr) => acc + curr.count, 0);
   }, [selectedCohortsList]);
 
-  // Check if all selected cohorts have source cascade configured
-  const allCascadesConfigured = useMemo(() => {
-    return selectedCohortsList.every(({ brand }) => {
-      return brand?.id && brand?.source_cascade_configured_at;
-    });
+  // Fetch live cascade readiness for all selected brands
+  useEffect(() => {
+    const brandIds = selectedCohortsList
+      .map(({ brand }) => brand?.id)
+      .filter((id): id is string => !!id);
+
+    if (brandIds.length === 0) {
+      setLiveReadiness(null);
+      return;
+    }
+
+    let active = true;
+    setCheckingReadiness(true);
+
+    async function check() {
+      try {
+        const res = await fetch('/api/admin/brands/source-cascade/readiness', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brandIds }),
+        });
+        if (!res.ok) throw new Error('Failed to check readiness');
+        const data = await res.json();
+        if (active) {
+          setLiveReadiness(data.readiness ?? null);
+        }
+      } catch {
+        if (active) {
+          setLiveReadiness(null);
+        }
+      } finally {
+        if (active) setCheckingReadiness(false);
+      }
+    }
+
+    void check();
+    return () => { active = false; };
   }, [selectedCohortsList]);
 
-  const unconfiguredBrands = useMemo(() => {
-    return selectedCohortsList
+  // Determine cascade readiness from live data, falling back to stale brand prop
+  const { allCascadesConfigured, unconfiguredBrands } = useMemo(() => {
+    if (liveReadiness) {
+      const configured = selectedCohortsList.every(({ brand }) => {
+        if (!brand?.id) return false;
+        return liveReadiness[brand.id]?.configured === true;
+      });
+      const unconfigured = selectedCohortsList
+        .filter(({ brand }) => {
+          if (!brand?.id) return true;
+          return liveReadiness[brand.id]?.configured !== true;
+        })
+        .map(({ name }) => name);
+      return { allCascadesConfigured: configured, unconfiguredBrands: unconfigured };
+    }
+
+    // Fallback: use stale brand.source_cascade_configured_at from props
+    const configured = selectedCohortsList.every(({ brand }) => {
+      return brand?.id && brand?.source_cascade_configured_at;
+    });
+    const unconfigured = selectedCohortsList
       .filter(({ brand }) => !brand?.id || !brand?.source_cascade_configured_at)
       .map(({ name }) => name);
-  }, [selectedCohortsList]);
+    return { allCascadesConfigured: configured, unconfiguredBrands: unconfigured };
+  }, [selectedCohortsList, liveReadiness]);
 
   const handleStartBulkExtraction = async () => {
     if (totalProductsCount === 0) {
@@ -76,21 +130,14 @@ export function BulkManagementPanel({
         throw new Error('No UPCs were resolved for extraction');
       }
 
-      const response = await fetch('/api/admin/pipeline/bulk', {
+      const response = await fetch('/api/admin/enrichment/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           upcs: allUpcs,
-          toStatus: 'extracting',
-          resetResults: true,
+          retryMode: 'all',
         }),
       });
-
-      if (response.status === 404) {
-        toast.error("The enrichment pipeline has been replaced by the source cascade.");
-        setIsSaving(false);
-        return;
-      }
 
       const payload = await response.json().catch(() => ({}));
 
@@ -98,8 +145,15 @@ export function BulkManagementPanel({
         throw new Error(payload.error || 'Failed to start bulk extraction');
       }
 
+      const jobIds = Array.isArray(payload.jobIds) ? payload.jobIds : [];
+      const skippedCount = Array.isArray(payload.skippedUpcs) ? payload.skippedUpcs.length : 0;
+
       toast.success(`Extraction started for ${selectedCohortIds.size} cohorts (${allUpcs.length} products)!`, {
-        description: `Job ID: ${(payload.jobId || '').slice(0, 8)}...`,
+        description: jobIds.length > 0
+          ? `Job ID${jobIds.length > 1 ? 's' : ''}: ${jobIds.map((id: string) => id.slice(0, 8)).join(', ')}`
+          : skippedCount > 0
+            ? `${skippedCount} product${skippedCount > 1 ? 's' : ''} skipped (missing brand/cascade)`
+            : undefined,
       });
       onSuccess();
     } catch (error: any) {

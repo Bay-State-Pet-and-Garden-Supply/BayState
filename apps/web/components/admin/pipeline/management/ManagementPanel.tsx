@@ -70,28 +70,21 @@ export function ManagementPanel({
     return () => { active = false; };
   }, [selectedBrand?.id]);
 
-  const handleStartExtraction = async () => {
+    const handleStartExtraction = async () => {
     if (!cohortId) return;
 
     setIsSaving(true);
     try {
       const upcs = products.map((product) => product.upc);
 
-      const response = await fetch('/api/admin/pipeline/bulk', {
+      const response = await fetch('/api/admin/enrichment/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           upcs,
-          toStatus: 'extracting',
-          resetResults: true,
+          retryMode: 'all',
         }),
       });
-
-      if (response.status === 404) {
-        toast.error("The enrichment pipeline has been replaced by the source cascade.");
-        setIsSaving(false);
-        return;
-      }
 
       const payload = await response.json().catch(() => ({}));
 
@@ -99,8 +92,15 @@ export function ManagementPanel({
         throw new Error(payload.error || 'Failed to start extraction');
       }
 
+      const jobIds = Array.isArray(payload.jobIds) ? payload.jobIds : [];
+      const skippedCount = Array.isArray(payload.skippedUpcs) ? payload.skippedUpcs.length : 0;
+
       toast.success(`Extraction started for ${upcs.length} products`, {
-        description: `Job ID: ${(payload.jobId || '').slice(0, 8)}...`,
+        description: jobIds.length > 0
+          ? `Job ID${jobIds.length > 1 ? 's' : ''}: ${jobIds.map((id: string) => id.slice(0, 8)).join(', ')}`
+          : skippedCount > 0
+            ? `${skippedCount} product${skippedCount > 1 ? 's' : ''} skipped (missing brand/cascade)`
+            : undefined,
       });
       onSuccess();
     } catch (error: any) {

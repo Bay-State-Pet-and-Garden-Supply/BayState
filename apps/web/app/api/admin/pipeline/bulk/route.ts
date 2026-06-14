@@ -104,6 +104,16 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        // Reject direct extraction transitions — use the Source Cascade endpoint.
+        // Must be checked BEFORE bulkUpdateStatus to avoid mutating products first.
+        if (toStatus === 'extracting') {
+            return NextResponse.json({
+                error: 'Direct status transition to extracting is no longer supported. '
+                    + 'Use POST /api/admin/enrichment/jobs with { upcs } to start '
+                    + 'Source Cascade extraction. See docs/adr/0001-automated-source-cascade.md.',
+            }, { status: 400 });
+        }
+
         const result = await bulkUpdateStatus(upcs, toStatus, auth.user.id, resetResults);
 
         if (!result.success) {
@@ -113,30 +123,6 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: 'Invalid transitions', invalidUpcs }, { status: 400 });
             }
             return NextResponse.json({ error: result.error }, { status: 500 });
-        }
-
-        // Create enrichment_job for the Extracting tab to display
-        if (toStatus === 'extracting') {
-            try {
-                const adminClient = await createAdminClient();
-                const jobId = `cascade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-                await adminClient.from('enrichment_jobs').insert({
-                    id: jobId,
-                    mode: 'distributor_only',
-                    model: 'source-cascade',
-                    status: 'pending',
-                    upcs: upcs,
-                    total_count: upcs.length,
-                    completed_count: 0,
-                    failed_count: 0,
-                    config: { source_kind: 'static_scraper', auto: true },
-                    test_metadata: {},
-                    test_mode: false,
-                    token_usage: {},
-                });
-            } catch (err) {
-                console.warn('[Pipeline Bulk] enrichment_job create failed:', err);
-            }
         }
 
         return NextResponse.json({

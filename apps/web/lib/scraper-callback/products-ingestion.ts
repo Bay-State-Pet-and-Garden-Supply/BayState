@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@/lib/supabase/server';
+import type { PersistedPipelineStatus } from '@/lib/pipeline/types';
 import {
   hasMeaningfulProductSourceData,
   mergeProductSources,
@@ -147,6 +148,10 @@ function attachProvenance(
 /**
  * Strict persistence — throws MissingProductsIngestionUpcsError if any UPC
  * is missing from products_ingestion. No rows are written in that case.
+ *
+ * @param statusByUpc Optional explicit status map. When provided, each UPC's
+ *   pipeline_status is set to the mapped value (or skipped if undefined)
+ *   instead of the automatic hasMeaningfulProductSourceData → processed rule.
  */
 export async function persistProductsIngestionSourcesStrict(
   supabase: SupabaseClient,
@@ -154,6 +159,7 @@ export async function persistProductsIngestionSourcesStrict(
   isTestJob: boolean,
   nowIso: string,
   provenance?: ProvenanceContext,
+  statusByUpc?: Record<string, PersistedPipelineStatus | undefined>,
 ): Promise<string[]> {
   const upcs = Object.keys(upcData);
   if (upcs.length === 0) {
@@ -169,14 +175,17 @@ export async function persistProductsIngestionSourcesStrict(
     throw new MissingProductsIngestionUpcsError(missingUpcs);
   }
 
-  // Move products to processed as soon as any source produces meaningful data.
-  // This ensures products don't get stuck in extracting when the source cascade completes.
-  const skipStatusUpdate = false;
-
   const updateRows = await Promise.all(upcs.map(async (upc) => {
     const existingRow = existingSourcesByUpc.get(upc)!;
     const scrapedData = await makeIncomingSourcesDurable(supabase, upc, upc, enrichedUpcData[upc] || upcData[upc]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
+
+    // Cascade callers provide explicit statusByUpc (e.g. from ADR 0002 found-wins).
+    // Non-cascade callers use the legacy hasMeaningfulData → processed rule.
+    const explicitStatus = statusByUpc?.[upc];
+    const finalStatus =
+      explicitStatus ??
+      (hasMeaningfulData ? 'processed' as const : undefined);
 
     const updatedSources = mergeProductSources(existingRow.sources, scrapedData);
 
@@ -185,11 +194,7 @@ export async function persistProductsIngestionSourcesStrict(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData && !skipStatusUpdate
-        ? {
-            pipeline_status: 'processed' as const,
-          }
-        : {}),
+      ...(finalStatus ? { pipeline_status: finalStatus } : {}),
     };
   }));
 
@@ -207,6 +212,10 @@ export async function persistProductsIngestionSourcesStrict(
 /**
  * Partial persistence — persists data for UPCs that exist in products_ingestion,
  * skips missing ones, and reports both lists. Never throws for missing UPCs.
+ *
+ * @param statusByUpc Optional explicit status map. When provided, each UPC's
+ *   pipeline_status is set to the mapped value (or skipped if undefined)
+ *   instead of the automatic hasMeaningfulProductSourceData → processed rule.
  */
 export async function persistProductsIngestionSourcesPartial(
   supabase: SupabaseClient,
@@ -214,6 +223,7 @@ export async function persistProductsIngestionSourcesPartial(
   isTestJob: boolean,
   nowIso: string,
   provenance?: ProvenanceContext,
+  statusByUpc?: Record<string, PersistedPipelineStatus | undefined>,
 ): Promise<PartialPersistenceResult> {
   const upcs = Object.keys(upcData);
   if (upcs.length === 0) {
@@ -237,14 +247,17 @@ export async function persistProductsIngestionSourcesPartial(
     return { persisted: [], missing };
   }
 
-  // Move products to processed as soon as any source produces meaningful data.
-  // This ensures products don't get stuck in extracting when the source cascade completes.
-  const skipStatusUpdate = false;
-
   const updateRows = await Promise.all(toUpdateUpcs.map(async (upc) => {
     const existingRow = existingSourcesByUpc.get(upc)!;
     const scrapedData = await makeIncomingSourcesDurable(supabase, upc, upc, enrichedUpcData[upc] || upcData[upc]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
+
+    // Cascade callers provide explicit statusByUpc (e.g. from ADR 0002 found-wins).
+    // Non-cascade callers use the legacy hasMeaningfulData → processed rule.
+    const explicitStatus = statusByUpc?.[upc];
+    const finalStatus =
+      explicitStatus ??
+      (hasMeaningfulData ? 'processed' as const : undefined);
 
     const updatedSources = mergeProductSources(existingRow.sources, scrapedData);
 
@@ -253,11 +266,7 @@ export async function persistProductsIngestionSourcesPartial(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData && !skipStatusUpdate
-        ? {
-            pipeline_status: 'processed' as const,
-          }
-        : {}),
+      ...(finalStatus ? { pipeline_status: finalStatus } : {}),
     };
   }));
 

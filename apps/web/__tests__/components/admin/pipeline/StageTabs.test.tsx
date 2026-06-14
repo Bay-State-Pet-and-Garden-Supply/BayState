@@ -14,6 +14,7 @@ const counts: StatusCount[] = [
   { status: "merging", count: 3 },
   { status: "reviewing", count: 7 },
   { status: "publishing", count: 8 },
+  { status: "needs_attention", count: 0 },
   { status: "failed", count: 1 },
 ];
 
@@ -28,7 +29,7 @@ describe("StageTabs", () => {
     );
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.length).toBe(8);
+    expect(tabs.length).toBe(9);
 
     expect(screen.getByRole("tab", { name: /^Imported/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^Extracting/i })).toBeInTheDocument();
@@ -36,6 +37,7 @@ describe("StageTabs", () => {
     expect(screen.getByRole("tab", { name: /^Merging/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^Reviewing/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^Publishing/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Needs Attention/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^Failed/i })).toBeInTheDocument();
   });
 

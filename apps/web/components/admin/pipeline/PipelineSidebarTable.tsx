@@ -44,6 +44,8 @@ interface PipelineSidebarTableProps {
   variant: PipelineSidebarTableVariant;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   scrollContainerRef?: React.RefObject<VirtualizedPipelineTableHandle | null>;
+  /** Preloaded cascade readiness per cohort (keyed by cohortId). Passed to sidebar header rows. */
+  cohortReadiness?: Record<string, 'ready' | 'not_configured' | 'no_brand' | 'unknown'>;
 }
 
 /**
@@ -70,6 +72,7 @@ export function PipelineSidebarTable({
   variant,
   onEditCohort,
   scrollContainerRef: externalRef,
+  cohortReadiness,
 }: PipelineSidebarTableProps) {
   const internalRef = React.useRef<VirtualizedPipelineTableHandle>(null);
   const scrollContainerRef = externalRef || internalRef;
@@ -286,6 +289,7 @@ export function PipelineSidebarTable({
           showCheckboxes={showCheckboxes}
           isCohortSelected={selectedCohortIds?.has(item.cohortId)}
           onSelectCohortChange={onSelectCohort ? (checked) => onSelectCohort(item.cohortId, checked) : undefined}
+          cascadeState={cohortReadiness?.[item.cohortId] ?? 'unknown'}
         />
       );
     }

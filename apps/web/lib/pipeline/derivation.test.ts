@@ -93,6 +93,7 @@ describe("WORKFLOW_PIPELINE_TABS", () => {
       "imported",
       "extracting",
       "processed",
+      "grouping",
       "merging",
       "reviewing",
       "publishing",

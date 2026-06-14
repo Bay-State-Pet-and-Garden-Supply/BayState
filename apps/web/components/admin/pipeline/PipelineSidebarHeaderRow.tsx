@@ -28,6 +28,8 @@ interface PipelineSidebarHeaderRowProps {
   showCheckboxes?: boolean;
   isCohortSelected?: boolean;
   onSelectCohortChange?: (checked: boolean) => void;
+  /** Cascade readiness state for this cohort's brand: 'ready' | 'not_configured' | 'no_brand' | 'unknown' */
+  cascadeState?: 'ready' | 'not_configured' | 'no_brand' | 'unknown';
 }
 
 /**
@@ -51,6 +53,7 @@ export function PipelineSidebarHeaderRow({
   showCheckboxes = true,
   isCohortSelected = false,
   onSelectCohortChange,
+  cascadeState = 'unknown',
 }: PipelineSidebarHeaderRowProps) {
   const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedUpcs.has(p.upc));
   const someSelected = groupProducts.some((p) => selectedUpcs.has(p.upc)) && !allSelected;
@@ -135,6 +138,21 @@ export function PipelineSidebarHeaderRow({
               )}>
                 {cohortBrand}
               </Badge>
+            )}
+            {cascadeState === 'ready' && (
+              <span className="inline-flex items-center h-4 text-[8px] font-bold uppercase tracking-wider px-1 rounded-none border border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10 shrink-0">
+                Ready
+              </span>
+            )}
+            {cascadeState === 'not_configured' && (
+              <span className="inline-flex items-center h-4 text-[8px] font-bold uppercase tracking-wider px-1 rounded-none border border-destructive/60 text-destructive bg-destructive/5 shrink-0">
+                No config
+              </span>
+            )}
+            {cascadeState === 'no_brand' && (
+              <span className="inline-flex items-center h-4 text-[8px] font-bold uppercase tracking-wider px-1 rounded-none border border-amber-500/60 text-amber-700 dark:text-amber-400 bg-amber-500/10 shrink-0">
+                Needs brand
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-auto">

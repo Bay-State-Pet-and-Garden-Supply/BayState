@@ -129,13 +129,12 @@ export function NeedsAttentionView({
     });
 
     try {
-      const res = await adminFetch("/api/admin/pipeline/bulk", {
+      const res = await adminFetch("/api/admin/enrichment/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           upcs,
-          toStatus: "extracting",
-          resetResults: true,
+          retryMode: "failed_or_untried",
         }),
       });
 
@@ -144,10 +143,22 @@ export function NeedsAttentionView({
         throw new Error(err.error || "Failed to retry extraction");
       }
 
-      toast.success(`Re-extraction started for ${upcs.length} products`, {
-        description: "Only failed/untried sources will be retried.",
-      });
-      await fetchProducts();
+      const data = await res.json();
+      const jobId = data.jobIds?.[0] ?? "";
+      const skippedCount = data.skippedUpcs?.length ?? 0;
+
+      toast.success(
+        `Re-extraction queued for ${upcs.length} product${upcs.length === 1 ? "" : "s"}`,
+        {
+          description: skippedCount > 0
+            ? `${skippedCount} UPC${skippedCount === 1 ? "" : "s"} skipped (no valid source plans). ${jobId ? `Job: ${jobId.slice(0, 8)}…` : ""}`
+            : `Only failed or untried sources will be retried.${jobId ? ` Job: ${jobId.slice(0, 8)}…` : ""}`,
+        },
+      );
+      await new Promise((r) => setTimeout(r, 1000));
+      const result = await fetchProducts();
+      setProducts(result.fetchedProducts);
+      setSourceErrorGroups(result.groups);
       onRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to retry extraction");
@@ -180,7 +191,10 @@ export function NeedsAttentionView({
         throw new Error(err.error || "Failed to reset products");
       }
 
-      toast.success(`${upcs.length} product${upcs.length === 1 ? "" : "s"} returned to Imported`);
+      toast.success(
+        `Full reset: ${upcs.length} product${upcs.length === 1 ? "" : "s"} returned to Imported`,
+        { description: "Source attempt history is preserved. Products can be re-extracted from scratch." },
+      );
       const result = await fetchProducts();
       setProducts(result.fetchedProducts);
       setSourceErrorGroups(result.groups);
@@ -346,7 +360,7 @@ export function NeedsAttentionView({
                           disabled={submittingUpcs.size > 0}
                         >
                           <ArrowLeft className="h-3 w-3 mr-1" />
-                          Return to Imported
+                          Full Reset
                         </Button>
                       </div>
                     </div>
@@ -412,7 +426,7 @@ export function NeedsAttentionView({
                     disabled={submittingUpcs.has(product.upc)}
                   >
                     <ArrowLeft className="h-3 w-3 mr-1" />
-                    Reset
+                    Full Reset
                   </Button>
                 </div>
               </div>

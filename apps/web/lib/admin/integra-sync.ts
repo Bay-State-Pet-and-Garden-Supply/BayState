@@ -18,7 +18,7 @@ export interface SyncAnalysis {
   newProducts: IntegraProduct[];
 }
 
-const INITIAL_ONBOARDING_PIPELINE_STATUS = "imported";
+const INITIAL_ONBOARDING_PIPELINE_STATUS = "awaiting_brand";
 
 /**
  * Parses an Integra Excel export.
@@ -510,7 +510,7 @@ export async function pushRegisterOnlyIssuesToPipeline(
           sync_run_id: issue.reconciliation_id,
           reconciliation_item_id: issue.id,
         },
-        pipeline_status: 'imported',
+        pipeline_status: 'awaiting_brand',
       }, { onConflict: 'upc' });
 
     if (insertError) {

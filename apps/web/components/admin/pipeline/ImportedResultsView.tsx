@@ -92,6 +92,79 @@ export function ImportedResultsView({
   const [selectedCohortIds, setSelectedCohortIds] = useState<Set<string>>(new Set());
   const [selectedProductUpcs, setSelectedProductUpcs] = useState<Set<string>>(new Set());
 
+  // 3. Cascade Readiness Preloading
+  const [cohortReadiness, setCohortReadiness] = useState<Record<string, 'ready' | 'not_configured' | 'no_brand' | 'unknown'>>({});
+
+  // Preload cascade readiness for visible cohorts whenever groupedProducts changes
+  useEffect(() => {
+    if (!groupedProducts || groupedProducts.cohortIds.length === 0) {
+      setCohortReadiness({});
+      return;
+    }
+
+    // Collect unique brand IDs from cohortBrandObjects
+    const brandIds = new Set<string>();
+    const cohortToBrandMap: Record<string, string | null> = {};
+
+    for (const cohortId of groupedProducts.cohortIds) {
+      const brand = cohortBrandObjects[cohortId];
+      if (brand?.id) {
+        brandIds.add(brand.id);
+        cohortToBrandMap[cohortId] = brand.id;
+      } else {
+        cohortToBrandMap[cohortId] = null;
+      }
+    }
+
+    // Initialize with no_brand for brandless cohorts
+    const initialReadiness: Record<string, 'ready' | 'not_configured' | 'no_brand' | 'unknown'> = {};
+    for (const cohortId of groupedProducts.cohortIds) {
+      initialReadiness[cohortId] = cohortToBrandMap[cohortId] ? 'unknown' : 'no_brand';
+    }
+    setCohortReadiness(initialReadiness);
+
+    if (brandIds.size === 0) return;
+
+    let active = true;
+
+    async function loadReadiness() {
+      try {
+        const res = await fetch('/api/admin/brands/source-cascade/readiness', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brandIds: Array.from(brandIds) }),
+        });
+        if (!res.ok) throw new Error('Failed to load cascade readiness');
+        const data = await res.json();
+        if (!active) return;
+
+        const readiness = data.readiness as Record<string, { configured: boolean }> | undefined;
+        if (!readiness || !groupedProducts) return;
+
+        const updated: Record<string, 'ready' | 'not_configured' | 'no_brand' | 'unknown'> = {};
+        for (const cohortId of groupedProducts.cohortIds) {
+          const brandId = cohortToBrandMap[cohortId];
+          if (!brandId) {
+            updated[cohortId] = 'no_brand';
+          } else if (readiness[brandId]?.configured === true) {
+            updated[cohortId] = 'ready';
+          } else {
+            updated[cohortId] = 'not_configured';
+          }
+        }
+        setCohortReadiness(updated);
+      } catch {
+        // Non-critical: sidebar badges just stay at initial state
+        if (active) {
+          console.warn('[ImportedResultsView] Failed to preload cascade readiness');
+        }
+      }
+    }
+
+    void loadReadiness();
+    return () => { active = false; };
+  }, [groupedProducts, cohortBrandObjects]);
+
   const handleSelectCohort = (cohortId: string, isSelected: boolean) => {
     setSelectedCohortIds((prev) => {
       const next = new Set(prev);
@@ -277,6 +350,7 @@ export function ImportedResultsView({
           selectedCohortIds={selectedCohortIds}
           onSelectCohort={handleSelectCohort}
           variant="imported"
+          cohortReadiness={cohortReadiness}
         />
       </div>
 

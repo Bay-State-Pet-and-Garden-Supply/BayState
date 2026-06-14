@@ -596,21 +596,27 @@ export async function scrapeProducts(
     }
 
     const testMode = options?.testMode ?? false;
+    const retryMode = options?.retryMode ?? 'all';
 
     const supabase = await createClient();
 
     // Build Approved Source Plans using the automated cascade
     const sourcePlansByUpc: Record<string, any> = {};
-    const skippedUpcs: string[] = [];
+    const skippedDetails: Array<{ upc: string; reason: string }> = [];
     try {
-        const plans = await buildApprovedSourcePlans(supabase, upcs, {});
+        const plans = await buildApprovedSourcePlans(supabase, upcs, {
+            retryMode,
+        });
 
         for (const [upc, result] of Object.entries(plans)) {
             if (result.ok) {
                 sourcePlansByUpc[upc] = result.plan;
             } else {
-                skippedUpcs.push(upc);
-                console.warn(`[Pipeline Scraping] Skipping UPC ${upc} because plan building failed: ${result.error}`);
+                const reason = result.code
+                    ? `${result.code}: ${result.error}`
+                    : result.error || 'Unknown error building source plan';
+                skippedDetails.push({ upc, reason });
+                console.warn(`[Pipeline Scraping] Skipping UPC ${upc}: ${reason}`);
             }
         }
     } catch (e) {
@@ -622,7 +628,8 @@ export async function scrapeProducts(
     if (brandedUpcs.length === 0) {
         return {
             success: false,
-            error: 'No valid approved source plans could be built for the selected UPCs. Assign a brand with an enabled source cascade in Brand Settings.'
+            error: 'No valid approved source plans could be built for the selected UPCs. Assign a brand with an enabled source cascade in Brand Settings.',
+            skippedUpcs: skippedDetails,
         };
     }
 
@@ -632,6 +639,7 @@ export async function scrapeProducts(
 
     const jobMode = 'mixed';
     const jobModel = null;
+    const retryModeLabel = retryMode === 'failed_or_untried' ? ' (incremental retry)' : '';
     const jobConfig = {
         upc_context: standardUpcContext,
         test_mode: testMode,
@@ -640,6 +648,8 @@ export async function scrapeProducts(
         source_type: 'approved_source_extraction',
         source_plans_by_upc: sourcePlansByUpc,
         cascade_version: 'v1',
+        retry_mode: retryMode,
+        job_label: `Source Cascade${retryModeLabel}`,
         serp_fallback_policy: 'run_when_all_distributors_clean_not_stocked',
     };
 
@@ -670,33 +680,45 @@ export async function scrapeProducts(
         return { success: false, error: `Failed to create enrichment job: ${errorMessage}` };
     }
 
-    const attemptResult = await createEnrichmentAttempts(
-        supabase,
-        job.id,
-        brandedUpcs,
-        jobMode,
-        jobModel
-    );
+    // Create enrichment attempts with the approved_source_extraction sentinel
+    const attempts = brandedUpcs.map((upc) => ({
+        job_id: job.id,
+        upc,
+        attempt_number: 1,
+        status: 'queued' as const,
+        mode: jobMode,
+        model: jobModel,
+        source_url: 'approved_source_extraction', // Sentinel — runner knows to use source plan
+    }));
 
-    if (!attemptResult.success) {
+    const { error: attemptsError } = await supabase
+        .from('enrichment_attempts')
+        .insert(attempts);
+
+    if (attemptsError) {
+        console.error('[Pipeline Scraping] Failed to create enrichment attempts:', attemptsError);
         await supabase.from('enrichment_jobs').delete().eq('id', job.id);
-        return { success: false, error: attemptResult.error };
+        return { success: false, error: `Failed to create enrichment attempts: ${attemptsError.message}` };
     }
 
     if (!testMode) {
-        // Only transition imported products to extracting
-        // Products already in processed/needs_attention stay in their status
-        // (the callback finalizes the re-extraction status)
+        // Transition eligible UPCs to extracting based on their current status
+        // The requestedFromStatus option controls which UPCs are eligible.
+        // Default behavior: transition all branded UPCs to extracting.
         const { data: existingProducts } = await supabase
             .from('products_ingestion')
             .select('upc, pipeline_status')
             .in('upc', brandedUpcs);
 
-        const importingUpcs = (existingProducts ?? [])
-            .filter((p: { upc: string; pipeline_status: string }) => p.pipeline_status === 'imported')
+        // Statuses eligible for transition to extracting
+        const eligibleStatuses = ['imported', 'processed', 'needs_attention', 'extracting'];
+
+        const transitionUpcs = (existingProducts ?? [])
+            .filter((p: { upc: string; pipeline_status: string }) =>
+                eligibleStatuses.includes(p.pipeline_status))
             .map((p: { upc: string }) => p.upc);
 
-        if (importingUpcs.length > 0) {
+        if (transitionUpcs.length > 0) {
             const { error: statusError } = await supabase
                 .from('products_ingestion')
                 .update({
@@ -704,7 +726,7 @@ export async function scrapeProducts(
                     updated_at: new Date().toISOString(),
                     error_message: null,
                 })
-                .in('upc', importingUpcs);
+                .in('upc', transitionUpcs);
 
             if (statusError) {
                 console.error('[Pipeline Scraping] Failed to move products into extracting:', statusError);
@@ -720,5 +742,6 @@ export async function scrapeProducts(
     return {
         success: true,
         jobIds: [job.id],
+        skippedUpcs: skippedDetails.length > 0 ? skippedDetails : undefined,
     };
 }

@@ -311,6 +311,106 @@ export function getJobDisplayStatus(job: JobAssignment): MonitoringJobStatus {
   return isJobStalled(job) ? "stalled" : job.status;
 }
 
+// =============================================================================
+// Cascade extraction helpers (for product-level progress view)
+// =============================================================================
+
+export interface CascadeProductProgress {
+  upc: string;
+  productName: string | null;
+  attemptStatus: string | null;
+  claimed: boolean;
+  runnerName: string | null;
+  sourceCounts: {
+    found: number;
+    not_stocked: number;
+    source_error: number;
+    skipped: number;
+  };
+  totalSources: number;
+  sourceOutcomes: Array<{
+    source_slug: string;
+    outcome: string;
+    attempted_at: string | null;
+    error_message: string | null;
+  }>;
+}
+
+/**
+ * Compute a display status for a cascade product based on attempt/source state.
+ *   queued: no attempt or attempt is queued/pending
+ *   running: attempt is running/claimed
+ *   completed: attempt completed with at least one source found
+ *   failed: attempt completed with all sources errored
+ */
+export function getCascadeProductStatus(
+  progress: CascadeProductProgress,
+): "queued" | "running" | "completed" | "failed" {
+  if (progress.attemptStatus === "running" || progress.attemptStatus === "claimed") {
+    return "running";
+  }
+  if (
+    progress.attemptStatus === "success" ||
+    progress.attemptStatus === "partial" ||
+    progress.attemptStatus === "completed"
+  ) {
+    return progress.sourceCounts.found > 0 ? "completed" : "failed";
+  }
+  if (progress.attemptStatus === "failed" || progress.attemptStatus === "cancelled") {
+    return "failed";
+  }
+  // No attempt or queued/pending
+  if (!progress.attemptStatus || progress.attemptStatus === "queued" || progress.attemptStatus === "pending") {
+    return "queued";
+  }
+  return "queued";
+}
+
+/**
+ * Human-readable summary of source progress.
+ * Examples: "2/5 sources done, 1 errored", "3 sources found"
+ */
+export function getSourceProgressLabel(progress: CascadeProductProgress): string {
+  const total = progress.totalSources;
+  const done = progress.sourceCounts.found + progress.sourceCounts.not_stocked;
+
+  if (total === 0) {
+    if (progress.attemptStatus === "queued" || !progress.attemptStatus) {
+      return "Waiting for runner…";
+    }
+    return "No source data";
+  }
+
+  const parts: string[] = [];
+  if (done > 0) {
+    parts.push(`${done}/${total} sources done`);
+  }
+  if (progress.sourceCounts.source_error > 0) {
+    parts.push(`${progress.sourceCounts.source_error} errored`);
+  }
+  if (progress.sourceCounts.skipped > 0) {
+    parts.push(`${progress.sourceCounts.skipped} skipped`);
+  }
+
+  return parts.length > 0 ? parts.join(", ") : `${total} sources pending`;
+}
+
+/**
+ * Check if a cascade product is orphaned: in extracting status but
+ * no active or queued enrichment attempt exists.
+ */
+export function isCascadeProductOrphaned(progress: CascadeProductProgress): boolean {
+  return (
+    !progress.attemptStatus ||
+    progress.attemptStatus === "failed" ||
+    progress.attemptStatus === "cancelled"
+  );
+}
+
+// =============================================================================
+// Original job-level helpers (unchanged below)
+// =============================================================================
+
 export function getJobActivitySummary(job: JobAssignment) {
   if (job.progress_message?.trim()) {
     return job.progress_message.trim();

@@ -12,6 +12,7 @@ if (typeof global.ReadableStream === 'undefined') {
 
 type MockNextRequestInit = {
     body?: unknown;
+    headers?: Record<string, string>;
 };
 
 type MockNextResponseInit = {
@@ -23,10 +24,12 @@ export class NextRequest {
     nextUrl: URL;
     bodyUsed = false;
     private readonly requestBody: unknown;
+    readonly headers: Headers;
 
     constructor(url: string, init?: MockNextRequestInit) {
         this.nextUrl = new URL(url);
         this.requestBody = init?.body;
+        this.headers = new Headers(init?.headers ?? {});
     }
 
     async json() {

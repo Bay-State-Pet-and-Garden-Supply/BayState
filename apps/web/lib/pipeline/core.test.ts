@@ -14,11 +14,12 @@ describe('STATUS_TRANSITIONS', () => {
       awaiting_brand: ['imported', 'failed'],
       imported: ['extracting', 'awaiting_brand', 'failed'],
       extracting: ['processed', 'needs_attention', 'imported', 'failed'],
-      processed: ['extracting', 'merging', 'reviewing', 'imported', 'failed'],
+      needs_attention: ['imported', 'extracting', 'processed', 'failed'],
+      processed: ['extracting', 'grouping', 'merging', 'reviewing', 'imported', 'failed'],
+      grouping: ['merging', 'processed', 'failed'],
       merging: ['reviewing', 'processed', 'failed'],
       reviewing: ['publishing', 'processed', 'failed'],
       publishing: ['reviewing', 'failed'],
-      needs_attention: ['imported', 'extracting', 'processed', 'failed'],
       failed: ['imported', 'extracting'],
     });
   });
