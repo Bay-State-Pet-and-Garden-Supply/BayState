@@ -460,17 +460,10 @@ export async function processDirectChatChunk(
                     const { parseClassificationResponse } = await import('./product-line-classification');
                     const classificationResult = parseClassificationResponse(item.upc ?? 'unknown', content);
 
+                    // Store the raw classification result directly so finalizeClassificationBatch
+                    // can read product_line / confidence / rationale fields.
                     parsed = classificationResult
-                        ? {
-                            upc: item.upc ?? 'unknown',
-                            confidence_score: classificationResult.confidence,
-                            name: classificationResult.product_line,
-                            description: classificationResult.rationale,
-                            brand: '',
-                            weight: '',
-                            category: '',
-                            search_keywords: '',
-                          } as ConsolidationResult
+                        ? (classificationResult as unknown as ConsolidationResult)
                         : null;
 
                     if (!content.trim() || !classificationResult) {
