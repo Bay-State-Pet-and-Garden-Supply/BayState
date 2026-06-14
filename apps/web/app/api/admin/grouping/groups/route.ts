@@ -13,6 +13,13 @@ function buildProductPreview(product: Record<string, unknown>): {
     image_count: number;
     brand: string | null;
     variant_summary: string | null;
+    source_brand: string | null;
+    source_category: string | null;
+    source_family: string | null;
+    source_product_name: string | null;
+    packaging_text: string | null;
+    classification_rationale: string | null;
+    classification_raw_label: string | null;
 } {
     const input = product.input as Record<string, unknown> | null;
     const consolidated = product.consolidated as Record<string, unknown> | null;
@@ -94,6 +101,34 @@ function buildProductPreview(product: Record<string, unknown>): {
         if (imageUrl) imageSource = 'sources';
     }
 
+    // Source evidence for classification verification
+    let sourceBrand: string | null = null;
+    let sourceCategory: string | null = null;
+    let sourceFamily: string | null = null;
+    let sourceProductName: string | null = null;
+    let packagingText: string | null = null;
+    
+    const TRUSTED = ['shopsite_input', 'bradley', 'central-pet', 'central_pet', 'orgill', 'doitbest', 'do_it_best', 'manufacturer', 'catalog', 'distributor', 'official_brand', 'official-brand'];
+    
+    if (sources && typeof sources === 'object') {
+        for (const [sourceName, srcData] of Object.entries(sources)) {
+            if (!srcData || typeof srcData !== 'object') continue;
+            const s = srcData as Record<string, unknown>;
+            const isTrusted = TRUSTED.some(t => sourceName.toLowerCase().includes(t));
+            
+            if (!sourceBrand && typeof s.brand === 'string' && s.brand.trim()) sourceBrand = s.brand.trim().replace(/^brand\s*:\s*/i, '');
+            if (!sourceCategory && typeof s.category === 'string' && s.category.trim()) sourceCategory = s.category.trim();
+            if (!sourceProductName && (typeof s.title === 'string' || typeof s.name === 'string')) sourceProductName = ((s.title || s.name) as string).trim();
+            if (!sourceFamily && typeof s.product_family === 'string' && s.product_family.trim()) sourceFamily = s.product_family.trim();
+            if (!sourceFamily && typeof s.product_line === 'string' && s.product_line.trim()) sourceFamily = s.product_line.trim();
+            
+            // Packaging OCR evidence
+            if (isTrusted && !packagingText && typeof s.image_text === 'string' && s.image_text.trim()) {
+                packagingText = s.image_text.trim().substring(0, 300);
+            }
+        }
+    }
+
     return {
         name,
         image_url: imageUrl,
@@ -101,6 +136,13 @@ function buildProductPreview(product: Record<string, unknown>): {
         image_count: totalImageCount,
         brand,
         variant_summary: variantSummary,
+        source_brand: sourceBrand,
+        source_category: sourceCategory,
+        source_family: sourceFamily,
+        source_product_name: sourceProductName,
+        packaging_text: packagingText,
+        classification_rationale: (product.product_line_rationale as string) || null,
+        classification_raw_label: (product.product_line_raw_label as string) || null,
     };
 }
 
