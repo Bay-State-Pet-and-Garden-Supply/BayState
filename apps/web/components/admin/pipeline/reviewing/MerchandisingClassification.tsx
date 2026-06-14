@@ -14,7 +14,7 @@ import { FINALIZATION_STOCK_STATUS_VALUES } from "@/lib/pipeline/reviewing-draft
 import type { FinalizationDraft } from "@/lib/pipeline/reviewing-draft";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
 import { collectSourceBackedFallbacks } from "@/lib/product-source-fallbacks";
-import { buildProcessedSourceItems } from "../enriched-source-view-model";
+import { buildProcessedSourceItems } from "../source-view-model";
 
 interface Brand {
   id: string;

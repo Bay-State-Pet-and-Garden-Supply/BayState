@@ -35,7 +35,7 @@ const TRUSTED_SOURCE_FRAGMENTS = [
     'official-brand',
 ];
 // Legacy enrichment pipeline produces AI-generated data — explicitly excluded from trusted
-const ENRICHED_SOURCE_FRAGMENT = 'enriched';
+
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
 const CONSISTENCY_RULES = [
     'Keep the same BRAND across sibling products unless higher-trust evidence for this UPC clearly conflicts.',

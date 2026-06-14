@@ -233,7 +233,7 @@ function isAiSource(sourceName: string): boolean {
 }
 
 function isEnrichedSource(sourceName: string): boolean {
-    return sourceName === 'enriched';
+    return false;
 }
 
 function sanitizeAiSourcePayload(value: unknown): unknown {
@@ -487,30 +487,7 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
 
 export function normalizeProductSourcesForReview(rawSources: unknown): ProductSourceMap {
     const normalized = normalizeProductSources(rawSources);
-    const enriched = normalized.enriched;
-    if (!enriched) {
-        return normalized;
-    }
-
-    const result: ProductSourceMap = {};
-    for (const [key, value] of Object.entries(normalized)) {
-        if (key !== 'enriched') {
-            result[key] = value;
-        }
-    }
-
-    const approvedSources = (enriched as any).approved_sources;
-    if (isRecord(approvedSources)) {
-        for (const [slug, snapshot] of Object.entries(approvedSources)) {
-            if (isRecord(snapshot)) {
-                result[slug] = snapshot as CanonicalProductSourceRecord;
-            }
-        }
-    } else {
-        result.enriched = enriched;
-    }
-
-    return result;
+    return normalized;
 }
 
 /**

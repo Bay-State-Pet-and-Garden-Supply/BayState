@@ -37,7 +37,7 @@ import {
   buildProcessedSourceItems,
   formatPipelineSourceSlug,
   type ProcessedSourceViewItem,
-} from './enriched-source-view-model';
+} from './source-view-model';
 
 interface ProcessedResultsViewProps {
   products: PipelineProduct[];

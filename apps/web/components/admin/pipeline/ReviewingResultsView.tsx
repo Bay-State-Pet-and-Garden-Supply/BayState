@@ -38,7 +38,7 @@ import { MerchandisingClassification } from "./reviewing/MerchandisingClassifica
 import type { PipelineFiltersState } from "./PipelineFilters";
 import type { VirtualizedPipelineTableHandle } from "./VirtualizedPipelineTable";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
-import { formatPipelineSourceSlug } from "./enriched-source-view-model";
+import { formatPipelineSourceSlug } from "./source-view-model";
 import {
   applyProductNameTransform,
   applySetProductFieldsToDraft,
