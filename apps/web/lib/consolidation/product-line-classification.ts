@@ -87,12 +87,21 @@ export function extractClassificationEvidence(
         }
     }
 
-    // Fallback to input data
-    if (!trustedName && input && typeof (input as Record<string, unknown>).name === 'string') {
-        trustedName = (input as Record<string, unknown>).name as string;
+    // ShopSite input data is the original import — treat as highest trust for product line detection.
+    // It typically has the cleanest, most canonical product names (e.g. "HONEST KITCHEN BUTCH ER PATE TRKY 10.5OZ").
+    const inputRecord = input as Record<string, unknown> | null | undefined;
+    if (inputRecord?.name && typeof inputRecord.name === 'string' && inputRecord.name.trim()) {
+        const inputName = inputRecord.name.trim();
+        // Only use input name if no trusted source name was found, or if the trusted source
+        // name looks generic/SEO-padded. Input names from ShopSite are typically cleaner.
+        if (!trustedName) {
+            trustedName = inputName;
+        }
+        // Always add input name to the cross-reference list (prefixed for visibility)
+        allSourceNames.unshift(`[shopsite_input] ${inputName}`);
     }
-    if (!trustedBrand && input && typeof (input as Record<string, unknown>).brand === 'string') {
-        trustedBrand = (input as Record<string, unknown>).brand as string;
+    if (!trustedBrand && inputRecord?.brand && typeof inputRecord.brand === 'string') {
+        trustedBrand = inputRecord.brand.trim();
     }
 
     return { name: trustedName, brand: trustedBrand, category, product_family: productFamily, allSourceNames };
