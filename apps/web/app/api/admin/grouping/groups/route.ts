@@ -88,9 +88,12 @@ function buildProductPreview(product: Record<string, unknown>): {
         for (const srcData of Object.values(sources)) {
             if (!srcData || typeof srcData !== 'object') continue;
             const s = srcData as Record<string, unknown>;
-            const imgs = (s.images ?? s.image_urls ?? s.image_url ?? s.image) as unknown[] | undefined;
-            if (Array.isArray(imgs)) {
-                for (const img of imgs) {
+            const imgs = (s.images ?? s.media ?? s.image_urls ?? s.image_url ?? s.image) as unknown[] | undefined;
+            // Also check nested evidence.selected_images (new source cascade format)
+            const evidenceImgs = (s.evidence as Record<string, unknown>)?.selected_images as unknown[] | undefined;
+            const allImgs = imgs || evidenceImgs;
+            if (Array.isArray(allImgs)) {
+                for (const img of allImgs) {
                     const url = typeof img === 'string' ? img : (img as Record<string, unknown>)?.url;
                     if (url && typeof url === 'string' && url.startsWith('http')) {
                         if (!imageUrl) imageUrl = url;
