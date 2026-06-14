@@ -153,17 +153,40 @@ export function ActiveEnrichmentsTab() {
       )}
 
       <div className="mt-4 flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-        <div className="w-[360px] min-w-[320px] max-w-[420px] border-r border-border">
-          <ExtractingSidebarList
-            jobs={allJobs}
-            selectedJobId={selectedJobId}
-            onSelectJob={handleSelectJob}
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <ExtractingDetailPane
-            job={selectedJob}
-            attempts={selectedJobAttempts}
+        {allJobs.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="text-4xl mb-3">🔄</div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">Extraction via Source Cascade</h3>
+            <p className="text-xs text-gray-500 max-w-md">
+              Products are now extracted through the automated source cascade. Active extraction runs are tracked per-source, not as batch jobs.
+            </p>
+            <p className="text-xs text-gray-400 mt-2 max-w-md">
+              Products in <strong>Extracting</strong> status are being processed by the scraper runner. Check the <strong>Processed</strong> tab for results when extraction completes.
+            </p>
+            <button
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('stage', 'extracting');
+                router.replace(`${pathname}?${params.toString()}`);
+              }}
+              className="mt-3 px-3 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              View Products in Extracting Status
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="w-[360px] min-w-[320px] max-w-[420px] border-r border-border">
+              <ExtractingSidebarList
+                jobs={allJobs}
+                selectedJobId={selectedJobId}
+                onSelectJob={handleSelectJob}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <ExtractingDetailPane
+                job={selectedJob}
+                attempts={selectedJobAttempts}
             attemptsConnected={isAttemptsConnected}
             attemptsError={attemptsError}
             onCancelJob={handleCancelJob}
@@ -171,6 +194,8 @@ export function ActiveEnrichmentsTab() {
             isCancelling={cancellingJobId === selectedJobId}
           />
         </div>
+          </>
+        )}
       </div>
     </div>
   );
