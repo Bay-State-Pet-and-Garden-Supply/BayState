@@ -25,22 +25,38 @@ import { z } from "zod";
  * Per-source extraction result metadata sent by the runner.
  * Matches apps/scraper/scrapers/ai_search/enrichment_models.py SourceResultInfo.
  */
-export const SourceResultInfoSchema = z.object({
-  sourceSlug: z.string(),
-  sourceType: z.string(),
-  confidence: z.number().min(0).max(1).default(0),
-  matchedFields: z.array(z.string()).default([]),
-  evidenceUrl: z.string().nullable().optional(),
-  product: z.record(z.string(), z.unknown()).nullable().optional(),
-  extractionMethod: z.string().nullable().optional(),
-  platform: z.string().nullable().optional(),
-  llmUsed: z.boolean().nullable().optional(),
-  /** "found" | "not_stocked" | "source_error" | "skipped" */
-  outcome: z.string().nullable().optional(),
-  error_code: z.string().nullable().optional(),
-  error_message: z.string().nullable().optional(),
-  attempted_at: z.string().nullable().optional(),
-});
+export const SourceResultInfoSchema = z.preprocess(
+  // Normalize camelCase field names from Pydantic serialization to snake_case.
+  // The runner's model_dump_json() outputs camelCase (errorCode, errorMessage,
+  // attemptedAt) because Pydantic uses Python attribute names by default, while
+  // the Field aliases (error_code, error_message, attempted_at) are only used
+  // when by_alias=True is passed to model_dump_json().
+  (data: unknown) => {
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      const obj = data as Record<string, unknown>;
+      if (obj.errorCode !== undefined) obj.error_code = obj.errorCode;
+      if (obj.errorMessage !== undefined) obj.error_message = obj.errorMessage;
+      if (obj.attemptedAt !== undefined) obj.attempted_at = obj.attemptedAt;
+    }
+    return data;
+  },
+  z.object({
+    sourceSlug: z.string(),
+    sourceType: z.string(),
+    confidence: z.number().min(0).max(1).default(0),
+    matchedFields: z.array(z.string()).default([]),
+    evidenceUrl: z.string().nullable().optional(),
+    product: z.record(z.string(), z.unknown()).nullable().optional(),
+    extractionMethod: z.string().nullable().optional(),
+    platform: z.string().nullable().optional(),
+    llmUsed: z.boolean().nullable().optional(),
+    /** "found" | "not_stocked" | "source_error" | "skipped" */
+    outcome: z.string().nullable().optional(),
+    error_code: z.string().nullable().optional(),
+    error_message: z.string().nullable().optional(),
+    attempted_at: z.string().nullable().optional(),
+  }),
+);
 
 export type SourceResultInfo = z.infer<typeof SourceResultInfoSchema>;
 
