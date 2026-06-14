@@ -129,19 +129,15 @@ export function NeedsAttentionView({
     });
 
     try {
-      const res = await adminFetch("/api/admin/enrichment/jobs", {
+      const res = await adminFetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           upcs,
-          retryMode: "failed_or_untried",
+          toStatus: "extracting",
+          resetResults: true,
         }),
       });
-
-      if (res.status === 404) {
-        toast.error("The enrichment pipeline has been replaced by the source cascade. Use 'Re-extract' from the Processed tab instead.");
-        return;
-      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));

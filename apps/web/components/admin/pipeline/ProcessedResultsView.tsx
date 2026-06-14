@@ -704,10 +704,10 @@ export function ProcessedResultsView({
                       if (!selectedProduct) return;
                       setSubmitting(true);
                       try {
-                        const res = await fetch('/api/admin/enrichment/jobs', {
+                        const res = await fetch('/api/admin/pipeline/bulk', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ upcs: [selectedProduct.upc], retryMode: 'failed_or_untried' }),
+                          body: JSON.stringify({ upcs: [selectedProduct.upc], toStatus: 'extracting', resetResults: true }),
                         });
                         if (res.status === 404) {
                           toast.error("The enrichment pipeline has been replaced by the source cascade. Use 'Re-extract' from the Processed tab instead.");

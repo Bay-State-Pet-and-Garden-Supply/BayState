@@ -76,12 +76,13 @@ export function BulkManagementPanel({
         throw new Error('No UPCs were resolved for extraction');
       }
 
-      const response = await fetch('/api/admin/enrichment/jobs', {
+      const response = await fetch('/api/admin/pipeline/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           upcs: allUpcs,
-          retryMode: 'all',
+          toStatus: 'extracting',
+          resetResults: true,
         }),
       });
 

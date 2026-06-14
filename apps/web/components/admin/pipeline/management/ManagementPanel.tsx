@@ -77,12 +77,13 @@ export function ManagementPanel({
     try {
       const upcs = products.map((product) => product.upc);
 
-      const response = await fetch('/api/admin/enrichment/jobs', {
+      const response = await fetch('/api/admin/pipeline/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           upcs,
-          retryMode: 'all',
+          toStatus: 'extracting',
+          resetResults: true,
         }),
       });
 
