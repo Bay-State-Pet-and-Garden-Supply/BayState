@@ -36,6 +36,8 @@ function getSourceTrustRank(sourceName: string): number {
     const lower = sourceName.toLowerCase();
     if (lower === 'shopsite_input') return 0;
     if (/(bradley|central.pet|orgill|doitbest|do_it_best|manufacturer|catalog|distributor|official_brand|official-brand)/.test(lower)) return 1;
+    // Legacy enrichment pipeline produces AI-generated names — trust below real scraper data
+    if (lower === 'enriched') return 3;
     if (/(amazon|ebay|etsy|walmart|marketplace|seller|shop|ai_search)/.test(lower)) return 3;
     return 2;
 }

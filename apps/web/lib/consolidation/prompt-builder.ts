@@ -22,7 +22,6 @@ const MAX_SIBLING_PRODUCTS = 3;
 const PROMPT_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
 const TRUSTED_SOURCE_FRAGMENTS = [
     'shopsite_input',
-    'enriched',
     'bradley',
     'central-pet',
     'central_pet',
@@ -35,6 +34,8 @@ const TRUSTED_SOURCE_FRAGMENTS = [
     'official_brand',
     'official-brand',
 ];
+// Legacy enrichment pipeline produces AI-generated data — explicitly excluded from trusted
+const ENRICHED_SOURCE_FRAGMENT = 'enriched';
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
 const CONSISTENCY_RULES = [
     'Keep the same BRAND across sibling products unless higher-trust evidence for this UPC clearly conflicts.',
