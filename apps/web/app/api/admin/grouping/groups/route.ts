@@ -20,6 +20,7 @@ function buildProductPreview(product: Record<string, unknown>): {
     packaging_text: string | null;
     classification_rationale: string | null;
     classification_raw_label: string | null;
+    raw_sources: Record<string, Record<string, unknown>> | null;
 } {
     const input = product.input as Record<string, unknown> | null;
     const consolidated = product.consolidated as Record<string, unknown> | null;
@@ -143,7 +144,33 @@ function buildProductPreview(product: Record<string, unknown>): {
         packaging_text: packagingText,
         classification_rationale: (product.product_line_rationale as string) || null,
         classification_raw_label: (product.product_line_raw_label as string) || null,
+        raw_sources: extractRawSources(sources as Record<string, unknown> | null) || null,
     };
+}
+
+/** Extract display-relevant fields from each source for the grouping UI. */
+function extractRawSources(sources: Record<string, unknown> | null | undefined): Record<string, Record<string, unknown>> | null {
+    if (!sources || typeof sources !== 'object') return null;
+    const result: Record<string, Record<string, unknown>> = {};
+    
+    for (const [key, srcData] of Object.entries(sources)) {
+        if (!srcData || typeof srcData !== 'object') continue;
+        const s = srcData as Record<string, unknown>;
+        const extracted: Record<string, unknown> = {};
+        const fields = ['title', 'name', 'brand', 'weight', 'size', 'price', 'category', 'description', 
+            'upc', 'item_number', 'manufacturer_part_number', 'product_line', 'product_family',
+            'image_text', 'flavor', 'unit_of_measure', 'case_pack'];
+        for (const f of fields) {
+            if (f in s && s[f] !== null && s[f] !== undefined && s[f] !== '') {
+                extracted[f] = s[f];
+            }
+        }
+        if (Object.keys(extracted).length > 0) {
+            result[key] = extracted;
+        }
+    }
+    
+    return Object.keys(result).length > 0 ? result : null;
 }
 
 /**
@@ -248,7 +275,8 @@ export async function GET(request: NextRequest) {
             }
 
             const group = groupMap.get(plId)!;
-            const cleanProduct = { ...product, preview: buildProductPreview(product as Record<string, unknown>) };
+            const productRecord = product as Record<string, unknown>;
+            const cleanProduct = { ...product, preview: buildProductPreview(productRecord) };
             delete (cleanProduct as any).product_lines;
             group.products.push(cleanProduct);
 
@@ -280,7 +308,8 @@ export async function GET(request: NextRequest) {
                 && up.product_line_assignment_source !== null
                 && up.product_line_assignment_source !== undefined;
 
-            const preview = buildProductPreview(up as Record<string, unknown>);
+            const upRecord = up as Record<string, unknown>;
+            const preview = buildProductPreview(upRecord);
             if (accepted) {
                 acceptedSingletons.push({ ...up, accepted: true, preview });
             } else {
