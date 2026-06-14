@@ -318,8 +318,26 @@ export function normalizeConsolidationResult(
         normalized.description = normalizeStringUnits(normalizePlainText(normalized.description));
     }
 
-    if (typeof normalized.search_keywords === 'string') {
+    if (typeof normalized.search_keywords === 'string' && normalized.search_keywords.trim()) {
         normalized.search_keywords = normalizeSearchKeywords(normalized.search_keywords, brand);
+    } else {
+        // Generate search_keywords from product name as fallback
+        const nameStr = (typeof normalized.name === 'string' && normalized.name.trim()) 
+            ? normalized.name.trim() 
+            : '';
+        if (nameStr) {
+            // Extract meaningful keyword segments from the name
+            const keywords = nameStr
+                .split(/\s+/)
+                .filter(word => word.length > 1 && !/^(the|a|an|in|of|and|for|with|is|to|by|on)$/i.test(word))
+                .join(' ');
+            normalized.search_keywords = keywords
+                ? normalizeSearchKeywords(keywords, brand)
+                : normalizeSearchKeywords(nameStr, brand);
+        } else {
+            // Last resort: brand-only if available
+            normalized.search_keywords = brand ? normalizeSearchKeywords(brand, brand) : '';
+        }
     }
 
     // Normalize weight field - convert to pounds
