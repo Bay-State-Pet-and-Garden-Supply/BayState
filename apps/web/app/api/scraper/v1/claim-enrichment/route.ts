@@ -85,11 +85,13 @@ export async function POST(request: NextRequest) {
       ? String(claimed.lease_expires_at)
       : null;
 
-    // 4. Load the parent job row for config, source plans, credentials
+    // 4. Load the parent job row for config and source plans
+    // NOTE: enrichment_jobs does not have an ai_credentials column —
+    // credentials are resolved at runtime by the runner via /api/scraper/v1/credentials
     const { data: job, error: jobError } = await supabase
       .from("enrichment_jobs")
       .select(
-        "id, config, test_mode, ai_credentials",
+        "id, config, test_mode",
       )
       .eq("id", jobId)
       .single();
