@@ -6,15 +6,10 @@ import { Activity, AlertCircle, ArrowRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   JOB_STATUS_STYLES,
-  formatRelativeTime,
-  getJobActivitySummary,
   getJobDisplayStatus,
   getJobLabel,
-  getJobLastActivityAt,
   getJobProgressCounts,
   getJobProgressPercent,
-  getJobRunnerLabel,
-  humanizeToken,
   isHeartbeatStale,
   isJobStalled,
 } from "./extracting-utils";
@@ -57,10 +52,8 @@ export function ExtractingSidebarList({
             const statusStyle = JOB_STATUS_STYLES[displayStatus];
             const progressPercent = getJobProgressPercent(job);
             const counts = getJobProgressCounts(job);
-            const lastActivityAt = getJobLastActivityAt(job);
             const staleHeartbeat = isHeartbeatStale(job);
             const isStalled = isJobStalled(job);
-            const currentPhase = humanizeToken(job.progress_phase);
 
             return (
               <button
@@ -68,7 +61,7 @@ export function ExtractingSidebarList({
                 type="button"
                 onClick={() => onSelectJob(job.id)}
                 className={cn(
-                  "w-full px-4 py-4 text-left transition-colors",
+                  "w-full px-4 py-3 text-left transition-colors",
                   selectedJobId === job.id
                     ? "bg-primary/5"
                     : "hover:bg-muted/30",
@@ -87,8 +80,8 @@ export function ExtractingSidebarList({
                         {getJobLabel(job)}
                       </span>
                     </div>
-                    <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                      {job.id.slice(0, 8)}
+                    <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                      ID: {job.id.slice(0, 8)}
                     </div>
                   </div>
                   <span
@@ -101,14 +94,14 @@ export function ExtractingSidebarList({
                   </span>
                 </div>
 
-                <div className="mt-3 space-y-2">
+                <div className="mt-2.5 space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
                     <span>
                       {counts.processed}/{counts.total || job.upcs.length || 0} handled
                     </span>
                     <span className="tabular-nums text-foreground">{progressPercent}%</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
                       className={cn(
                         "h-full rounded-full transition-[width] duration-300",
@@ -127,54 +120,27 @@ export function ExtractingSidebarList({
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                  <div className="min-w-0">
-                    <div className="text-muted-foreground">Runner</div>
-                    <div className="truncate font-medium text-foreground">
-                      {getJobRunnerLabel(job)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">Last activity</div>
-                    <div
-                      className={cn(
-                        "font-medium",
-                        staleHeartbeat && "text-amber-700 dark:text-amber-300",
-                      )}
-                    >
-                      {formatRelativeTime(lastActivityAt)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                  {counts.failed > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-sm border border-rose-200 bg-rose-50 px-2 py-0.5 font-medium text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300">
-                      <AlertCircle className="h-3 w-3" />
-                      {counts.failed} failed
-                    </span>
-                  )}
-                  {currentPhase && (
-                    <span className="inline-flex items-center rounded-sm border border-border bg-background px-2 py-0.5 font-medium text-muted-foreground">
-                      {currentPhase}
-                    </span>
-                  )}
-                  {job.current_upc && (
-                    <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-background px-2 py-0.5 font-mono font-medium text-foreground">
-                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                      {job.current_upc}
-                    </span>
-                  )}
-                </div>
-
-                <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">
-                  {getJobActivitySummary(job)}
-                </p>
-
-                {(staleHeartbeat || isStalled) && (
-                  <div className="mt-3 inline-flex items-center gap-1 rounded-sm border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300">
-                    <Clock className="h-3 w-3" />
-                    {isStalled ? "Job looks stalled" : "Heartbeat looks stale"}
+                {/* Compact Footer containing all tags in a single row */}
+                {(counts.failed > 0 || job.current_upc || staleHeartbeat || isStalled) && (
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px]">
+                    {counts.failed > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-rose-200 bg-rose-50 px-1.5 py-0.5 font-medium text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                        {counts.failed} failed
+                      </span>
+                    )}
+                    {job.current_upc && (
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono font-medium text-foreground">
+                        <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                        {job.current_upc}
+                      </span>
+                    )}
+                    {(staleHeartbeat || isStalled) && (
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-amber-200 bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300">
+                        <Clock className="h-2.5 w-2.5" />
+                        {isStalled ? "Stalled" : "Stale"}
+                      </span>
+                    )}
                   </div>
                 )}
               </button>

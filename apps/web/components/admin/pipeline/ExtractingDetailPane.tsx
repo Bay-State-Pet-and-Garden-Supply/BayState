@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, useEffect, type ReactNode } from "react";
 import type { EnrichmentAttempt, JobAssignment } from "@/lib/realtime/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -17,6 +17,7 @@ import {
   Activity,
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Loader2,
   type LucideIcon,
@@ -221,6 +222,59 @@ function HealthNotice({
   );
 }
 
+function EtaTimer({
+  startedAt,
+  progressPercent,
+  status,
+}: {
+  startedAt?: string | null;
+  progressPercent: number;
+  status: string;
+}) {
+  const [eta, setEta] = useState<string>("Calculating…");
+
+  useEffect(() => {
+    const update = () => {
+      if (!startedAt) {
+        setEta("--");
+        return;
+      }
+      const start = new Date(startedAt).getTime();
+      const elapsedMs = Date.now() - start;
+      if (progressPercent <= 0) {
+        setEta("Calculating…");
+        return;
+      }
+      if (progressPercent >= 100) {
+        setEta("Completed");
+        return;
+      }
+      const totalEstimatedMs = elapsedMs / (progressPercent / 100);
+      const remainingMs = totalEstimatedMs - elapsedMs;
+      
+      const diff = Math.floor(remainingMs / 1000);
+      if (diff <= 0) {
+        setEta("Finishing up…");
+      } else if (diff < 60) {
+        setEta(`~${diff}s`);
+      } else if (diff < 3600) {
+        setEta(`~${Math.floor(diff / 60)}m ${diff % 60}s`);
+      } else {
+        setEta(`~${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`);
+      }
+    };
+
+    update();
+    const isActive = status === "running" || status === "claimed" || status === "queued";
+    if (isActive && startedAt) {
+      const interval = setInterval(update, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [startedAt, progressPercent, status]);
+
+  return <span className="font-semibold font-mono text-foreground">{eta}</span>;
+}
+
 export function ExtractingDetailPane({
   job,
   attempts,
@@ -375,6 +429,17 @@ export function ExtractingDetailPane({
     );
   }
 
+  const activeAttemptEntry = sortedAttempts.find((entry) => entry.attempt.upc === job.current_upc) || 
+    sortedAttempts.find((entry) => entry.displayStatus === "running") || 
+    null;
+
+  const activeAttempt = activeAttemptEntry?.attempt;
+  const activeProductName = activeAttempt?.products_ingestion?.input?.name || "Unnamed product";
+  const activeBrandName = activeAttempt?.products_ingestion?.brands?.name;
+  const activeProductLine = activeAttempt?.products_ingestion?.product_line;
+  const activeSourceSite = activeAttempt ? getDisplaySite(activeAttempt.source_url) : null;
+  const activeUPC = activeAttempt?.upc || job.current_upc;
+
   const displayStatus = getJobDisplayStatus(job);
   const statusStyle = JOB_STATUS_STYLES[displayStatus];
   const runningAttempts =
@@ -452,7 +517,7 @@ export function ExtractingDetailPane({
 
             {(displayStatus === "stalled" || isJobCancellable(job.status)) && (
               <Button
-                variant="destructive"
+                variant="outline"
                 size="sm"
                 onClick={() =>
                   displayStatus === "stalled"
@@ -460,7 +525,10 @@ export function ExtractingDetailPane({
                     : onCancelJob(job.id)
                 }
                 disabled={isCancelling}
-                className="h-9 gap-2 self-start"
+                className={cn(
+                  "h-9 gap-2 self-start border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/20",
+                  displayStatus === "stalled" && "border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900/50 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                )}
               >
                 {isCancelling ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -474,15 +542,77 @@ export function ExtractingDetailPane({
             )}
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <DetailMetric label="Runner" value={getJobRunnerLabel(job)} />
-            <DetailMetric label="Created" value={formatDate(job.created_at)} />
+          {/* Currently Processing Hero Card */}
+          {isJobActive(job.status) && (
+            <div className="mt-5 rounded-md border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Currently Processing
+                  </span>
+                </div>
+                {activeSourceSite && (
+                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
+                    Source: {activeSourceSite}
+                  </span>
+                )}
+              </div>
+              <div className="pt-3">
+                {activeAttempt ? (
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h4 className="text-base font-bold text-foreground line-clamp-1">
+                        {activeProductName}
+                      </h4>
+                      {(activeBrandName || activeProductLine) && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {[activeBrandName, activeProductLine].filter(Boolean).join(" • ")}
+                        </p>
+                      )}
+                    </div>
+                    {activeUPC && (
+                      <span className="font-mono text-xs font-semibold bg-muted px-2 py-1 rounded self-start md:self-auto">
+                        UPC: {activeUPC}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    Waiting for the runner to claim a product…
+                  </p>
+                )}
+                
+                <div className="mt-4 border-t border-border/50 pt-3">
+                  <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1.5">
+                    <span>Active Step: <strong className="text-foreground">{latestPhase}</strong></span>
+                    {job.runner_name && (
+                      <span>Runner: {getJobRunnerLabel(job)}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className={cn("h-1.5 flex-1 rounded-full transition-colors", 
+                      job.progress_phase ? "bg-emerald-500" : "bg-muted"
+                    )} />
+                    <div className={cn("h-1.5 flex-1 rounded-full transition-colors", 
+                      job.progress_phase && job.progress_phase !== "initializing" ? "bg-emerald-500" : "bg-muted"
+                    )} />
+                    <div className={cn("h-1.5 flex-1 rounded-full transition-colors", 
+                      job.progress_phase === "consolidating" || job.progress_phase === "completed" ? "bg-emerald-500" : "bg-muted"
+                    )} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Core Telemetry Timers */}
+          <div className="mt-5 grid gap-3 grid-cols-2 sm:grid-cols-2">
             <DetailMetric
-              label="Started"
-              value={job.started_at ? formatDate(job.started_at) : "Waiting to start"}
-            />
-            <DetailMetric
-              label="Elapsed"
+              label="Elapsed duration"
               value={
                 <LiveTimer
                   startedAt={job.started_at ?? job.created_at}
@@ -492,24 +622,56 @@ export function ExtractingDetailPane({
               }
             />
             <DetailMetric
-              label="Last activity"
-              value={formatRelativeTime(
-                job.heartbeat_at ??
-                  job.progress_updated_at ??
-                  job.last_event_at ??
-                  job.last_log_at ??
-                  job.updated_at ??
-                  job.created_at,
-              )}
-            />
-            <DetailMetric label="Heartbeat" value={formatDate(job.heartbeat_at)} />
-            <DetailMetric label="Lease expires" value={formatDate(job.lease_expires_at)} />
-            <DetailMetric label="Completed" value={formatDate(job.completed_at)} />
-            <DetailMetric
-              label="Current UPC"
-              value={job.current_upc ? <span className="font-mono">{job.current_upc}</span> : "--"}
+              label="Estimated remaining (ETA)"
+              value={
+                job.completed_at ? (
+                  "Completed"
+                ) : job.status === "running" || job.status === "claimed" ? (
+                  <EtaTimer
+                    startedAt={job.started_at ?? job.created_at}
+                    progressPercent={progressPercent}
+                    status={job.status}
+                  />
+                ) : (
+                  "Waiting to start"
+                )
+              }
             />
           </div>
+
+          {/* Collapsible System Details Panel */}
+          <details className="group mt-4 rounded-md border border-border/70 bg-card p-4">
+            <summary className="flex cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground list-none select-none">
+              <span>System details</span>
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 pt-3 border-t border-border/50">
+              <DetailMetric label="Runner" value={getJobRunnerLabel(job)} />
+              <DetailMetric label="Created" value={formatDate(job.created_at)} />
+              <DetailMetric
+                label="Started"
+                value={job.started_at ? formatDate(job.started_at) : "Waiting to start"}
+              />
+              <DetailMetric
+                label="Last activity"
+                value={formatRelativeTime(
+                  job.heartbeat_at ??
+                    job.progress_updated_at ??
+                    job.last_event_at ??
+                    job.last_log_at ??
+                    job.updated_at ??
+                    job.created_at,
+                )}
+              />
+              <DetailMetric label="Heartbeat" value={formatDate(job.heartbeat_at)} />
+              <DetailMetric label="Lease expires" value={formatDate(job.lease_expires_at)} />
+              <DetailMetric label="Completed" value={formatDate(job.completed_at)} />
+              <DetailMetric
+                label="Current UPC"
+                value={job.current_upc ? <span className="font-mono">{job.current_upc}</span> : "--"}
+              />
+            </div>
+          </details>
         </section>
 
         <section className="px-6 py-5">
