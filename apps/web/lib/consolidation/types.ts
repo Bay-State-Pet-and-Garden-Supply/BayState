@@ -290,6 +290,7 @@ export interface ProductLineClassificationInput {
         brand?: string;
         category?: string;
         product_family?: string;
+        allSourceNames?: string[];
     };
     /** Known product lines taxonomy to pick from. */
     knownProductLines: Array<{

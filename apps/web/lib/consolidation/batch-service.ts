@@ -1026,7 +1026,7 @@ export async function submitProductLineClassificationBatch(
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt },
                     ],
-                    max_tokens: 256,
+                    max_tokens: 512,
                     temperature: 0.1,
                     response_format: { type: 'json_object' },
                 },

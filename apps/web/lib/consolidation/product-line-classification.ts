@@ -28,26 +28,52 @@ export const CLASSIFICATION_THRESHOLD = 0.80;
  * Build minimal source evidence for classification.
  * Extracts the highest-signal fields from product sources: name, brand, category, product_family.
  */
+/**
+ * Source trust priority: prefer trusted distributor/manufacturer sources over marketplace.
+ * Lower number = higher trust.
+ */
+function getSourceTrustRank(sourceName: string): number {
+    const lower = sourceName.toLowerCase();
+    if (lower === 'shopsite_input') return 0;
+    if (/(bradley|central.pet|orgill|doitbest|do_it_best|manufacturer|catalog|distributor|official_brand|official-brand)/.test(lower)) return 1;
+    if (/(amazon|ebay|etsy|walmart|marketplace|seller|shop|ai_search)/.test(lower)) return 3;
+    return 2;
+}
+
 export function extractClassificationEvidence(
     upc: string,
     sources: Record<string, unknown>,
     input?: Record<string, unknown> | null
-): ProductLineClassificationInput['evidence'] {
+): ProductLineClassificationInput['evidence'] & { allSourceNames: string[] } {
     const normalizedSources = normalizeProductSources(sources);
-    const sourceEntries = Object.entries(normalizedSources);
+    
+    // Sort source entries by trust rank
+    const sourceEntries = Object.entries(normalizedSources)
+        .sort(([a], [b]) => getSourceTrustRank(a) - getSourceTrustRank(b));
 
-    let name: string | undefined;
-    let brand: string | undefined;
+    let trustedName: string | undefined;
+    let trustedBrand: string | undefined;
     let category: string | undefined;
     let productFamily: string | undefined;
+    const allSourceNames: string[] = [];
 
-    for (const [, sourceData] of sourceEntries) {
+    for (const [sourceName, sourceData] of sourceEntries) {
         if (!sourceData || typeof sourceData !== 'object') continue;
         const s = sourceData as Record<string, unknown>;
 
-        if (!name && typeof s.name === 'string' && s.name.trim()) name = s.name.trim();
-        if (!brand && typeof s.brand === 'string' && s.brand.trim()) {
-            brand = s.brand.trim().replace(/^brand\s*:\s*/i, '');
+        // Collect product names from all sources for cross-referencing
+        const srcName = typeof s.name === 'string' ? s.name.trim() : (typeof s.title === 'string' ? s.title.trim() : undefined);
+        const srcTitle = typeof s.title === 'string' ? s.title.trim() : undefined;
+        if (srcTitle) allSourceNames.push(`[${sourceName}] ${srcTitle}`);
+        else if (srcName) allSourceNames.push(`[${sourceName}] ${srcName}`);
+
+        // Prefer trusted sources for name and brand
+        if (!trustedName) {
+            if (srcName) trustedName = srcName;
+            else if (srcTitle) trustedName = srcTitle;
+        }
+        if (!trustedBrand && typeof s.brand === 'string' && s.brand.trim()) {
+            trustedBrand = s.brand.trim().replace(/^brand\s*:\s*/i, '');
         }
         if (!category && typeof s.category === 'string' && s.category.trim()) category = s.category.trim();
         if (!productFamily) {
@@ -59,19 +85,17 @@ export function extractClassificationEvidence(
                 productFamily = s.family.trim();
             }
         }
-
-        if (name && brand && category && productFamily) break;
     }
 
     // Fallback to input data
-    if (!name && input && typeof (input as Record<string, unknown>).name === 'string') {
-        name = (input as Record<string, unknown>).name as string;
+    if (!trustedName && input && typeof (input as Record<string, unknown>).name === 'string') {
+        trustedName = (input as Record<string, unknown>).name as string;
     }
-    if (!brand && input && typeof (input as Record<string, unknown>).brand === 'string') {
-        brand = (input as Record<string, unknown>).brand as string;
+    if (!trustedBrand && input && typeof (input as Record<string, unknown>).brand === 'string') {
+        trustedBrand = (input as Record<string, unknown>).brand as string;
     }
 
-    return { name, brand, category, product_family: productFamily };
+    return { name: trustedName, brand: trustedBrand, category, product_family: productFamily, allSourceNames };
 }
 
 /**
@@ -89,34 +113,57 @@ export function buildClassificationSystemPrompt(
 
     return `You classify retail products into manufacturer product lines.
 
-A "product line" is a family of SKU variants that share a brand, category, and naming pattern but differ by flavor, size, count, or material.
+A "product line" is the SPECIFIC name a manufacturer uses for a family of SKU variants. It is NOT a generic category description. Think of it as what the manufacturer prints on the packaging.
+
+Examples of GOOD product line names:
+- "Blue Buffalo Life Protection Formula" (not "Dry Dog Food" — that's a category)
+- "Butcher Block Pate" (not "Wet Dog Food" or "Human Grade Wet Dog Food")
+- "Purina Pro Plan Sensitive Skin & Stomach" (not "Salmon Dog Food")
+- "Greenies Dental Chews" (not "Dog Treats")
+- "SPOT BAMBONE Coffee Wood" (not "Dog Chew Toy")
+
+Examples of BAD product line names (too generic — these are categories, not product lines):
+- "Dry Dog Food" — this describes the product type, not the manufacturer's line
+- "Human Grade Wet Dog Food" — this is a category + marketing claim, not a product line
+- "Dog Treats" — far too broad
 
 Rules:
-- Look at the product name, brand, and category to identify the manufacturer's product line.
-- If the product clearly belongs to an existing product line in the taxonomy, use that exact name.
-- If no existing line matches, invent a concise canonical name (e.g., "Blue Buffalo Life Protection Formula").
-- Return a confidence score (0.0-1.0) reflecting how certain you are of the assignment.
-- Low confidence (<0.80) means the product may be a one-off or you're unsure. Flag it honestly.
+- Extract the core manufacturer product line from the product name, stripping marketing fluff.
+- Marketplace sources (Amazon, eBay, Walmart) often pad names with SEO keywords like "human grade," "grain free," "natural," "premium." IGNORE these padding words — focus on the actual product line name.
+- If multiple sources show different names for the same product, prefer the distributor/manufacturer source over marketplace sources.
+- Look at the product name from the TRUSTED source (listed first) — it's cleaner and closer to the manufacturer's actual naming.
+- If you see a pattern across multiple source names, use the common core as the product line.
+- If the product clearly belongs to an existing product line in the taxonomy, use that EXACT name.
+- Return a confidence score. Low confidence (<0.80) means the product may be a one-off.
 
 ${taxonomySection}
 
 Output contract — respond with valid JSON matching this structure:
 {
-  "product_line": "string (required) — canonical manufacturer product line name",
-  "confidence": "number (required) — 0.0 to 1.0. Below 0.80 means the product may be a singleton",
-  "rationale": "string (required) — brief explanation of why this product was assigned to this line (or why confidence is low)"
+  "product_line": "string (required) — canonical manufacturer product line name (NOT a generic category)",
+  "confidence": "number (required) — 0.0 to 1.0",
+  "rationale": "string (required) — why this product line was assigned (or why confidence is low)"
 }`;
 }
 
 /**
  * Build the user prompt for a single product classification.
+ * Includes source names from all sources for cross-referencing.
  */
-export function buildClassificationUserPrompt(evidence: ProductLineClassificationInput['evidence']): string {
+export function buildClassificationUserPrompt(evidence: ProductLineClassificationInput['evidence'] & { allSourceNames?: string[] }): string {
     const parts: string[] = [];
-    if (evidence.name) parts.push(`Product Name: ${evidence.name}`);
     if (evidence.brand) parts.push(`Brand: ${evidence.brand}`);
+    if (evidence.name) parts.push(`Trusted Source Name: ${evidence.name}`);
     if (evidence.category) parts.push(`Category: ${evidence.category}`);
     if (evidence.product_family) parts.push(`Source Product Family: ${evidence.product_family}`);
+
+    // Include all source names for cross-referencing
+    if (evidence.allSourceNames && evidence.allSourceNames.length > 0) {
+        parts.push(`\nAll source names for cross-reference:`);
+        for (const sn of evidence.allSourceNames.slice(0, 6)) {
+            parts.push(`  ${sn}`);
+        }
+    }
 
     return `Classify this product into a manufacturer product line:\n\n${parts.join('\n')}\n\nReturn JSON.`;
 }
@@ -244,7 +291,7 @@ export async function classifyProduct(
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            max_tokens: 256,
+            max_tokens: 512,
             temperature: 0.1,
             response_format: { type: 'json_object' },
         } as any);
