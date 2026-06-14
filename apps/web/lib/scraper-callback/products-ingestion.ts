@@ -169,11 +169,9 @@ export async function persistProductsIngestionSourcesStrict(
     throw new MissingProductsIngestionUpcsError(missingUpcs);
   }
 
-  // Skip pipeline status update for static scraper and enrichment jobs —
-  // quality routing at job completion will determine the next status
-  const isStaticScraperJob = provenance?.sourceKind === 'static_scraper';
-  const isEnrichmentJob = provenance?.sourceKind === 'enrichment';
-  const skipStatusUpdate = isStaticScraperJob || isEnrichmentJob;
+  // Move products to processed as soon as any source produces meaningful data.
+  // This ensures products don't get stuck in extracting when the source cascade completes.
+  const skipStatusUpdate = false;
 
   const updateRows = await Promise.all(upcs.map(async (upc) => {
     const existingRow = existingSourcesByUpc.get(upc)!;
@@ -239,11 +237,9 @@ export async function persistProductsIngestionSourcesPartial(
     return { persisted: [], missing };
   }
 
-  // Skip pipeline status update for static scraper and enrichment jobs —
-  // quality routing at job completion will determine the next status
-  const isStaticScraperJob = provenance?.sourceKind === 'static_scraper';
-  const isEnrichmentJob = provenance?.sourceKind === 'enrichment';
-  const skipStatusUpdate = isStaticScraperJob || isEnrichmentJob;
+  // Move products to processed as soon as any source produces meaningful data.
+  // This ensures products don't get stuck in extracting when the source cascade completes.
+  const skipStatusUpdate = false;
 
   const updateRows = await Promise.all(toUpdateUpcs.map(async (upc) => {
     const existingRow = existingSourcesByUpc.get(upc)!;
