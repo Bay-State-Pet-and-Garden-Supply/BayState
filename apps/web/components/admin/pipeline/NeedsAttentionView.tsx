@@ -138,6 +138,11 @@ export function NeedsAttentionView({
         }),
       });
 
+      if (res.status === 404) {
+        toast.error("The enrichment pipeline has been replaced by the source cascade. Use 'Re-extract' from the Processed tab instead.");
+        return;
+      }
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(err.error || "Failed to retry extraction");

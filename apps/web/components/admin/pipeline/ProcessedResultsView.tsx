@@ -709,6 +709,11 @@ export function ProcessedResultsView({
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ upcs: [selectedProduct.upc], retryMode: 'failed_or_untried' }),
                         });
+                        if (res.status === 404) {
+                          toast.error("The enrichment pipeline has been replaced by the source cascade. Use 'Re-extract' from the Processed tab instead.");
+                          setSubmitting(false);
+                          return;
+                        }
                         const payload = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(payload.error || 'Failed to re-scrape');
                         toast.success(`Re-scraping ${selectedProduct.upc}`, {

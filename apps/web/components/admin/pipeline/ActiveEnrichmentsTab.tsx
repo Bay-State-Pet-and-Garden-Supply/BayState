@@ -68,6 +68,11 @@ export function ActiveEnrichmentsTab() {
       const res = await adminFetch(`/api/admin/enrichment/jobs?id=${jobId}`, {
         method: "DELETE",
       });
+      if (res.status === 404) {
+        toast.info("The enrichment pipeline has been removed. This job is no longer active.");
+        void forceSyncJobs();
+        return;
+      }
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         toast.success(successMessage);

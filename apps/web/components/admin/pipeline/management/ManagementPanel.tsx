@@ -86,6 +86,12 @@ export function ManagementPanel({
         }),
       });
 
+      if (response.status === 404) {
+        toast.error("The enrichment pipeline has been replaced by the source cascade.");
+        setIsSaving(false);
+        return;
+      }
+
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
