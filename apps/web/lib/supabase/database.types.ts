@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -11,31 +11,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -231,13 +206,15 @@ export type Database = {
           error_message: string | null
           fallback_batch_id: string | null
           id: string
+          item_kind: string
           parsed_result: Json | null
           product_source: Json
           request_payload: Json
           response_payload: Json | null
           started_at: string | null
           status: string
-          upc: string
+          subject_key: string | null
+          upc: string | null
           updated_at: string
         }
         Insert: {
@@ -248,13 +225,15 @@ export type Database = {
           error_message?: string | null
           fallback_batch_id?: string | null
           id?: string
+          item_kind?: string
           parsed_result?: Json | null
           product_source?: Json
           request_payload?: Json
           response_payload?: Json | null
           started_at?: string | null
           status?: string
-          upc: string
+          subject_key?: string | null
+          upc?: string | null
           updated_at?: string
         }
         Update: {
@@ -265,13 +244,15 @@ export type Database = {
           error_message?: string | null
           fallback_batch_id?: string | null
           id?: string
+          item_kind?: string
           parsed_result?: Json | null
           product_source?: Json
           request_payload?: Json
           response_payload?: Json | null
           started_at?: string | null
           status?: string
-          upc?: string
+          subject_key?: string | null
+          upc?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1051,80 +1032,6 @@ export type Database = {
           },
         ]
       }
-      enrichment_source_attempts: {
-        Row: {
-          id: string
-          job_id: string
-          attempt_id: string | null
-          upc: string
-          brand_id: string | null
-          source_type: string
-          source_slug: string
-          display_name: string | null
-          priority: number
-          outcome: string
-          confidence: number | null
-          matched_fields: string[] | null
-          evidence_url: string | null
-          error_code: string | null
-          error_message: string | null
-          raw_result: Json | null
-          attempted_at: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          attempt_id?: string | null
-          upc: string
-          brand_id?: string | null
-          source_type: string
-          source_slug: string
-          display_name?: string | null
-          priority?: number
-          outcome: string
-          confidence?: number | null
-          matched_fields?: string[] | null
-          evidence_url?: string | null
-          error_code?: string | null
-          error_message?: string | null
-          raw_result?: Json | null
-          attempted_at?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          attempt_id?: string | null
-          upc?: string
-          brand_id?: string | null
-          source_type?: string
-          source_slug?: string
-          display_name?: string | null
-          priority?: number
-          outcome?: string
-          confidence?: number | null
-          matched_fields?: string[] | null
-          evidence_url?: string | null
-          error_code?: string | null
-          error_message?: string | null
-          raw_result?: Json | null
-          attempted_at?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "enrichment_source_attempts_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "enrichment_jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       enrichment_job_logs: {
         Row: {
           created_at: string
@@ -1297,6 +1204,72 @@ export type Database = {
           token_usage?: Json
           total_count?: number
           upcs?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      enrichment_source_attempts: {
+        Row: {
+          attempt_id: string | null
+          attempted_at: string
+          brand_id: string | null
+          confidence: number | null
+          created_at: string
+          display_name: string | null
+          error_code: string | null
+          error_message: string | null
+          evidence_url: string | null
+          id: string
+          job_id: string
+          matched_fields: string[] | null
+          outcome: string
+          priority: number
+          raw_result: Json | null
+          source_slug: string
+          source_type: string
+          upc: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_id?: string | null
+          attempted_at?: string
+          brand_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          display_name?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          evidence_url?: string | null
+          id?: string
+          job_id: string
+          matched_fields?: string[] | null
+          outcome: string
+          priority?: number
+          raw_result?: Json | null
+          source_slug: string
+          source_type: string
+          upc: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_id?: string | null
+          attempted_at?: string
+          brand_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          display_name?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          evidence_url?: string | null
+          id?: string
+          job_id?: string
+          matched_fields?: string[] | null
+          outcome?: string
+          priority?: number
+          raw_result?: Json | null
+          source_slug?: string
+          source_type?: string
+          upc?: string
           updated_at?: string
         }
         Relationships: []
@@ -2715,6 +2688,41 @@ export type Database = {
           },
         ]
       }
+      product_lines: {
+        Row: {
+          brand_id: string | null
+          canonical_name: string
+          created_at: string
+          id: string
+          normalized_key: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id?: string | null
+          canonical_name: string
+          created_at?: string
+          id?: string
+          normalized_key: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string | null
+          canonical_name?: string
+          created_at?: string
+          id?: string
+          normalized_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_lines_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_option_values: {
         Row: {
           color_hex: string | null
@@ -3288,6 +3296,12 @@ export type Database = {
           is_test_run: boolean | null
           pipeline_status: Database["public"]["Enums"]["pipeline_status_five"]
           product_line: string | null
+          product_line_assignment_source: string | null
+          product_line_confidence: number | null
+          product_line_id: string | null
+          product_line_rationale: string | null
+          product_line_raw_label: string | null
+          product_line_review_required: boolean
           retry_count: number | null
           scrape_quality: Json | null
           selected_images: Json | null
@@ -3314,6 +3328,12 @@ export type Database = {
           is_test_run?: boolean | null
           pipeline_status?: Database["public"]["Enums"]["pipeline_status_five"]
           product_line?: string | null
+          product_line_assignment_source?: string | null
+          product_line_confidence?: number | null
+          product_line_id?: string | null
+          product_line_rationale?: string | null
+          product_line_raw_label?: string | null
+          product_line_review_required?: boolean
           retry_count?: number | null
           scrape_quality?: Json | null
           selected_images?: Json | null
@@ -3340,6 +3360,12 @@ export type Database = {
           is_test_run?: boolean | null
           pipeline_status?: Database["public"]["Enums"]["pipeline_status_five"]
           product_line?: string | null
+          product_line_assignment_source?: string | null
+          product_line_confidence?: number | null
+          product_line_id?: string | null
+          product_line_rationale?: string | null
+          product_line_raw_label?: string | null
+          product_line_review_required?: boolean
           retry_count?: number | null
           scrape_quality?: Json | null
           selected_images?: Json | null
@@ -3367,6 +3393,13 @@ export type Database = {
             columns: ["cohort_id"]
             isOneToOne: false
             referencedRelation: "cohort_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_ingestion_product_line_id_fkey"
+            columns: ["product_line_id"]
+            isOneToOne: false
+            referencedRelation: "product_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -3615,15 +3648,7 @@ export type Database = {
           revoked_at?: string | null
           runner_name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "runner_api_keys_runner_name_fkey"
-            columns: ["runner_name"]
-            isOneToOne: false
-            referencedRelation: "scraper_runners"
-            referencedColumns: ["name"]
-          },
-        ]
+        Relationships: []
       }
       scrape_results: {
         Row: {
@@ -3973,15 +3998,7 @@ export type Database = {
           name?: string
           status?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "scraper_runners_current_job_id_fkey"
-            columns: ["current_job_id"]
-            isOneToOne: false
-            referencedRelation: "enrichment_jobs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       scraper_selectors: {
         Row: {
@@ -4768,10 +4785,6 @@ export type Database = {
         Returns: Json
       }
       exec_sql: { Args: { query: string }; Returns: Json }
-      generate_subscription_suggestions: {
-        Args: { p_subscription_id: string }
-        Returns: undefined
-      }
       get_action_required_items: {
         Args: never
         Returns: {
@@ -4815,18 +4828,6 @@ export type Database = {
           upc: string
         }[]
       }
-      get_job_retry_history: {
-        Args: { p_job_id: string; p_job_type: string }
-        Returns: {
-          attempt_count: number
-          created_at: string
-          error_log: string[]
-          last_attempt_at: string
-          retry_id: string
-          retry_reason: string
-          status: string
-        }[]
-      }
       get_next_version_number: {
         Args: { p_config_id: string }
         Returns: number
@@ -4860,17 +4861,6 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
-      }
-      get_pending_retries: {
-        Args: { p_limit?: number }
-        Returns: {
-          attempt_count: number
-          job_type: string
-          original_job_id: string
-          priority: number
-          retry_id: string
-          retry_reason: string
-        }[]
       }
       get_personalized_products: {
         Args: { result_limit?: number; user_uuid: string }
@@ -5105,8 +5095,9 @@ export type Database = {
         | "merging"
         | "reviewing"
         | "publishing"
-        | "needs_attention"
         | "failed"
+        | "needs_attention"
+        | "grouping"
       pipeline_status_five_legacy:
         | "imported"
         | "searching"
@@ -5245,10 +5236,7 @@ export type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
+export const Constants = {
   public: {
     Enums: {
       ai_provider_type: [
@@ -5308,8 +5296,9 @@ const Constants = {
         "merging",
         "reviewing",
         "publishing",
-        "needs_attention",
         "failed",
+        "needs_attention",
+        "grouping",
       ],
       pipeline_status_five_legacy: [
         "imported",
