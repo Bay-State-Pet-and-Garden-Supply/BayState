@@ -3,6 +3,108 @@ import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
+ * Build a normalized preview object for display in the Grouping UI.
+ * Image priority: selected_images → consolidated.media → image_candidates → sources.
+ */
+function buildProductPreview(product: Record<string, unknown>): {
+    name: string | null;
+    image_url: string | null;
+    image_source: 'selected_images' | 'consolidated_media' | 'image_candidates' | 'sources' | null;
+    image_count: number;
+    brand: string | null;
+    variant_summary: string | null;
+} {
+    const input = product.input as Record<string, unknown> | null;
+    const consolidated = product.consolidated as Record<string, unknown> | null;
+    const name = (input?.name as string) || ((consolidated?.core as Record<string, unknown>)?.name as string) || null;
+    const brand = (input?.brand as string) || ((consolidated?.core as Record<string, unknown>)?.brand_name as string) || null;
+
+    // Variant summary: size/weight/flavor
+    const parts: string[] = [];
+    const core = consolidated?.core as Record<string, unknown> | null;
+    if (core?.weight_lbs) parts.push(`${core.weight_lbs} lb`);
+    const sources = product.sources as Record<string, unknown> | null;
+    if (sources && typeof sources === 'object') {
+        for (const srcData of Object.values(sources)) {
+            if (!srcData || typeof srcData !== 'object') continue;
+            const s = srcData as Record<string, unknown>;
+            if (s.flavor && typeof s.flavor === 'string') { parts.push(s.flavor); break; }
+        }
+    }
+    const variantSummary = parts.length > 0 ? parts.join(' · ') : null;
+
+    // Images
+    let imageUrl: string | null = null;
+    let imageSource: string | null = null;
+    let totalImageCount = 0;
+
+    const selectedImages = product.selected_images;
+    if (Array.isArray(selectedImages)) {
+        for (const item of selectedImages) {
+            const url = typeof item === 'string' ? item : (item as Record<string, unknown>)?.url;
+            if (url && typeof url === 'string' && url.startsWith('http')) {
+                if (!imageUrl) imageUrl = url;
+                totalImageCount++;
+            }
+        }
+        if (imageUrl) imageSource = 'selected_images';
+    }
+
+    if (!imageUrl) {
+        const media = consolidated?.media as Array<{url: string}> | null;
+        if (Array.isArray(media)) {
+            for (const m of media) {
+                if (m.url && m.url.startsWith('http')) {
+                    if (!imageUrl) imageUrl = m.url;
+                    totalImageCount++;
+                }
+            }
+            if (imageUrl) imageSource = 'consolidated_media';
+        }
+    }
+
+    if (!imageUrl) {
+        const candidates = product.image_candidates as string[] | null;
+        if (Array.isArray(candidates)) {
+            for (const url of candidates) {
+                if (typeof url === 'string' && url.startsWith('http')) {
+                    if (!imageUrl) imageUrl = url;
+                    totalImageCount++;
+                }
+            }
+            if (imageUrl) imageSource = 'image_candidates';
+        }
+    }
+
+    if (!imageUrl && sources && typeof sources === 'object') {
+        for (const srcData of Object.values(sources)) {
+            if (!srcData || typeof srcData !== 'object') continue;
+            const s = srcData as Record<string, unknown>;
+            const imgs = (s.images ?? s.image_urls ?? s.image_url ?? s.image) as unknown[] | undefined;
+            if (Array.isArray(imgs)) {
+                for (const img of imgs) {
+                    const url = typeof img === 'string' ? img : (img as Record<string, unknown>)?.url;
+                    if (url && typeof url === 'string' && url.startsWith('http')) {
+                        if (!imageUrl) imageUrl = url;
+                        totalImageCount++;
+                    }
+                }
+            }
+        }
+        if (imageUrl) imageSource = 'sources';
+    }
+
+    return {
+        name,
+        image_url: imageUrl,
+        image_source: imageSource as any,
+        image_count: totalImageCount,
+        brand,
+        variant_summary: variantSummary,
+    };
+}
+
+/**
  * GET /api/admin/grouping/groups
  * List Product Groups and Ungrouped products in the grouping stage.
  *
@@ -32,6 +134,8 @@ export async function GET(request: NextRequest) {
                 input,
                 sources,
                 consolidated,
+                selected_images,
+                image_candidates,
                 product_lines:product_line_id (
                     id,
                     canonical_name
@@ -54,7 +158,9 @@ export async function GET(request: NextRequest) {
                 product_line_review_required,
                 product_line_assignment_source,
                 input,
-                sources
+                sources,
+                selected_images,
+                image_candidates
             `)
             .eq('pipeline_status', 'grouping')
             .is('product_line_id', null)
@@ -100,7 +206,7 @@ export async function GET(request: NextRequest) {
             }
 
             const group = groupMap.get(plId)!;
-            const cleanProduct = { ...product };
+            const cleanProduct = { ...product, preview: buildProductPreview(product as Record<string, unknown>) };
             delete (cleanProduct as any).product_lines;
             group.products.push(cleanProduct);
 
@@ -132,10 +238,11 @@ export async function GET(request: NextRequest) {
                 && up.product_line_assignment_source !== null
                 && up.product_line_assignment_source !== undefined;
 
+            const preview = buildProductPreview(up as Record<string, unknown>);
             if (accepted) {
-                acceptedSingletons.push({ ...up, accepted: true });
+                acceptedSingletons.push({ ...up, accepted: true, preview });
             } else {
-                needsReviewUngrouped.push({ ...up, accepted: false });
+                needsReviewUngrouped.push({ ...up, accepted: false, preview });
             }
         }
 

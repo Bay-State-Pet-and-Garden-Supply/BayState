@@ -2,10 +2,13 @@
 
 import React, { useState, useCallback } from 'react';
 import { adminFetch } from '@/lib/admin/api-client';
+import GroupingProductTile from './GroupingProductTile';
+import type { ProductPreview } from './GroupingProductTile';
 
 interface ProductInfo {
     upc: string;
     input: any;
+    preview?: ProductPreview | null;
     product_line_confidence: number | null;
     product_line_assignment_source: 'ai' | 'manual' | 'migration' | null;
     product_line_review_required: boolean;
@@ -187,6 +190,23 @@ export default function GroupingEditStep({ groups, onRefresh, onNavigateStep }: 
                         {/* Group header */}
                         <div className="flex items-center justify-between p-3 bg-gray-50">
                             <div className="flex items-center gap-3">
+                                {/* Thumbnail strip */}
+                                <div className="flex -space-x-1">
+                                    {group.products.slice(0, 4).map((p: any) => (
+                                        <div key={p.upc} className="w-7 h-7 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
+                                            {p.preview?.image_url ? (
+                                                <img src={p.preview.image_url} className="w-full h-full object-cover"
+                                                    loading="lazy" referrerPolicy="no-referrer"
+                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                            ) : null}
+                                        </div>
+                                    ))}
+                                    {group.products.length > 4 && (
+                                        <div className="w-7 h-7 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[9px] text-gray-500">
+                                            +{group.products.length - 4}
+                                        </div>
+                                    )}
+                                </div>
                                 <div>
                                     {/* Inline-rename group name */}
                                     {renameTarget?.id === group.product_line_id ? (
@@ -265,27 +285,24 @@ export default function GroupingEditStep({ groups, onRefresh, onNavigateStep }: 
                                             key={product.upc}
                                             draggable
                                             onDragStart={() => handleDragStart(product.upc, group.product_line_id)}
-                                            className={`text-xs bg-gray-50 rounded p-2 border cursor-grab active:cursor-grabbing ${
-                                                selectedUpcs.has(product.upc) ? 'ring-2 ring-purple-400' : ''
+                                            className={`relative cursor-grab active:cursor-grabbing ${
+                                                selectedUpcs.has(product.upc) ? 'ring-2 ring-purple-400 rounded' : ''
                                             } ${dragSource?.upc === product.upc ? 'opacity-50' : ''}`}
                                         >
-                                            <div className="flex items-center gap-1.5">
+                                            <GroupingProductTile
+                                                upc={product.upc}
+                                                preview={product.preview}
+                                                confidence={product.product_line_confidence}
+                                                assignmentSource={product.product_line_assignment_source}
+                                                compact
+                                            >
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedUpcs.has(product.upc)}
                                                     onChange={() => toggleUpcSelection(product.upc)}
-                                                    className="rounded"
+                                                    className="rounded mt-1"
                                                 />
-                                                <span className="font-mono flex-1">{product.upc}</span>
-                                                <span className={`text-[10px] px-1 rounded ${
-                                                    product.product_line_assignment_source === 'manual' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                                                }`}>
-                                                    {product.product_line_assignment_source || 'ai'}
-                                                </span>
-                                            </div>
-                                            {product.input?.name && (
-                                                <div className="text-gray-500 truncate mt-0.5 ml-5">{product.input.name}</div>
-                                            )}
+                                            </GroupingProductTile>
                                         </div>
                                     ))}
                                 </div>

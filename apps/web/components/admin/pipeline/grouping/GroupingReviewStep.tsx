@@ -2,10 +2,13 @@
 
 import React, { useState, useCallback } from 'react';
 import { adminFetch } from '@/lib/admin/api-client';
+import GroupingProductTile from './GroupingProductTile';
+import type { ProductPreview } from './GroupingProductTile';
 
 interface ProductInfo {
     upc: string;
     input: any;
+    preview?: ProductPreview | null;
     product_line_confidence: number | null;
     product_line_assignment_source: 'ai' | 'manual' | 'migration' | null;
     product_line_review_required: boolean;
@@ -24,6 +27,7 @@ interface UngroupedData {
     upc: string;
     input: any;
     accepted: boolean;
+    preview?: ProductPreview | null;
     product_line_confidence: number | null;
     product_line_raw_label: string | null;
 }
@@ -95,30 +99,29 @@ export default function GroupingReviewStep({ groups, ungrouped, onRefresh, onNav
                             <h4 className="text-sm font-medium text-amber-700 mb-2">Ungrouped Products — {needsReviewUngrouped.length}</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                 {needsReviewUngrouped.map(p => (
-                                    <div key={p.upc} className="text-xs bg-white rounded p-2 border border-amber-200">
-                                        <div className="font-mono">{p.upc}</div>
-                                        {p.input?.name && <div className="text-gray-500 truncate">{p.input.name}</div>}
-                                        {p.product_line_raw_label && (
-                                            <div className="text-amber-500 text-[10px]">
-                                                AI guessed: {p.product_line_raw_label} ({((p.product_line_confidence || 0) * 100).toFixed(0)}%)
-                                            </div>
-                                        )}
-                                        <div className="flex gap-1 mt-1.5">
+                                    <GroupingProductTile
+                                        key={p.upc}
+                                        upc={p.upc}
+                                        preview={p.preview}
+                                        confidence={p.product_line_confidence}
+                                        reviewRequired={true}
+                                        compact
+                                    >
+                                        <div className="flex gap-1">
                                             <button
                                                 onClick={() => handleAcceptSingleton(p.upc)}
-                                                disabled={actionLoading === JSON.stringify({ action: 'accept_singleton', upcs: [p.upc] })}
-                                                className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
+                                                className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200"
                                             >
-                                                Accept as Singleton
+                                                Accept
                                             </button>
                                             <button
                                                 onClick={() => setAssignModal(p.upc)}
                                                 className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                                             >
-                                                Assign to Group
+                                                Assign
                                             </button>
                                         </div>
-                                    </div>
+                                    </GroupingProductTile>
                                 ))}
                             </div>
                         </div>
@@ -130,21 +133,42 @@ export default function GroupingReviewStep({ groups, ungrouped, onRefresh, onNav
                             <h4 className="text-sm font-medium text-amber-700 mb-2">Flagged Groups — {needsReviewGroups.length}</h4>
                             <div className="space-y-2">
                                 {needsReviewGroups.map(g => (
-                                    <div key={g.product_line_id} className="text-xs bg-white rounded p-3 border border-amber-200 flex items-center justify-between">
-                                        <div>
-                                            <span className="font-medium text-gray-900">{g.product_line_name}</span>
-                                            <span className="text-gray-500 ml-2">{g.products.length} products</span>
-                                            {g.review_required_count > 0 && (
-                                                <span className="text-amber-600 ml-2">⚠ {g.review_required_count} flagged</span>
-                                            )}
+                                    <div key={g.product_line_id} className="bg-white rounded p-3 border border-amber-200">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                {/* Thumbnail strip */}
+                                                <div className="flex">
+                                                    {g.products.slice(0, 4).map((p: any) => (
+                                                        <div key={p.upc} className="w-6 h-6 rounded-full border-2 border-white bg-gray-100 overflow-hidden -mr-1.5">
+                                                            {p.preview?.image_url ? (
+                                                                <img src={p.preview.image_url} className="w-full h-full object-cover"
+                                                                    loading="lazy" referrerPolicy="no-referrer"
+                                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                            ) : null}
+                                                        </div>
+                                                    ))}
+                                                    {g.products.length > 4 && (
+                                                        <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[9px] text-gray-500">
+                                                            +{g.products.length - 4}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <span className="font-medium text-gray-900">{g.product_line_name}</span>
+                                                    <span className="text-gray-500 ml-2">{g.products.length} products</span>
+                                                    {g.review_required_count > 0 && (
+                                                        <span className="text-amber-600 ml-2">⚠ {g.review_required_count} flagged</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleApproveGroup(g.product_line_id)}
+                                                disabled={actionLoading === JSON.stringify({ action: 'approve' })}
+                                                className="px-2.5 py-1 text-[11px] bg-purple-100 text-purple-700 rounded hover:bg-purple-200 disabled:opacity-50"
+                                            >
+                                                Approve Group
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => handleApproveGroup(g.product_line_id)}
-                                            disabled={actionLoading === JSON.stringify({ action: 'approve' })}
-                                            className="px-2.5 py-1 text-[11px] bg-purple-100 text-purple-700 rounded hover:bg-purple-200 disabled:opacity-50"
-                                        >
-                                            Approve Group
-                                        </button>
                                     </div>
                                 ))}
                             </div>
@@ -165,9 +189,28 @@ export default function GroupingReviewStep({ groups, ungrouped, onRefresh, onNav
                             <h4 className="text-sm font-medium text-green-700 mb-2">Approved Groups — {readyGroups.length}</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                 {readyGroups.map(g => (
-                                    <div key={g.product_line_id} className="text-xs bg-white rounded p-2 border border-green-200">
-                                        <div className="font-medium text-gray-900">{g.product_line_name}</div>
-                                        <div className="text-gray-500">{g.products.length} products</div>
+                                    <div key={g.product_line_id} className="bg-white rounded p-2 border border-green-200">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            {/* Thumbnail strip */}
+                                            <div className="flex">
+                                                {g.products.slice(0, 4).map((p: any) => (
+                                                    <div key={p.upc} className="w-5 h-5 rounded-full border-2 border-white bg-gray-100 overflow-hidden -mr-1">
+                                                        {p.preview?.image_url ? (
+                                                            <img src={p.preview.image_url} className="w-full h-full object-cover"
+                                                                loading="lazy" referrerPolicy="no-referrer"
+                                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                        ) : null}
+                                                    </div>
+                                                ))}
+                                                {g.products.length > 4 && (
+                                                    <div className="w-5 h-5 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[8px] text-gray-500">
+                                                        +{g.products.length - 4}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="font-medium text-gray-900 text-xs">{g.product_line_name}</div>
+                                            <div className="text-gray-400 text-[10px]">{g.products.length} products</div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -177,11 +220,14 @@ export default function GroupingReviewStep({ groups, ungrouped, onRefresh, onNav
                     {acceptedSingletons.length > 0 && (
                         <div>
                             <h4 className="text-sm font-medium text-green-700 mb-2">Accepted Singletons — {acceptedSingletons.length}</h4>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                 {acceptedSingletons.map(p => (
-                                    <span key={p.upc} className="text-xs bg-white px-2 py-1 rounded border border-green-200 font-mono">
-                                        {p.upc}
-                                    </span>
+                                    <GroupingProductTile
+                                        key={p.upc}
+                                        upc={p.upc}
+                                        preview={p.preview}
+                                        compact
+                                    />
                                 ))}
                             </div>
                         </div>
