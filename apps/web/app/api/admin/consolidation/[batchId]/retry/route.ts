@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { createAdminClient } from "@/lib/supabase/server";
+import { processBatchQueue } from "@/lib/consolidation";
 
 /**
  * POST /api/admin/consolidation/[batchId]/retry
  *
- * Resets failed items in a consolidation batch back to 'pending' so they
- * can be re-processed. Updates the parent batch_jobs status accordingly.
+ * Resets failed items in a consolidation batch back to 'pending' and
+ * immediately processes them so they don't sit in the queue.
  */
 export async function POST(
   request: NextRequest,
@@ -69,8 +70,6 @@ export async function POST(
   // ---------------------------------------------------------------
   // 3. Update parent batch_jobs status
   // ---------------------------------------------------------------
-  // Re-read the actual count of remaining failed items to avoid race
-  // conditions if another admin clicked retry concurrently.
   const { count: actualFailedCount, error: countError } = await supabase
     .from("batch_job_items")
     .select("id", { count: "exact", head: true })
@@ -109,8 +108,36 @@ export async function POST(
     );
   }
 
+  // ---------------------------------------------------------------
+  // 4. Process the reset items immediately
+  // ---------------------------------------------------------------
+  let processedCount = 0;
+  let completedCount = 0;
+  let failedAgainCount = 0;
+
+  try {
+    const chunkSize = 5;
+    const maxIterations = Math.ceil(resetCount / chunkSize) + 2;
+
+    for (let i = 0; i < maxIterations; i++) {
+      const pr = await processBatchQueue(batchId, { limit: chunkSize });
+      if ('success' in pr && !pr.success) break;
+      if ('processed' in pr) {
+        processedCount += pr.processed;
+        completedCount += pr.completed;
+        failedAgainCount += pr.failed;
+        if (pr.processed === 0 || pr.status.is_complete || pr.status.is_failed) break;
+      }
+    }
+  } catch (err) {
+    console.error("[Consolidation Retry] Processing error:", err);
+  }
+
   return NextResponse.json({
     success: true,
     resetCount,
+    processedCount,
+    completedCount,
+    failedAgainCount,
   });
 }
