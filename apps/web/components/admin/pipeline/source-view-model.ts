@@ -24,6 +24,13 @@ export function buildProcessedSourceItems(
 
     for (const [key, value] of Object.entries(normalized)) {
         if (key === '_provenance') continue;
+
+        // Skip sources that were not stocked
+        const valRecord = value as Record<string, unknown>;
+        if (valRecord?._outcome === 'not_stocked') {
+            continue;
+        }
+
         items.push({
             key,
             label: formatPipelineSourceSlug(key),

@@ -135,7 +135,12 @@ export function ScrapedResultsView({
 
   const sources = selectedProduct?.sources || EMPTY_SOURCES;
   const sourceKeys = useMemo(
-    () => Object.keys(sources).filter((k) => !k.startsWith("_")),
+    () =>
+      Object.keys(sources).filter((k) => {
+        if (k.startsWith("_")) return false;
+        const srcVal = sources[k] as Record<string, unknown> | undefined;
+        return srcVal?._outcome !== "not_stocked";
+      }),
     [sources],
   );
 

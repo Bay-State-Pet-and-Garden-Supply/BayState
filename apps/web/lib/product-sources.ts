@@ -487,7 +487,11 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
 
 export function normalizeProductSourcesForReview(rawSources: unknown): ProductSourceMap {
     const normalized = normalizeProductSources(rawSources);
-    return normalized;
+    return Object.fromEntries(
+        Object.entries(normalized).filter(
+            ([, payload]) => (payload as Record<string, unknown>)?._outcome !== 'not_stocked'
+        )
+    );
 }
 
 /**
