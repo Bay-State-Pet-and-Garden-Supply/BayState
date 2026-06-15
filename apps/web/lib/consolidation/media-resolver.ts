@@ -71,18 +71,74 @@ export function resolveProductMedia(
     let nextMedia: MediaItem[] = [];
     let nextSelectedImages: string[] = [];
 
+    // Always extract current candidate pools from the ingestion record
+    const selectedImages = existingRecord?.selectedImages || [];
+    const imageCandidates = existingRecord?.imageCandidates || [];
+    const sourceCandidates = extractImageCandidatesFromSources(
+        existingRecord?.sources || {},
+        24
+    );
+
+    // Merge and deduplicate all candidates based on normalized URLs
+    const allCandidateUrls = [
+        ...selectedImages,
+        ...imageCandidates,
+        ...sourceCandidates
+    ];
+    
+    const seenNormalized = new Set<string>();
+    const uniqueCandidates: string[] = [];
+    for (const url of allCandidateUrls) {
+        const normalized = normalizeImageUrl(url);
+        if (normalized && !seenNormalized.has(normalized)) {
+            seenNormalized.add(normalized);
+            uniqueCandidates.push(url);
+        }
+    }
+
     if (existingMedia.length > 0) {
+        // Keep all existing media items
         nextMedia = [...existingMedia];
-        nextSelectedImages = Array.isArray(existingEvidence.selected_images)
+        
+        // Track existing normalized URLs to avoid duplicates
+        const existingNormalized = new Set(
+            existingMedia.map((m) => normalizeImageUrl(m.url))
+        );
+
+        // Append new candidate images as gallery images
+        for (const candidateUrl of uniqueCandidates) {
+            const normalized = normalizeImageUrl(candidateUrl);
+            if (!existingNormalized.has(normalized)) {
+                nextMedia.push({
+                    url: candidateUrl,
+                    role: 'gallery',
+                    source: 'scraped',
+                    confidence_score: 1.0,
+                });
+                existingNormalized.add(normalized);
+            }
+        }
+
+        // Set up selected images, preserving previous selections if possible
+        const prevSelected = Array.isArray(existingEvidence.selected_images)
             ? (existingEvidence.selected_images as string[])
             : existingMedia.map((m) => m.url);
-    } else {
-        const selectedImages = existingRecord?.selectedImages || [];
-        const imageCandidates = existingRecord?.imageCandidates || [];
-        const sourceCandidates = extractImageCandidatesFromSources(
-            existingRecord?.sources || {},
-            24
+
+        nextSelectedImages = [...prevSelected];
+        const selectedNormalized = new Set(
+            nextSelectedImages.map((url) => normalizeImageUrl(url))
         );
+
+        // Ensure all active nextMedia URLs are also selected
+        for (const m of nextMedia) {
+            const normalized = normalizeImageUrl(m.url);
+            if (!selectedNormalized.has(normalized)) {
+                nextSelectedImages.push(m.url);
+                selectedNormalized.add(normalized);
+            }
+        }
+    } else {
+        // Fallback when there is no existing media
         const fallbackImages =
             selectedImages.length > 0
                 ? selectedImages
@@ -99,6 +155,14 @@ export function resolveProductMedia(
             }));
             nextSelectedImages = fallbackImages;
         }
+    }
+
+    // Limit both lists to 12 images (standard threshold in storefront database schema)
+    if (nextMedia.length > 12) {
+        nextMedia = nextMedia.slice(0, 12);
+    }
+    if (nextSelectedImages.length > 12) {
+        nextSelectedImages = nextSelectedImages.slice(0, 12);
     }
 
     return {

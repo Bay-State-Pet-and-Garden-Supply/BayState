@@ -20,6 +20,7 @@ Classify each image into one of three roles:
 
 CRITICAL POLICIES:
 - Cross-Flavor/Variant Detection: Reject images that belong to a different flavor, size, variant, or product (e.g., if expected flavor is "Chicken" and the candidate image filename/alt is "beef-treats.jpg", reject it).
+- Generic/Empty Alt Texts: Do NOT reject images solely because they have generic alt text (like "alternate_image", "product image", "image", or the brand name alone) or empty/missing alt text. Many e-commerce stores use generic or blank alt text for secondary carousel/gallery images. If the image has a reasonable heuristic score and is not clearly for a different flavor, variant, or product, classify it as "gallery".
 - Reject UI Assets: Reject logos, icons, trust badges, payment methods, stars, and placeholders.
 - Focus on the expected product name and brand. If the product name indicates "Pumpkin Cheesecake", do not match images for "Peanut Butter".
 - If no candidate image is a good match for the product, classify all of them as "rejected".

@@ -134,6 +134,17 @@ class ShopifyVariantResolver(BaseVariantResolver):
         if not var_img and product_data.get("images"):
             var_img = product_data["images"][0]
 
+        # Collect all product images, putting the variant-specific image first
+        var_images = []
+        if var_img:
+            cleaned_img = f"https:{var_img}" if var_img.startswith("//") else var_img
+            var_images.append(cleaned_img)
+        
+        for img in product_data.get("images") or []:
+            cleaned_img = f"https:{img}" if img.startswith("//") else img
+            if cleaned_img not in var_images:
+                var_images.append(cleaned_img)
+
         # Generate a beautiful, clean JSON-LD object representing the single resolved variant
         custom_jsonld = {
             "@context": "http://schema.org",
@@ -145,7 +156,7 @@ class ShopifyVariantResolver(BaseVariantResolver):
                 "@type": "Brand",
                 "name": brand or ""
             },
-            "image": [var_img] if var_img else [],
+            "image": var_images,
             "offers": {
                 "@type": "Offer",
                 "price": str(var_price),

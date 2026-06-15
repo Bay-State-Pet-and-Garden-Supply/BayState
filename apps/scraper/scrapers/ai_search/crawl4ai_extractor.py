@@ -1138,13 +1138,35 @@ class Crawl4AIExtractor:
 
             async with Crawl4AIEngine(engine_config) as engine:
                 # FIRST CRAWL: Fetch raw content for lightweight extraction (JSON-LD/Meta)
-                result = await engine.crawl(url)
-                if not result.get("success") and self._should_retry_with_relaxed_wait(result):
-                    logger.info("[AI Search] Retrying Crawl4AI fetch with domcontentloaded after networkidle navigation failure")
-                    engine.config.setdefault("crawler", {})["wait_until"] = "domcontentloaded"
-                    engine.config.setdefault("crawler", {})["delay_before_return_html"] = 2.0
-                    engine.config.setdefault("crawler", {})["timeout"] = 45000
+                try:
                     result = await engine.crawl(url)
+                    if not result.get("success") and self._should_retry_with_relaxed_wait(result):
+                        raise RuntimeError(f"Crawl failed with non-success result: {result.get('error')}")
+                except Exception as exc:
+                    exc_str = str(exc).lower()
+                    is_nav_failure = any(
+                        kw in exc_str
+                        for kw in (
+                            "timeout",
+                            "networkidle",
+                            "failed on navigating acs-goto",
+                            "page is navigating",
+                            "execution context was destroyed",
+                        )
+                    )
+                    if is_nav_failure:
+                        logger.info("[AI Search] Retrying Crawl4AI fetch with domcontentloaded + no-magic after navigation failure: %s", exc)
+                        engine.config.setdefault("browser", {})["enable_stealth"] = False
+                        crawler_cfg = engine.config.setdefault("crawler", {})
+                        crawler_cfg["wait_until"] = "domcontentloaded"
+                        crawler_cfg["delay_before_return_html"] = 3.0
+                        crawler_cfg["timeout"] = 45000
+                        crawler_cfg["magic"] = False
+                        crawler_cfg["simulate_user"] = False
+                        crawler_cfg["override_navigator"] = False
+                        result = await engine.crawl(url)
+                    else:
+                        raise
 
                 # Strict validation: ensure html and markdown are strings
                 html_raw = result.get("html")

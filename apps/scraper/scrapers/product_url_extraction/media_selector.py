@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import re
 import json
-import logging
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
@@ -70,6 +69,7 @@ NON_PRODUCT_PATH_HINTS: set[str] = {
     "ingredient", "ingredients", "cooked-ingredients", "raw-ingredients",
     "teaser", "teasers", "teaser-product-image",
     "banner", "banners", "placeholder", "star", "stars",
+    "bowl", "comparison", "table", "chart", "diagram", "infographic",
 }
 
 # Path/alt hints that indicate product-relevant images
@@ -115,7 +115,8 @@ COMMON_FLAVOR_TOKENS: set[str] = {
     "pork", "venison", "fish", "bison", "rabbit", "kangaroo",
     "whitefish", "tuna", "mackerel", "sardine", "herring",
     "liver", "bacon", "cod", "trout", "quail", "pheasant",
-    "boar", "cheese", "peanut-butter", "peanut_butter",
+    "boar", "cheese", "cheddar", "gouda", "swiss", "mozzarella",
+    "parmesan", "provolone", "peanut-butter", "peanut_butter",
     "pumpkin", "sweet_potato", "sweet-potato",
 }
 
@@ -443,6 +444,13 @@ def canonicalize_image_url(url: str) -> str:
 
     # Normalize path (remove trailing slash for consistency)
     path = parsed.path.rstrip("/") or "/"
+    
+    # Normalize Shopify CDN paths (grouping cdn.shopify.com and custom domain Shopify images)
+    if "/files/" in path:
+        parts = path.split("/files/")
+        filename = parts[-1]
+        path = f"/shopify_files/{filename}"
+        netloc = "shopify_cdn"
 
     # Strip path-based size patterns (e.g., -100x100)
     path = _PATH_SIZE_PATTERN.sub("", path)
@@ -507,6 +515,50 @@ def detect_cross_flavor(
     return foreign_tokens
 
 
+# Mutually exclusive product forms (used for cross-product form detection)
+MUTUALLY_EXCLUSIVE_PRODUCT_FORMS: set[str] = {
+    "biscuits", "bites", "kibble", "chips", "cookies", "jerky",
+    "stew", "pate", "broth", "topper", "toppers", "chews", "bones",
+    "shampoo", "spray", "wipes", "collar", "leash", "harness",
+    "bowl", "bowls", "bed", "beds", "crate", "crates",
+}
+
+
+def detect_cross_product_form(
+    image_text: str,
+    expected_product_name: str | None,
+) -> list[str]:
+    """Detect mention of a product form different from the expected one.
+
+    Args:
+        image_text: Concatenated alt + desc + src from the image.
+        expected_product_name: Expected product name (e.g. "Cheddar Cheese Bites").
+
+    Returns:
+        List of foreign product form tokens found, or empty list.
+    """
+    if not expected_product_name:
+        return []
+
+    # Normalize image text
+    normalized_text = _normalize_flavor(image_text)
+    
+    # Normalize expected product name and extract tokens matching MUTUALLY_EXCLUSIVE_PRODUCT_FORMS
+    expected_norm = _normalize_flavor(expected_product_name)
+    expected_tokens = {t for t in MUTUALLY_EXCLUSIVE_PRODUCT_FORMS if t in expected_norm}
+
+    foreign_tokens: list[str] = []
+    for token in MUTUALLY_EXCLUSIVE_PRODUCT_FORMS:
+        if token in expected_tokens:
+            continue
+        # Check if the token is a whole-word match in the normalized text
+        pattern = rf"\b{re.escape(token)}\b"
+        if re.search(pattern, normalized_text):
+            foreign_tokens.append(token)
+
+    return foreign_tokens
+
+
 # ---------------------------------------------------------------------------
 # Scoring
 # ---------------------------------------------------------------------------
@@ -529,6 +581,8 @@ def _score_image(
     gallery_context: bool = False,
     non_product_context: bool = False,
     duplicate_context: bool = False,
+    jsonld_context: bool = False,
+    has_jsonld_gallery: bool = False,
     blocked_image_domains: set[str] | None = None,
     soft_blocked_domains: set[str] | None = None,
 ) -> tuple[float, list[str]]:
@@ -594,6 +648,22 @@ def _score_image(
     if duplicate_context:
         score -= 12.0
         reasons.append("duplicate_slide_context")
+
+    # ---- JSON-LD context ----
+    if jsonld_context:
+        score += 8.0
+        reasons.append("jsonld_image")
+    elif has_jsonld_gallery:
+        score -= 15.0
+        reasons.append("not_in_jsonld_gallery")
+
+    # ---- Cross-product form detection ----
+    if expected_product_name:
+        foreign_forms = detect_cross_product_form(combined_text, expected_product_name)
+        if foreign_forms:
+            penalty = -25.0 * len(foreign_forms)
+            score += penalty
+            reasons.append(f"cross_product_form:{','.join(foreign_forms)}")
 
     # ---- Product name tokens in image metadata ----
     if expected_product_name:
@@ -858,6 +928,10 @@ class ProductMediaSelector:
         if raw_count > 1 and canonical_count > 0:
             duplicate_ratio = round(1.0 - (canonical_count / raw_count), 4)
 
+        # Build canonical JSON-LD set to track official metadata images
+        jsonld_canonical_set = {canonicalize_image_url(url) for url in seen_src}
+        has_jsonld_gallery = len(jsonld_canonical_set) > 1
+
         # ---- Step 4: Score each canonical group ----
         scored: list[tuple[float, str, list[str], dict[str, Any]]] = []  # (score, canonical_url, reasons, best_candidate)
 
@@ -867,6 +941,7 @@ class ProductMediaSelector:
             best_candidate: dict[str, Any] | None = None
             group_has_gallery_context = any(bool(c.get("gallery_context")) for c in candidates)
             group_has_non_product_context = any(bool(c.get("non_product_context")) for c in candidates)
+            group_has_jsonld_context = (can_url in jsonld_canonical_set) or any(c.get("group_id") == -1 for c in candidates)
 
             for c in candidates:
                 s, reasons = _score_image(
@@ -885,6 +960,8 @@ class ProductMediaSelector:
                     gallery_context=group_has_gallery_context or bool(c.get("gallery_context")),
                     non_product_context=group_has_non_product_context and not group_has_gallery_context,
                     duplicate_context=bool(c.get("duplicate_context")),
+                    jsonld_context=group_has_jsonld_context,
+                    has_jsonld_gallery=has_jsonld_gallery,
                     blocked_image_domains=self._blocked_domains,
                     soft_blocked_domains=self._soft_blocked,
                 )
@@ -1211,5 +1288,6 @@ __all__ = [
     "canonicalize_image_url",
     "source_domain_from_url",
     "detect_cross_flavor",
+    "detect_cross_product_form",
 ]
 
