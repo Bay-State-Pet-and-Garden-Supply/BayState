@@ -21,6 +21,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { validateRunnerAuth } from "@/lib/scraper-auth";
+import {
+  getAIScrapingRuntimeCredentialsForConfig,
+  type AIScrapingRuntimeCredentials,
+} from "@/lib/ai-scraping/credentials";
 
 export async function POST(request: NextRequest) {
   // 1. Validate runner authentication
@@ -85,13 +89,14 @@ export async function POST(request: NextRequest) {
       ? String(claimed.lease_expires_at)
       : null;
 
-    // 4. Load the parent job row for config and source plans
-    // NOTE: enrichment_jobs does not have an ai_credentials column —
-    // credentials are resolved at runtime by the runner via /api/scraper/v1/credentials
+    // 4. Load the parent job row for config, credentials profile, and source plans.
+    // AI/search credentials are resolved at claim time so a queued job runs with
+    // the provider profile recorded in enrichment_jobs.config_id, while legacy
+    // Source Cascade jobs with null config_id fall back to the active profile.
     const { data: job, error: jobError } = await supabase
       .from("enrichment_jobs")
       .select(
-        "id, config, test_mode",
+        "id, config, test_mode, config_id",
       )
       .eq("id", jobId)
       .single();
@@ -126,10 +131,19 @@ export async function POST(request: NextRequest) {
 
     // 5. Hydrate the response with job-level fields
     const jobConfig = (job.config as Record<string, unknown>) ?? {};
-    const aiCredentials = (job as Record<string, unknown>).ai_credentials
-      ? ((job as Record<string, unknown>).ai_credentials as Record<string, unknown>)
-      : null;
     const testMode = (job as Record<string, unknown>).test_mode === true;
+
+    let aiCredentials: AIScrapingRuntimeCredentials | null = null;
+    try {
+      aiCredentials = await getAIScrapingRuntimeCredentialsForConfig(
+        (job as Record<string, unknown>).config_id as string | null | undefined,
+      );
+    } catch (credentialError) {
+      console.warn(
+        "[Claim Enrichment] Failed to resolve AI/search credentials for claimed attempt:",
+        credentialError,
+      );
+    }
 
     // Extract per-UPC source plan from job config
     const sourcePlansByUpc = jobConfig.source_plans_by_upc as

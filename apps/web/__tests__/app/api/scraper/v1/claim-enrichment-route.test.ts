@@ -12,10 +12,14 @@ jest.mock('@/lib/scraper-auth', () => ({
 jest.mock('@/lib/supabase/server', () => ({
   createAdminClient: jest.fn(),
 }));
+jest.mock('@/lib/ai-scraping/credentials', () => ({
+  getAIScrapingRuntimeCredentialsForConfig: jest.fn(),
+}));
 
 const { NextRequest } = require('next/server');
 const { validateRunnerAuth } = require('@/lib/scraper-auth');
 const { createAdminClient } = require('@/lib/supabase/server');
+const { getAIScrapingRuntimeCredentialsForConfig } = require('@/lib/ai-scraping/credentials');
 const { POST } = require('@/app/api/scraper/v1/claim-enrichment/route');
 
 function makeMockSupabase(rpcResult: any, jobResult?: any) {
@@ -44,6 +48,15 @@ describe('POST /api/scraper/v1/claim-enrichment', () => {
     (validateRunnerAuth as jest.Mock).mockResolvedValue({
       runnerName: 'test-runner',
       authMethod: 'api_key',
+    });
+    (getAIScrapingRuntimeCredentialsForConfig as jest.Mock).mockResolvedValue({
+      llm_provider: 'deepseek',
+      llm_model: 'deepseek-chat',
+      llm_api_key: 'llm-key',
+      deepseek_api_key: 'llm-key',
+      serper_api_key: 'serper-key',
+      serpapi_api_key: 'serper-key',
+      config_id: 'config-1',
     });
   });
 
@@ -93,6 +106,7 @@ describe('POST /api/scraper/v1/claim-enrichment', () => {
       data: {
         id: '660e8400-e29b-41d4-a716-446655440001',
         test_mode: false,
+        config_id: 'config-1',
         config: {
           source_plans_by_upc: {
             '072705115310': {
@@ -139,6 +153,12 @@ describe('POST /api/scraper/v1/claim-enrichment', () => {
     expect(attempt.lease_expires_at).toBe(rpcResult.lease_expires_at);
     expect(attempt.mode).toBe('mixed');
     expect(attempt.test_mode).toBe(false);
+    expect(attempt.ai_credentials).toEqual(expect.objectContaining({
+      llm_provider: 'deepseek',
+      serper_api_key: 'serper-key',
+      serpapi_api_key: 'serper-key',
+    }));
+    expect(getAIScrapingRuntimeCredentialsForConfig).toHaveBeenCalledWith('config-1');
     expect(attempt.source_plan).toBeDefined();
     expect(attempt.source_plan.upc).toBe('072705115310');
   });

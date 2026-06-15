@@ -80,6 +80,23 @@ describe("EnrichmentResultV1Schema", () => {
     }
   });
 
+  it("parses a failed payload with null source domain", () => {
+    const failed = {
+      _attempt_id: "550e8400-e29b-41d4-a716-446655440000",
+      upc: "072705115310",
+      source: { url: "approved_source_extraction", domain: null },
+      status: "failed",
+      extracted_at: "2026-06-14T12:00:00Z",
+      product: {},
+      confidence: { overall: 0, fields: {} },
+      validation: { warnings: ["No approved URL found"], missing_required: [] },
+      attempts: [],
+      source_results: [],
+    };
+    const result = EnrichmentResultV1Schema.safeParse(failed);
+    expect(result.success).toBe(true);
+  });
+
   it("rejects payload without _attempt_id", () => {
     const noAttempt = {
       upc: "072705115310",

@@ -76,7 +76,11 @@ export const EnrichmentResultV1Schema = z.object({
   upc: z.string(),
   source: z.object({
     url: z.string(),
-    domain: z.string().optional(),
+    // Failed runner payloads can include `domain: null` when no concrete
+    // source URL was selected (for example, all approved sources were clean
+    // not-stocked and SERP fallback could not resolve a URL). Accept null so
+    // those callbacks can still transition attempts/jobs out of running.
+    domain: z.string().nullable().optional(),
   }),
   status: z.enum(["success", "partial", "failed"]),
   extracted_at: z.string(),
