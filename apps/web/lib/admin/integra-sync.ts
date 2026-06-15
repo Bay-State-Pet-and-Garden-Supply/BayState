@@ -1,5 +1,4 @@
 import { parseRegisterWorkbook, type RegisterWorkbookProduct } from "@/lib/admin/register-file";
-import { assignProductsToCohorts } from "@/lib/admin/cohort-utils";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ReconciliationIssue,
@@ -74,7 +73,7 @@ async function analyzeIntegraSync(
  */
 export async function addToOnboarding(
   products: IntegraProduct[],
-): Promise<{ success: boolean; count: number; cohorts?: { assigned: number; ungrouped: number; cohortCount: number; errors: string[] } }> {
+): Promise<{ success: boolean; count: number }> {
   const supabase = await createClient();
 
   // Remove duplicate UPCs
@@ -110,14 +109,7 @@ export async function addToOnboarding(
     return { success: false, count: 0 };
   }
 
-  let cohorts;
-  try {
-    cohorts = await assignProductsToCohorts(supabase, uniqueProducts.map(p => p.upc));
-  } catch (cohortError) {
-    console.warn("[integra-sync] cohort assignment failed (non-fatal):", cohortError);
-  }
-
-  return { success: true, count: uniqueProducts.length, cohorts };
+  return { success: true, count: uniqueProducts.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -524,22 +516,6 @@ export async function pushRegisterOnlyIssuesToPipeline(
     }
   }
 
-  // Assign successfully pushed products to cohorts
-  if (count > 0) {
-    const pushedUpcs = issues.map(i => i.upc).filter(upc => !errors.some(e => e.includes(upc)));
-    if (pushedUpcs.length > 0) {
-      try {
-        const cohortResult = await assignProductsToCohorts(supabase, pushedUpcs);
-        if (cohortResult.errors.length > 0) {
-          errors.push(...cohortResult.errors);
-        }
-        console.log(`[pushToPipeline] Assigned ${cohortResult.assigned} products to ${cohortResult.cohortCount} cohorts`);
-      } catch (cohortError) {
-        console.warn("[pushToPipeline] Cohort assignment failed (non-fatal):", cohortError);
-        errors.push(`Cohort assignment failed: ${cohortError instanceof Error ? cohortError.message : String(cohortError)}`);
-      }
-    }
-  }
 
   return { success: errors.length === 0, count, errors };
 }

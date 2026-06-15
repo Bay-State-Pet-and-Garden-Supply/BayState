@@ -34,9 +34,6 @@ jest.mock('@/lib/consolidation/image-prep', () => ({
     clearImageUploadCache: jest.fn(),
 }));
 
-jest.mock('@/lib/pipeline/cohorts', () => ({
-    recohortProducts: jest.fn().mockResolvedValue(undefined),
-}));
 
 type PromptPayload = {
     upc: string;

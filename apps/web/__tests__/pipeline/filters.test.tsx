@@ -74,7 +74,6 @@ describe('PipelineFilters', () => {
 
         expect(screen.getByLabelText('Source')).toBeInTheDocument();
         expect(screen.getByLabelText('Product line')).toBeInTheDocument();
-        expect(screen.getByLabelText('Batch ID')).toBeInTheDocument();
         expect(screen.queryByText('Date Range (Updated)')).not.toBeInTheDocument();
         expect(screen.queryByText('Confidence Score')).not.toBeInTheDocument();
     });
@@ -120,14 +119,13 @@ describe('PipelineClient Integration', () => {
 
     it('updates the stage in the URL when the active stage changes', async () => {
         const user = userEvent.setup();
-        mockSearchParamsToString.mockReturnValue('stage=processed&search=seed&source=scraper-1&product_line=Seeds&cohort_id=batch-123');
+        mockSearchParamsToString.mockReturnValue('stage=processed&search=seed&source=scraper-1&product_line=Seeds');
         mockSearchParamGet.mockImplementation((key: string) => {
             const values: Record<string, string | null> = {
                 stage: 'processed',
                 search: 'seed',
                 source: 'scraper-1',
                 product_line: 'Seeds',
-                cohort_id: 'batch-123',
             };
 
             return values[key] ?? null;

@@ -5,62 +5,62 @@ import Link from "next/link";
 import {
   Plus,
   Database,
-  Layers,
-  Edit2,
+  Package,
   AlertCircle,
   Globe,
-  X,
+  Tags,
+  Settings2,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn, formatExternalUrl } from "@/lib/utils";
-import { PipelineFilters } from "./PipelineFilters";
-import { PipelineSearchField } from "./PipelineSearchField";
-import { PipelineSidebarTable } from "./PipelineSidebarTable";
-import { ManagementPanel } from "./management/ManagementPanel";
-import { BulkManagementPanel } from "./management/BulkManagementPanel";
-import { CohortBrandPicker } from "../cohorts/CohortBrandPicker";
-import { toast } from "sonner";
-import {
-  updateProductsBatch,
-  updateCohortBatch,
-} from "@/app/admin/pipeline/batch-actions";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn, formatExternalUrl } from "@/lib/utils";
+import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
+import { PipelineSearchField } from "./PipelineSearchField";
+import { ManagementPanel } from "./management/ManagementPanel";
 import { BulkAssignBrandDialog } from "./BulkAssignBrandDialog";
 import { adminFetch } from "@/lib/admin/api-client";
+
+const NO_BRAND_GROUP_ID = "no_brand";
+
+type CascadeReadiness = "ready" | "not_configured" | "no_brand" | "unknown";
+
+interface BrandProductGroup {
+  id: string;
+  name: string;
+  brand: Brand | null;
+  products: PipelineProduct[];
+}
 
 interface ImportedResultsViewProps {
   products: PipelineProduct[];
   onRefresh: (silent?: boolean) => void;
-  // Filter props
   search?: string;
   onSearchChange?: (value: string) => void;
-  filters?: {
-    source?: string;
-    product_line?: string;
-    cohort_id?: string;
-  };
-  onFilterChange?: (filters: {
-    source?: string;
-    product_line?: string;
-    cohort_id?: string;
-  }) => void;
+  filters?: PipelineFiltersState;
+  onFilterChange?: (filters: PipelineFiltersState) => void;
   availableSources?: string[];
   isSearching?: boolean;
-  // Cohort grouping props
-  groupedProducts?: {
-    groups: Record<string, PipelineProduct[]>;
-    cohortIds: string[];
-    names?: Record<string, string>;
-  };
-  cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, Brand>;
-  onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   onImportCsv?: () => void;
   onManualAdd?: () => void;
   isLoading?: boolean;
+}
+
+function getDisplayPrice(product: PipelineProduct): string {
+  const value = product.input?.price;
+  const numeric = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(numeric) ? `$${numeric.toFixed(2)}` : "—";
+}
+
+function getProductName(product: PipelineProduct): string {
+  return product.input?.name || product.consolidated?.name || "Unnamed product";
+}
+
+function sortByUpc(products: PipelineProduct[]): PipelineProduct[] {
+  return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
 }
 
 export function ImportedResultsView({
@@ -72,122 +72,140 @@ export function ImportedResultsView({
   onFilterChange,
   availableSources = [],
   isSearching = false,
-  groupedProducts,
-  cohortBrands = {},
-  cohortBrandObjects = {},
-  onEditCohort,
   onImportCsv,
   onManualAdd,
   isLoading = false,
 }: ImportedResultsViewProps) {
-
-
-  // 1. Data Transformation & Memoized State
-  const sortedProducts = useMemo(() => {
-    return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
-  }, [products]);
-
-  // 2. Primary Selection State
-  const [preferredCohortId, setPreferredCohortId] = useState<string | null>(null);
-  const [selectedCohortIds, setSelectedCohortIds] = useState<Set<string>>(new Set());
+  const sortedProducts = useMemo(() => sortByUpc(products), [products]);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [selectedProductUpcs, setSelectedProductUpcs] = useState<Set<string>>(new Set());
+  const [isAssignBrandOpen, setIsAssignBrandOpen] = useState(false);
+  const [readiness, setReadiness] = useState<Record<string, CascadeReadiness>>({});
 
-  // 3. Cascade Readiness Preloading
-  const [cohortReadiness, setCohortReadiness] = useState<Record<string, 'ready' | 'not_configured' | 'no_brand' | 'unknown'>>({});
+  const groups = useMemo<BrandProductGroup[]>(() => {
+    const grouped = new Map<string, BrandProductGroup>();
 
-  // Preload cascade readiness for visible cohorts whenever groupedProducts changes
-  useEffect(() => {
-    if (!groupedProducts || groupedProducts.cohortIds.length === 0) {
-      setCohortReadiness({});
-      return;
-    }
+    for (const product of sortedProducts) {
+      const brand = product.brand ?? null;
+      const groupId = product.brand_id || NO_BRAND_GROUP_ID;
+      const groupName = brand?.name || (groupId === NO_BRAND_GROUP_ID ? "No Brand" : "Unknown Brand");
 
-    // Collect unique brand IDs from cohortBrandObjects
-    const brandIds = new Set<string>();
-    const cohortToBrandMap: Record<string, string | null> = {};
-
-    for (const cohortId of groupedProducts.cohortIds) {
-      const brand = cohortBrandObjects[cohortId];
-      if (brand?.id) {
-        brandIds.add(brand.id);
-        cohortToBrandMap[cohortId] = brand.id;
-      } else {
-        cohortToBrandMap[cohortId] = null;
+      if (!grouped.has(groupId)) {
+        grouped.set(groupId, {
+          id: groupId,
+          name: groupName,
+          brand,
+          products: [],
+        });
       }
+
+      const group = grouped.get(groupId)!;
+      if (!group.brand && brand) {
+        group.brand = brand;
+        group.name = brand.name;
+      }
+      group.products.push(product);
     }
 
-    // Initialize with no_brand for brandless cohorts
-    const initialReadiness: Record<string, 'ready' | 'not_configured' | 'no_brand' | 'unknown'> = {};
-    for (const cohortId of groupedProducts.cohortIds) {
-      initialReadiness[cohortId] = cohortToBrandMap[cohortId] ? 'unknown' : 'no_brand';
-    }
-    setCohortReadiness(initialReadiness);
+    return Array.from(grouped.values()).sort((a, b) => {
+      if (a.id === NO_BRAND_GROUP_ID) return -1;
+      if (b.id === NO_BRAND_GROUP_ID) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [sortedProducts]);
 
-    if (brandIds.size === 0) return;
+  const defaultReadiness = useMemo<Record<string, CascadeReadiness>>(() => {
+    const initial: Record<string, CascadeReadiness> = {};
+    for (const group of groups) {
+      initial[group.id] = group.brand?.id ? "unknown" : "no_brand";
+    }
+    return initial;
+  }, [groups]);
+
+  const effectiveReadiness = useMemo(() => ({
+    ...defaultReadiness,
+    ...readiness,
+  }), [defaultReadiness, readiness]);
+
+  useEffect(() => {
+    const brandIds = groups
+      .map((group) => group.brand?.id)
+      .filter((id): id is string => Boolean(id));
+
+    if (brandIds.length === 0) return;
 
     let active = true;
-
     async function loadReadiness() {
       try {
-        const res = await fetch('/api/admin/brands/source-cascade/readiness', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brandIds: Array.from(brandIds) }),
+        const res = await fetch("/api/admin/brands/source-cascade/readiness", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ brandIds }),
         });
-        if (!res.ok) throw new Error('Failed to load cascade readiness');
+        if (!res.ok) throw new Error("Failed to load cascade readiness");
         const data = await res.json();
         if (!active) return;
 
-        const readiness = data.readiness as Record<string, { configured: boolean }> | undefined;
-        if (!readiness || !groupedProducts) return;
-
-        const updated: Record<string, 'ready' | 'not_configured' | 'no_brand' | 'unknown'> = {};
-        for (const cohortId of groupedProducts.cohortIds) {
-          const brandId = cohortToBrandMap[cohortId];
+        const readinessByBrand = data.readiness as Record<string, { configured: boolean }> | undefined;
+        const updated: Record<string, CascadeReadiness> = {};
+        for (const group of groups) {
+          const brandId = group.brand?.id;
           if (!brandId) {
-            updated[cohortId] = 'no_brand';
-          } else if (readiness[brandId]?.configured === true) {
-            updated[cohortId] = 'ready';
+            updated[group.id] = "no_brand";
+          } else if (readinessByBrand?.[brandId]?.configured === true) {
+            updated[group.id] = "ready";
           } else {
-            updated[cohortId] = 'not_configured';
+            updated[group.id] = "not_configured";
           }
         }
-        setCohortReadiness(updated);
+        setReadiness(updated);
       } catch {
-        // Non-critical: sidebar badges just stay at initial state
         if (active) {
-          console.warn('[ImportedResultsView] Failed to preload cascade readiness');
+          console.warn("[ImportedResultsView] Failed to preload cascade readiness");
         }
       }
     }
 
-    void loadReadiness();
-    return () => { active = false; };
-  }, [groupedProducts, cohortBrandObjects]);
+    const id = window.setTimeout(() => {
+      void loadReadiness();
+    }, 0);
 
-  const handleSelectCohort = (cohortId: string, isSelected: boolean) => {
-    setSelectedCohortIds((prev) => {
+    return () => {
+      active = false;
+      window.clearTimeout(id);
+    };
+  }, [groups]);
+
+  const activeGroup = useMemo(() => {
+    return groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null;
+  }, [activeGroupId, groups]);
+
+  const activeProducts = useMemo(() => activeGroup?.products ?? [], [activeGroup]);
+  const activeUpcs = useMemo(() => activeProducts.map((product) => product.upc), [activeProducts]);
+  const activeAllSelected = activeUpcs.length > 0 && activeUpcs.every((upc) => selectedProductUpcs.has(upc));
+
+  const handleSelectProduct = (upc: string, selected: boolean) => {
+    setSelectedProductUpcs((prev) => {
       const next = new Set(prev);
-      if (isSelected) {
-        next.add(cohortId);
+      if (selected) next.add(upc);
+      else next.delete(upc);
+      return next;
+    });
+  };
+
+  const handleToggleActiveGroupSelection = () => {
+    setSelectedProductUpcs((prev) => {
+      const next = new Set(prev);
+      if (activeAllSelected) {
+        activeUpcs.forEach((upc) => next.delete(upc));
       } else {
-        next.delete(cohortId);
+        activeUpcs.forEach((upc) => next.add(upc));
       }
       return next;
     });
   };
-  const [isSplitBrandOpen, setIsSplitBrandOpen] = useState(false);
 
-  // Clear product selection when cohort changes
-  useEffect(() => {
-    const id = setTimeout(() => {
-      setSelectedProductUpcs(new Set());
-    }, 0);
-    return () => clearTimeout(id);
-  }, [preferredCohortId]);
-
-  // Handle split and brand assignment confirmation
-  const handleSplitBrandConfirm = async (brandId: string | null) => {
+  const handleAssignBrand = async (brandId: string | null) => {
     const upcs = Array.from(selectedProductUpcs);
     if (upcs.length === 0) return;
 
@@ -195,95 +213,33 @@ export function ImportedResultsView({
       const res = await adminFetch("/api/admin/pipeline/bulk/brand", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          upcs,
-          brandId,
-        }),
+        body: JSON.stringify({ upcs, brandId }),
       });
 
-      if (res.ok) {
-        toast.success(
-          `Split and assigned brand to ${upcs.length} product${upcs.length > 1 ? "s" : ""}`,
-          { description: "Products have been split into the brand-specific cohort." }
-        );
-        setSelectedProductUpcs(new Set());
-        onRefresh(true);
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to split products");
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to assign brand");
       }
-    } catch {
-      toast.error("Failed to split products");
-    }
-  };
 
-  // Initialize preferredCohortId when groupedProducts becomes available
-  useEffect(() => {
-    if (groupedProducts && groupedProducts.cohortIds.length > 0 && !preferredCohortId) {
-      const id = setTimeout(() => {
-        setPreferredCohortId(groupedProducts.cohortIds[0]);
-      }, 0);
-      return () => clearTimeout(id);
-    }
-  }, [groupedProducts, preferredCohortId]);
-
-  const activeCohortId = useMemo(() => {
-    return preferredCohortId;
-  }, [preferredCohortId]);
-
-  const cohortProducts = useMemo(() => {
-    if (!activeCohortId) return [];
-    if (groupedProducts && groupedProducts.groups[activeCohortId]) {
-      return groupedProducts.groups[activeCohortId];
-    }
-    return sortedProducts.filter(p => (p.cohort_id || "ungrouped") === activeCohortId);
-  }, [activeCohortId, groupedProducts, sortedProducts]);
-
-  const activeCohortName = activeCohortId && groupedProducts?.names?.[activeCohortId] ? groupedProducts.names[activeCohortId] : activeCohortId === "ungrouped" ? "Ungrouped Products" : `Cohort ${activeCohortId?.slice(0, 8)}`;
-
-  const activeCohortBrand = activeCohortId ? cohortBrands[activeCohortId] : null;
-  const activeCohortBrandObject = activeCohortId ? cohortBrandObjects[activeCohortId] : null;
-  const hasConfiguredDomains = Boolean(activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0);
-
-  // Handle brand assignment inline
-  const handleAssignBrand = async (brand: Brand | null) => {
-    if (!activeCohortId || activeCohortId === "ungrouped") return;
-
-    try {
-      const upcs = cohortProducts.map((p) => p.upc);
-
-      // 1. Update the cohort batch
-      const cohortResult = await updateCohortBatch(activeCohortId, {
-        brand_id: brand?.id || null,
-        brand_name: brand?.name || null,
-      });
-      if (!cohortResult.success) throw new Error(cohortResult.error);
-
-      // 2. Update the products batch
-      const productResult = await updateProductsBatch(upcs, {
-        brand_id: brand?.id || null,
-      });
-      if (!productResult.success) throw new Error(productResult.error);
-
-      toast.success(brand ? `Brand assigned: ${brand.name}` : "Brand assignment cleared");
-      onRefresh(true); // reload state
+      toast.success(
+        `Updated brand for ${upcs.length} product${upcs.length === 1 ? "" : "s"}`,
+      );
+      setSelectedProductUpcs(new Set());
+      onRefresh(true);
     } catch (error) {
-      console.error("Failed to assign brand:", error);
       toast.error(error instanceof Error ? error.message : "Failed to assign brand");
     }
   };
 
-
-
-  // Handle cohort change from sidebar
-  const handleCohortChange = (cohortId: string) => {
-    setPreferredCohortId(cohortId);
+  const readinessLabel = (state: CascadeReadiness) => {
+    if (state === "ready") return <Badge variant="outline" className="rounded-none border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10 text-[9px]">Ready</Badge>;
+    if (state === "not_configured") return <Badge variant="outline" className="rounded-none border-destructive/60 text-destructive bg-destructive/5 text-[9px]">No config</Badge>;
+    if (state === "no_brand") return <Badge variant="outline" className="rounded-none border-amber-500/60 text-amber-700 dark:text-amber-400 bg-amber-500/10 text-[9px]">Needs brand</Badge>;
+    return <Badge variant="outline" className="rounded-none text-[9px]">Checking</Badge>;
   };
 
-  // 5. Render logic
   return (
     <div data-testid="product-table" className="flex max-w-full flex-1 min-h-0 flex-col overflow-hidden rounded-[var(--surface-admin-radius)] border border-border bg-card xl:flex-row">
-      {/* Left Column: Product List */}
       <div className="flex min-h-[260px] w-full shrink-0 flex-col overflow-x-hidden border-b border-border bg-background xl:w-80 xl:min-w-[320px] xl:max-w-[320px] xl:border-b-0 xl:border-r">
         <div className="flex flex-col border-b border-border bg-card">
           <div className="flex flex-col gap-2 p-2 sm:flex-row sm:items-center">
@@ -334,262 +290,137 @@ export function ImportedResultsView({
           )}
         </div>
 
-        <PipelineSidebarTable
-          products={sortedProducts}
-          groupedProducts={groupedProducts}
-          cohortBrands={cohortBrands}
-          cohortBrandObjects={cohortBrandObjects}
-          selectedUpcs={new Set()}
-          preferredUpc={null}
-          preferredCohortId={preferredCohortId}
-          onSelectUpc={() => {}}
-          onSelectAll={() => {}}
-          onDeselectAll={() => {}}
-          onPreferredUpcChange={() => { }}
-          onPreferredCohortChange={handleCohortChange}
-          selectedCohortIds={selectedCohortIds}
-          onSelectCohort={handleSelectCohort}
-          variant="imported"
-          cohortReadiness={cohortReadiness}
-        />
+        <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border">
+          {groups.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
+              <Package className="h-12 w-12 mb-4 opacity-20" />
+              <p className="text-sm font-semibold">No imported products</p>
+            </div>
+          ) : (
+            groups.map((group) => {
+              const isActive = activeGroup?.id === group.id;
+              const state = effectiveReadiness[group.id] ?? "unknown";
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setActiveGroupId(group.id)}
+                  className={cn(
+                    "w-full p-3 text-left transition-colors hover:bg-muted/30",
+                    isActive ? "bg-primary/15 border-l-4 border-primary" : "border-l-4 border-transparent",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {group.id === NO_BRAND_GROUP_ID ? (
+                          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                        ) : (
+                          <Tags className="h-4 w-4 shrink-0 text-brand-forest-green" />
+                        )}
+                        <span className="truncate text-[11px] font-bold uppercase tracking-widest text-foreground">
+                          {group.name}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 text-[10px] font-semibold text-muted-foreground">
+                        <span>{group.products.length} product{group.products.length === 1 ? "" : "s"}</span>
+                        {group.brand?.official_domains?.[0] ? (
+                          <span className="truncate">• {group.brand.official_domains[0]}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="shrink-0">{readinessLabel(state)}</div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
       </div>
 
-      {/* Right Column: Master-Detail Area */}
       <div className="flex flex-1 flex-col overflow-hidden bg-card xl:flex-row">
-        {selectedCohortIds.size > 0 ? (
+        {activeGroup ? (
           <>
-            {/* Center: Bulk Selection Summary */}
             <div className="flex min-h-[320px] flex-1 flex-col overflow-hidden border-b border-border xl:border-b-0 xl:border-r">
-              <div className="bg-card border-b border-border flex-shrink-0 z-10">
-                <div className="flex flex-col gap-3 p-4 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="flex flex-col gap-2 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-primary shrink-0" />
-                      <h2 className="text-xl font-semibold text-foreground">
-                        Bulk Cohort Action
-                      </h2>
-                    </div>
-                    <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
-                      <span>{selectedCohortIds.size} Cohort{selectedCohortIds.size !== 1 ? 's' : ''} Selected</span>
-                      <span>•</span>
-                      <span>{
-                        Array.from(selectedCohortIds).reduce((acc, id) => acc + (groupedProducts?.groups[id]?.length || 0), 0)
-                      } Total Products</span>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedCohortIds(new Set())}
-                    className="h-8 rounded-none border border-border hover:bg-muted text-xs font-semibold self-start"
-                  >
-                    Clear Selection
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6">
-                <div className="max-w-4xl mx-auto space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-                    Selected Batches Details
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
-                    {Array.from(selectedCohortIds).map((cohortId) => {
-                      const groupProducts = groupedProducts?.groups[cohortId] || [];
-                      const cohortName = groupedProducts?.names?.[cohortId] || (cohortId === 'ungrouped' ? 'Ungrouped Products' : `Cohort ${cohortId.slice(0, 8)}`);
-                      const brand = cohortBrandObjects[cohortId] || null;
-                      return (
-                        <div
-                          key={cohortId}
-                          className="p-4 bg-card border border-border hover:border-muted-foreground/30 transition-all flex flex-col justify-between group relative"
-                        >
-                          <div>
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h4 className="text-sm font-semibold text-foreground line-clamp-1 truncate" title={cohortName}>
-                                {cohortName}
-                              </h4>
-                              <button
-                                onClick={() => handleSelectCohort(cohortId, false)}
-                                className="text-muted-foreground hover:text-destructive p-1 transition-colors rounded-none"
-                                title="Remove cohort"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5 items-center mb-2">
-                              {brand ? (
-                                <Badge variant="outline" className="h-4 text-[9px] px-1 font-semibold rounded-none border-brand-forest-green text-brand-forest-green bg-brand-forest-green/5">
-                                  {brand.name}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="h-4 text-[9px] px-1 font-semibold rounded-none border-muted-foreground/30 text-muted-foreground bg-muted/5">
-                                  No Brand Assigned
-                                </Badge>
-                              )}
-                              {brand?.official_domains && brand.official_domains.length > 0 && (
-                                <span className="text-[9px] text-muted-foreground bg-muted/20 border border-border px-1">
-                                  {brand.official_domains[0]}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-[10px] font-semibold text-muted-foreground pt-2 border-t border-border/50 flex justify-between items-center">
-                            <span>Products: {groupProducts.length}</span>
-                            <span className="font-mono text-[9px] opacity-60">{cohortId}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Bulk Management Panel */}
-            <BulkManagementPanel
-              selectedCohortIds={selectedCohortIds}
-              groupedProducts={groupedProducts}
-              cohortBrandObjects={cohortBrandObjects}
-              onClearSelection={() => setSelectedCohortIds(new Set())}
-              onSuccess={() => {
-                setSelectedCohortIds(new Set());
-                onRefresh();
-              }}
-            />
-          </>
-        ) : activeCohortId && cohortProducts.length > 0 ? (
-          <>
-            {/* Center: Product List/Preview (Master) */}
-            <div className="flex min-h-[320px] flex-1 flex-col overflow-hidden border-b border-border xl:border-b-0 xl:border-r">
-              {/* Header */}
               <div className="bg-card border-b border-border flex-shrink-0 z-10">
                 <div className="flex flex-col gap-3 p-4 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
                   <div className="flex flex-col gap-2 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex items-center gap-2">
-                        <Layers className="h-5 w-5 text-primary shrink-0" />
-                        <h2 className="text-xl font-semibold text-foreground line-clamp-1" title={activeCohortName}>
-                          {activeCohortName}
+                        <Tags className="h-5 w-5 text-primary shrink-0" />
+                        <h2 className="text-xl font-semibold text-foreground line-clamp-1" title={activeGroup.name}>
+                          {activeGroup.name}
                         </h2>
-                        {activeCohortId && activeCohortId !== "ungrouped" && onEditCohort && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                            onClick={() =>
-                              onEditCohort(
-                                activeCohortId,
-                                groupedProducts?.names?.[activeCohortId] || null,
-                                activeCohortBrand || null
-                              )
-                            }
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
                       </div>
-                      {activeCohortId && activeCohortId !== "ungrouped" && (
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
-                          <CohortBrandPicker
-                             value={activeCohortBrandObject}
-                             onAssign={handleAssignBrand}
-                             triggerClassName="h-7 rounded-none border border-border bg-background py-0 text-[11px]"
-                          />
-                          {activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0 && (
-                            <a
-                              href={formatExternalUrl(activeCohortBrandObject.official_domains[0])}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-brand-forest-green hover:underline font-semibold bg-muted/30 px-2 py-0.5 border border-border"
-                            >
-                              <Globe className="h-3 w-3 shrink-0" />
-                              <span className="truncate max-w-[150px]">{activeCohortBrandObject.official_domains[0]}</span>
-                            </a>
-                          )}
-                        </div>
-                      )}
+                      {activeGroup.brand?.official_domains?.[0] ? (
+                        <Link
+                          href={formatExternalUrl(activeGroup.brand.official_domains[0])}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-brand-forest-green hover:underline font-semibold bg-muted/30 px-2 py-0.5 border border-border"
+                        >
+                          <Globe className="h-3 w-3 shrink-0" />
+                          <span className="truncate max-w-[150px]">{activeGroup.brand.official_domains[0]}</span>
+                        </Link>
+                      ) : null}
+                      {activeGroup.brand?.id && effectiveReadiness[activeGroup.id] === "not_configured" ? (
+                        <Link
+                          href="/admin/brands"
+                          className="inline-flex items-center gap-1 text-[10px] text-brand-burgundy hover:underline font-bold bg-muted/30 px-2 py-0.5 border border-border"
+                        >
+                          <Settings2 className="h-3 w-3" /> Configure cascade
+                        </Link>
+                      ) : null}
                     </div>
                     <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
-                      <span>{cohortProducts.length} Product{cohortProducts.length !== 1 ? 's' : ''}</span>
-                      {activeCohortId !== "ungrouped" && (
-                        <>
-                          <span>•</span>
-                          <span className="font-mono">{activeCohortId}</span>
-                        </>
-                      )}
+                      <span>{activeProducts.length} Product{activeProducts.length !== 1 ? "s" : ""}</span>
+                      <span>•</span>
+                      <span>Sorted by UPC</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-
-              {/* Details Content (Product Preview Grid) */}
               <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 relative">
                 <div className="max-w-4xl mx-auto space-y-4">
                   <div className="flex items-center justify-between border-b border-border pb-2">
-                    <h3 className="text-xs font-semibold text-foreground">Products in Cohort</h3>
-                    {cohortProducts.length > 0 && (
+                    <h3 className="text-xs font-semibold text-foreground">
+                      {activeGroup.id === NO_BRAND_GROUP_ID ? "Products needing brand assignment" : "Products in brand"}
+                    </h3>
+                    {activeProducts.length > 0 && (
                       <Button
                         variant="link"
                         size="sm"
-                        onClick={() => {
-                          const allUpcs = cohortProducts.map(p => p.upc);
-                          const allSelected = allUpcs.every(upc => selectedProductUpcs.has(upc));
-                          if (allSelected) {
-                            setSelectedProductUpcs(new Set());
-                          } else {
-                            setSelectedProductUpcs(new Set(allUpcs));
-                          }
-                        }}
+                        onClick={handleToggleActiveGroupSelection}
                         className="h-auto p-0 text-[10px] font-bold uppercase text-muted-foreground hover:text-foreground"
                       >
-                        {cohortProducts.every(p => selectedProductUpcs.has(p.upc)) ? "Deselect All" : "Select All"}
+                        {activeAllSelected ? "Deselect All" : "Select All"}
                       </Button>
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                    {cohortProducts.map(product => {
+                    {activeProducts.map((product) => {
                       const isSelected = selectedProductUpcs.has(product.upc);
                       return (
                         <div
                           key={product.upc}
-                          onClick={() => {
-                            setSelectedProductUpcs(prev => {
-                              const next = new Set(prev);
-                              if (next.has(product.upc)) {
-                                next.delete(product.upc);
-                              } else {
-                                next.add(product.upc);
-                              }
-                              return next;
-                            });
-                          }}
+                          onClick={() => handleSelectProduct(product.upc, !isSelected)}
                           className={cn(
                             "p-3 bg-card border flex flex-col gap-2 transition-all group relative cursor-pointer select-none",
                             isSelected
                               ? "border-brand-forest-green bg-brand-forest-green/[0.03] shadow-sm"
-                              : "border-border hover:border-muted-foreground/30 hover:bg-muted/10"
+                              : "border-border hover:border-muted-foreground/30 hover:bg-muted/10",
                           )}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               <Checkbox
                                 checked={isSelected}
-                                onCheckedChange={(checked) => {
-                                  setSelectedProductUpcs(prev => {
-                                    const next = new Set(prev);
-                                    if (checked) {
-                                      next.add(product.upc);
-                                    } else {
-                                      next.delete(product.upc);
-                                    }
-                                    return next;
-                                  });
-                                }}
+                                onCheckedChange={(checked) => handleSelectProduct(product.upc, checked === true)}
                                 className={cn(
                                   "border-muted-foreground/40",
-                                  isSelected && "border-brand-forest-green bg-brand-forest-green text-white"
+                                  isSelected && "border-brand-forest-green bg-brand-forest-green text-white",
                                 )}
                               />
                               <div className="text-[9px] font-semibold text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
@@ -597,11 +428,11 @@ export function ImportedResultsView({
                               </div>
                             </div>
                             <div className="text-[10px] font-semibold text-brand-forest-green shrink-0">
-                              ${Number(product.input?.price || 0).toFixed(2)}
+                              {getDisplayPrice(product)}
                             </div>
                           </div>
-                          <div className="text-sm font-semibold text-foreground line-clamp-2 leading-tight" title={product.input?.name}>
-                            {product.input?.name}
+                          <div className="text-sm font-semibold text-foreground line-clamp-2 leading-tight" title={getProductName(product)}>
+                            {getProductName(product)}
                           </div>
                         </div>
                       );
@@ -614,7 +445,7 @@ export function ImportedResultsView({
                     <div className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-brand-forest-green animate-pulse" />
                       <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                        {selectedProductUpcs.size} Product{selectedProductUpcs.size > 1 ? 's' : ''} Selected
+                        {selectedProductUpcs.size} Product{selectedProductUpcs.size > 1 ? "s" : ""} Selected
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -628,10 +459,10 @@ export function ImportedResultsView({
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => setIsSplitBrandOpen(true)}
+                        onClick={() => setIsAssignBrandOpen(true)}
                         className="h-8 rounded-none bg-brand-forest-green hover:bg-brand-forest-green/90 text-white font-bold uppercase text-[10px] tracking-wider px-3"
                       >
-                        Split & Assign Brand
+                        Assign Brand
                       </Button>
                     </div>
                   </div>
@@ -639,27 +470,27 @@ export function ImportedResultsView({
               </div>
             </div>
 
-            {/* Right: Management Panel (Detail) */}
             <ManagementPanel
-              cohortId={activeCohortId}
-              products={cohortProducts}
-              cohortBrandObjects={cohortBrandObjects}
+              groupName={activeGroup.name}
+              products={activeProducts}
+              brand={activeGroup.brand}
               onSuccess={() => onRefresh()}
             />
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
-            <Layers className="h-12 w-12 mb-2 opacity-20" />
-            <h3 className="text-lg font-semibold text-foreground">Select a cohort</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Choose a cohort from the list to view its contents.</p>
+            <Package className="h-12 w-12 mb-2 opacity-20" />
+            <h3 className="text-lg font-semibold text-foreground">No products</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Imported products appear here grouped by brand.</p>
           </div>
         )}
       </div>
+
       <BulkAssignBrandDialog
-        open={isSplitBrandOpen}
-        onOpenChange={setIsSplitBrandOpen}
+        open={isAssignBrandOpen}
+        onOpenChange={setIsAssignBrandOpen}
         selectedCount={selectedProductUpcs.size}
-        onConfirm={handleSplitBrandConfirm}
+        onConfirm={handleAssignBrand}
       />
     </div>
   );

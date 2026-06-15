@@ -93,7 +93,7 @@ describe("Active Runs API", () => {
     const mockJobs = [
       {
         id: "job-1",
-        config: { scrapers: ["amazon", "walmart"], cohort: { id: 'cohort-1' } },
+        config: { scrapers: ["amazon", "walmart"] },
         status: "running",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:01:00Z",
@@ -157,7 +157,6 @@ describe("Active Runs API", () => {
       id: "job-1",
       jobType: 'enrichment',
       officialBrandPhase: null,
-      cohortId: 'cohort-1',
       status: "running",
       createdAt: "2024-01-15T10:00:00Z",
       completedAt: null,
@@ -193,7 +192,6 @@ describe("Active Runs API", () => {
       id: "job-2",
       jobType: "enrichment",
       officialBrandPhase: null,
-      cohortId: null,
       status: "pending",
       createdAt: "2024-01-15T09:00:00Z",
       completedAt: null,

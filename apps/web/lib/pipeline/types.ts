@@ -209,6 +209,8 @@ export interface PipelineProduct {
   } | null;
   /** Durable brand ID foreign key for extraction eligibility */
   brand_id?: string | null;
+  /** Joined brand record for brand-grouped Imported views */
+  brand?: Brand | null;
   pipeline_status: PersistedPipelineStatus;
   exported_at?: string | null;
   /** Image URLs from scraping */
@@ -221,7 +223,7 @@ export interface PipelineProduct {
   error_message?: string;
   /** Number of retry attempts */
   retry_count?: number;
-  /** Product line / Cohort identifier for batch processing */
+  /** Product line identifier for consolidation grouping */
   product_line?: string | null;
   /** FK to product_lines.id for canonical product line assignment */
   product_line_id?: string | null;
@@ -235,16 +237,6 @@ export interface PipelineProduct {
   product_line_rationale?: string | null;
   /** Flag for operator review (ambiguous dedup, manual override, etc.) */
   product_line_review_required?: boolean | null;
-  /** ID of the cohort batch this product belongs to (legacy) */
-  cohort_id?: string | null;
-  /** Interpolated name from the associated cohort batch */
-  cohort_name?: string | null;
-  /** Brand name from the associated cohort batch */
-  cohort_brand_name?: string | null;
-  /** Brand ID from the associated cohort batch */
-  cohort_brand_id?: string | null;
-  /** Brand record from the associated cohort batch */
-  cohort_brands?: Brand | null;
   /** Record creation timestamp */
   created_at: string;
   /** Last update timestamp */

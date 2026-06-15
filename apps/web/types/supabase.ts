@@ -654,88 +654,6 @@ export type Database = {
           },
         ]
       }
-      cohort_batches: {
-        Row: {
-          brand_id: string | null
-          brand_name: string | null
-          created_at: string | null
-          id: string
-          metadata: Json | null
-          name: string | null
-          product_line: string | null
-          scraper_config: string | null
-          status: string | null
-          upc_prefix: string
-          updated_at: string | null
-        }
-        Insert: {
-          brand_id?: string | null
-          brand_name?: string | null
-          created_at?: string | null
-          id?: string
-          metadata?: Json | null
-          name?: string | null
-          product_line?: string | null
-          scraper_config?: string | null
-          status?: string | null
-          upc_prefix: string
-          updated_at?: string | null
-        }
-        Update: {
-          brand_id?: string | null
-          brand_name?: string | null
-          created_at?: string | null
-          id?: string
-          metadata?: Json | null
-          name?: string | null
-          product_line?: string | null
-          scraper_config?: string | null
-          status?: string | null
-          upc_prefix?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cohort_batches_brand_id_fkey"
-            columns: ["brand_id"]
-            isOneToOne: false
-            referencedRelation: "brands"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cohort_members: {
-        Row: {
-          cohort_id: string
-          created_at: string | null
-          product_upc: string
-          sort_order: number | null
-          upc_prefix: string
-        }
-        Insert: {
-          cohort_id: string
-          created_at?: string | null
-          product_upc: string
-          sort_order?: number | null
-          upc_prefix: string
-        }
-        Update: {
-          cohort_id?: string
-          created_at?: string | null
-          product_upc?: string
-          sort_order?: number | null
-          upc_prefix?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cohort_members_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       consolidation_review_requests: {
         Row: {
           agent_summary: string | null
@@ -743,7 +661,6 @@ export type Database = {
           batch_job_item_id: string | null
           blocking: boolean
           candidate_consolidated: Json
-          cohort_id: string | null
           created_at: string
           evidence: Json
           field_candidates: Json
@@ -763,7 +680,6 @@ export type Database = {
           batch_job_item_id?: string | null
           blocking?: boolean
           candidate_consolidated?: Json
-          cohort_id?: string | null
           created_at?: string
           evidence?: Json
           field_candidates?: Json
@@ -783,7 +699,6 @@ export type Database = {
           batch_job_item_id?: string | null
           blocking?: boolean
           candidate_consolidated?: Json
-          cohort_id?: string | null
           created_at?: string
           evidence?: Json
           field_candidates?: Json
@@ -810,13 +725,6 @@ export type Database = {
             columns: ["batch_job_item_id"]
             isOneToOne: false
             referencedRelation: "batch_job_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "consolidation_review_requests_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
             referencedColumns: ["id"]
           },
           {
@@ -1795,7 +1703,6 @@ export type Database = {
           appeared_in_phases: number[] | null
           brand_id: string | null
           candidate_source: string
-          cohort_id: string | null
           composite_score: number | null
           confidence: number | null
           created_at: string
@@ -1822,7 +1729,6 @@ export type Database = {
           appeared_in_phases?: number[] | null
           brand_id?: string | null
           candidate_source: string
-          cohort_id?: string | null
           composite_score?: number | null
           confidence?: number | null
           created_at?: string
@@ -1849,7 +1755,6 @@ export type Database = {
           appeared_in_phases?: number[] | null
           brand_id?: string | null
           candidate_source?: string
-          cohort_id?: string | null
           composite_score?: number | null
           confidence?: number | null
           created_at?: string
@@ -1878,13 +1783,6 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "official_brand_url_candidates_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
             referencedColumns: ["id"]
           },
           {
@@ -3379,7 +3277,6 @@ export type Database = {
           active_consolidation_review_id: string | null
           b2b_sources: Json | null
           brand_id: string | null
-          cohort_id: string | null
           confidence_score: number | null
           consolidated: Json | null
           consolidation_review_status: string
@@ -3405,7 +3302,6 @@ export type Database = {
           active_consolidation_review_id?: string | null
           b2b_sources?: Json | null
           brand_id?: string | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           consolidation_review_status?: string
@@ -3431,7 +3327,6 @@ export type Database = {
           active_consolidation_review_id?: string | null
           b2b_sources?: Json | null
           brand_id?: string | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           consolidation_review_status?: string
@@ -3466,13 +3361,6 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_ingestion_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -4731,7 +4619,6 @@ export type Database = {
       pipeline_export_queue: {
         Row: {
           b2b_sources: Json | null
-          cohort_id: string | null
           confidence_score: number | null
           consolidated: Json | null
           created_at: string | null
@@ -4753,7 +4640,6 @@ export type Database = {
         }
         Insert: {
           b2b_sources?: Json | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -4775,7 +4661,6 @@ export type Database = {
         }
         Update: {
           b2b_sources?: Json | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -4796,19 +4681,11 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "products_ingestion_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
-            referencedColumns: ["id"]
-          },
         ]
       }
       pipeline_finalized_review: {
         Row: {
           b2b_sources: Json | null
-          cohort_id: string | null
           confidence_score: number | null
           consolidated: Json | null
           created_at: string | null
@@ -4830,7 +4707,6 @@ export type Database = {
         }
         Insert: {
           b2b_sources?: Json | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -4852,7 +4728,6 @@ export type Database = {
         }
         Update: {
           b2b_sources?: Json | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -4873,19 +4748,11 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "products_ingestion_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
-            referencedColumns: ["id"]
-          },
         ]
       }
       pipeline_finalizing_queue: {
         Row: {
           b2b_sources: Json | null
-          cohort_id: string | null
           confidence_score: number | null
           consolidated: Json | null
           created_at: string | null
@@ -4907,7 +4774,6 @@ export type Database = {
         }
         Insert: {
           b2b_sources?: Json | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -4929,7 +4795,6 @@ export type Database = {
         }
         Update: {
           b2b_sources?: Json | null
-          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -4950,13 +4815,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "products_ingestion_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
-            referencedColumns: ["id"]
-          },
         ]
       }
       products_published: {

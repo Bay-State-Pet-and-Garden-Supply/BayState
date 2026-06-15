@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bulkUpdateStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus } from '@/lib/pipeline/types';
-import { createAdminClient } from '@/lib/supabase/server';
 import { bulkPublishToStorefront } from '@/lib/pipeline/publish';
 
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
@@ -19,39 +18,11 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { toStatus, cohort_id, fromStatus, resetResults = false } = body as {
+        const { upcs, toStatus, resetResults = false } = body as {
             upcs?: string[];
             toStatus: string;
-            cohort_id?: string;
-            fromStatus?: string;
             resetResults?: boolean;
         };
-        let { upcs } = body as {
-            upcs?: string[];
-            toStatus: string;
-            cohort_id?: string;
-            fromStatus?: string;
-            resetResults?: boolean;
-        };
-
-        // If cohort_id is provided, resolve UPCs from the database
-        if (cohort_id && fromStatus) {
-            const supabase = await createAdminClient();
-            const { data: rows, error: queryError } = await supabase
-                .from('products_ingestion')
-                .select('upc')
-                .eq('cohort_id', cohort_id)
-                .eq('pipeline_status', fromStatus);
-
-            if (queryError) {
-                return NextResponse.json(
-                    { error: `Failed to load cohort UPCs: ${queryError.message}` },
-                    { status: 500 }
-                );
-            }
-
-            upcs = (rows ?? []).map((r: { upc?: string }) => r.upc).filter(Boolean) as string[];
-        }
 
         // Validate upcs array
         if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {

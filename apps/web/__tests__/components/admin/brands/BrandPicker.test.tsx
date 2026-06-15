@@ -3,7 +3,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { CohortBrandPicker } from '@/components/admin/cohorts/CohortBrandPicker';
+import { BrandPicker } from '@/components/admin/brands/BrandPicker';
 
 jest.mock('sonner', () => ({
   toast: {
@@ -52,7 +52,7 @@ jest.mock('@/components/admin/brands/BrandModal', () => ({
   ),
 }));
 
-describe('CohortBrandPicker', () => {
+describe('BrandPicker', () => {
   beforeEach(() => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -68,7 +68,7 @@ describe('CohortBrandPicker', () => {
     const onAssign = jest.fn().mockResolvedValue(undefined);
 
     render(
-      <CohortBrandPicker
+      <BrandPicker
         value={null}
         onAssign={onAssign}
       />

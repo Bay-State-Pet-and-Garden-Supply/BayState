@@ -1,13 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import {
  Clock,
  Loader2,
  XCircle,
  CheckCircle,
- ExternalLink,
  ChevronDown,
  ChevronUp,
  AlertTriangle,
@@ -31,7 +29,6 @@ export interface ActiveJob {
  id: string;
  jobType?: string | null;
  officialBrandPhase?: string | null;
- cohortId?: string | null;
  upcCount: number;
  scrapers: string[];
  status: "pending" | "running" | "completed" | "failed" | "cancelled";
@@ -154,7 +151,6 @@ export function toActiveJob(job: JobAssignment): ActiveJob {
     id: job.id,
     jobType: null,
     officialBrandPhase: null,
-    cohortId: null,
     upcCount: job.upcs?.length ?? 0,
     scrapers: job.scrapers ?? [],
  status:
@@ -248,10 +244,6 @@ export function JobCard({
  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
  const hasChunks = job.chunkSummary.total > 0;
  const isActive = job.status === "pending" || job.status === "running";
- const reviewHref = job.cohortId
- ? `/admin/pipeline/official-brand?cohort_id=${encodeURIComponent(job.cohortId)}`
- : null;
-
  return (
  <div className="rounded-none border border-border bg-card overflow-hidden">
  <div className="p-4 sm:p-5">
@@ -391,14 +383,6 @@ export function JobCard({
  </div>
 
  <div className="flex items-center gap-2">
- {job.officialBrandPhase === "url_discovery" && reviewHref ? (
- <Button variant="outline" size="sm" asChild className="h-7 rounded-none text-[10px]">
- <Link href={reviewHref}>
- <ExternalLink className="h-3.5 w-3.5" />
- Review Candidates
- </Link>
- </Button>
- ) : null}
  {isActive && (
  <Button
  variant="outline"

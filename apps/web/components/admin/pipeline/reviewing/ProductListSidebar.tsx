@@ -4,7 +4,6 @@ import * as React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { RefObject } from "react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
-import type { Brand } from "@/lib/types";
 import {
   PipelineFilters,
   type PipelineFiltersState,
@@ -25,14 +24,6 @@ interface ProductListSidebarProps {
   availableSources?: string[];
   showSourceFilter?: boolean;
   isLoading?: boolean;
-  groupedProducts?: {
-    groups: Record<string, PipelineProduct[]>;
-    cohortIds: string[];
-    names?: Record<string, string>;
-  };
-  cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, Brand>;
-  onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   selectedUpcs?: Set<string>;
   onSelectUpc?: (upc: string, selected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
 }
@@ -49,10 +40,6 @@ export function ProductListSidebar({
   availableSources = [],
   showSourceFilter = false,
   isLoading = false,
-  groupedProducts,
-  cohortBrands = {},
-  cohortBrandObjects = {},
-  onEditCohort,
   selectedUpcs = new Set(),
   onSelectUpc,
 }: ProductListSidebarProps) {
@@ -111,16 +98,12 @@ export function ProductListSidebar({
         <PipelineSidebarTable
           variant="reviewing"
           products={products}
-          groupedProducts={groupedProducts}
-          cohortBrands={cohortBrands}
-          cohortBrandObjects={cohortBrandObjects}
           selectedUpcs={selectedUpcs}
           preferredUpc={selectedUpc}
           onSelectUpc={onSelectUpc || (() => {})}
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
           onPreferredUpcChange={onSelectProduct}
-          onEditCohort={onEditCohort}
           scrollContainerRef={scrollContainerRef}
         />
       </div>

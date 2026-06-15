@@ -19,7 +19,6 @@ import { cn } from '@/lib/utils';
 export interface PipelineFiltersState {
   source?: string;
   product_line?: string;
-  cohort_id?: string;
 }
 
 interface PipelineFiltersProps {
@@ -41,14 +40,14 @@ export function PipelineFilters({
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    setLocalFilters(filters);
+    const id = window.setTimeout(() => setLocalFilters(filters), 0);
+    return () => window.clearTimeout(id);
   }, [filters]);
 
   const handleApply = () => {
     onFilterChange({
       source: localFilters.source || undefined,
       product_line: localFilters.product_line?.trim() || undefined,
-      cohort_id: localFilters.cohort_id?.trim() || undefined,
     });
     setIsOpen(false);
   };
@@ -60,7 +59,7 @@ export function PipelineFilters({
     setIsOpen(false);
   };
 
-  const activeFilterCount = [filters.source, filters.product_line, filters.cohort_id].filter(Boolean).length;
+  const activeFilterCount = [filters.source, filters.product_line].filter(Boolean).length;
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -90,7 +89,7 @@ export function PipelineFilters({
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-foreground">Filter pipeline results</h4>
               <p className="text-xs leading-5 text-muted-foreground">
-                Narrow the current stage by source, product line, or batch ID.
+                Narrow the current stage by source or product line.
               </p>
             </div>
             {activeFilterCount > 0 ? (
@@ -150,22 +149,6 @@ export function PipelineFilters({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="cohort_id">Batch ID</Label>
-            <Input
-              id="cohort_id"
-              type="search"
-              autoComplete="off"
-              placeholder="e.g. 3389440f"
-              value={localFilters.cohort_id || ''}
-              onChange={(event) =>
-                setLocalFilters((prev) => ({
-                  ...prev,
-                  cohort_id: event.target.value || undefined,
-                }))
-              }
-            />
-          </div>
 
           <Button className="w-full" onClick={handleApply}>
             Apply filters

@@ -14,7 +14,6 @@ import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { scrapeProducts } from "@/lib/pipeline-scraping";
 import type { ScrapeOptions } from "@/lib/pipeline-scraping-types";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getCascadeReadiness } from "@/lib/approved-sources/source-cascade";
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdminAuth(request);
@@ -38,6 +37,32 @@ export async function POST(request: NextRequest) {
     if (upcs.length > 500) {
       return NextResponse.json(
         { error: "Cannot start extraction for more than 500 UPCs at once" },
+        { status: 400 },
+      );
+    }
+
+    const supabase = await createAdminClient();
+    const { data: products, error: productError } = await supabase
+      .from("products_ingestion")
+      .select("upc, brand_id")
+      .in("upc", upcs);
+
+    if (productError) {
+      return NextResponse.json(
+        { error: `Failed to validate product brands: ${productError.message}` },
+        { status: 500 },
+      );
+    }
+
+    const productBrandMap = new Map((products ?? []).map((product) => [product.upc, product.brand_id]));
+    const missingBrandUpcs = upcs.filter((upc) => !productBrandMap.get(upc));
+
+    if (missingBrandUpcs.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Every selected product must have a brand before extraction.",
+          missingBrandUpcs,
+        },
         { status: 400 },
       );
     }

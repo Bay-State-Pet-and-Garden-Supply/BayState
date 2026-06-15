@@ -202,49 +202,6 @@ const importedCounts: StatusCount[] = [
   { status: "failed", count: 0 },
 ];
 
-const importedCohortProducts: PipelineProduct[] = [
-  {
-    upc: "UPC101",
-    input: { name: "Product A", price: 10 },
-    sources: {},
-    consolidated: null,
-    pipeline_status: "imported",
-    cohort_id: "cohort-1",
-    cohort_brand_id: "brand-1",
-    cohort_brand_name: "Miracle-Gro",
-    cohort_brands: {
-      id: "brand-1",
-      name: "Miracle-Gro",
-      slug: "miracle-gro",
-      logo_url: null,
-      official_domains: ["scottsmiraclegro.com"],
-      preferred_domains: ["homedepot.com"],
-    },
-    created_at: "2026-01-01",
-    updated_at: "2026-01-01",
-  },
-  {
-    upc: "UPC102",
-    input: { name: "Product B", price: 12 },
-    sources: {},
-    consolidated: null,
-    pipeline_status: "imported",
-    cohort_id: "cohort-2",
-    cohort_brand_id: "brand-2",
-    cohort_brand_name: "Bentley Seed",
-    cohort_brands: {
-      id: "brand-2",
-      name: "Bentley Seed",
-      slug: "bentley-seed",
-      logo_url: null,
-      official_domains: [],
-      preferred_domains: [],
-    },
-    created_at: "2026-01-02",
-    updated_at: "2026-01-02",
-  },
-];
-
 afterAll(() => {
   // @ts-expect-error global fetch assignment
   global.fetch = undefined;

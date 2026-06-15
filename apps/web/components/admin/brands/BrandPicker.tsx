@@ -10,11 +10,11 @@ import { BrandModal } from '@/components/admin/brands/BrandModal';
 import type { Brand } from '@/components/admin/brands/types';
 import { adminFetch } from '@/lib/admin/api-client';
 
-export type CohortBrandOption = Brand;
+export type BrandPickerOption = Brand;
 
-interface CohortBrandPickerProps {
- value: CohortBrandOption | null;
- onAssign: (brand: CohortBrandOption | null) => Promise<void>;
+interface BrandPickerProps {
+ value: BrandPickerOption | null;
+ onAssign: (brand: BrandPickerOption | null) => Promise<void>;
  className?: string;
  triggerClassName?: string;
  emptyLabel?: string;
@@ -24,7 +24,7 @@ function slugifyBrandName(value: string): string {
  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-function isBrandConfigured(brand: CohortBrandOption): boolean {
+function isBrandConfigured(brand: BrandPickerOption): boolean {
  const officialDomains = brand.official_domains ?? [];
  const preferredDomains = brand.preferred_domains ?? [];
 
@@ -34,15 +34,15 @@ function isBrandConfigured(brand: CohortBrandOption): boolean {
  );
 }
 
-export function CohortBrandPicker({
+export function BrandPicker({
  value,
  onAssign,
  className,
  triggerClassName,
  emptyLabel = 'Assign Brand',
-}: CohortBrandPickerProps) {
+}: BrandPickerProps) {
  const [open, setOpen] = useState(false);
- const [brands, setBrands] = useState<CohortBrandOption[]>([]);
+ const [brands, setBrands] = useState<BrandPickerOption[]>([]);
  const [loadingBrands, setLoadingBrands] = useState(false);
  const [search, setSearch] = useState('');
  const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,7 +70,11 @@ export function CohortBrandPicker({
  return;
  }
 
+ const id = window.setTimeout(() => {
  void fetchBrands();
+ }, 0);
+
+ return () => window.clearTimeout(id);
  }, [fetchBrands, open]);
 
  const filteredBrands = useMemo(() => {
@@ -93,7 +97,7 @@ export function CohortBrandPicker({
  return brands.some((brand) => brand.name.toLowerCase() === query || brand.slug.toLowerCase() === slugifyBrandName(query));
  }, [brands, search]);
 
- const assignBrand = useCallback(async (brand: CohortBrandOption | null) => {
+ const assignBrand = useCallback(async (brand: BrandPickerOption | null) => {
  setIsSubmitting(true);
  try {
  await onAssign(brand);

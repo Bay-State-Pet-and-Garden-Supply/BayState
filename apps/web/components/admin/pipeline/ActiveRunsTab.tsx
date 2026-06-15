@@ -163,7 +163,6 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
             nextJob.chunkSummary = existing.chunkSummary;
             nextJob.jobType = nextJob.jobType ?? existing.jobType;
             nextJob.officialBrandPhase = nextJob.officialBrandPhase ?? existing.officialBrandPhase;
-            nextJob.cohortId = nextJob.cohortId ?? existing.cohortId;
           }
 
           if (

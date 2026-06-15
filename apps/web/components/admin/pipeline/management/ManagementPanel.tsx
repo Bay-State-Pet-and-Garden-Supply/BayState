@@ -9,45 +9,29 @@ import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
 
 interface ManagementPanelProps {
-  cohortId: string | null;
+  groupName: string;
   products: PipelineProduct[];
-  cohortBrandObjects?: Record<string, Brand>;
+  brand: Brand | null;
   onSuccess: () => void;
 }
 
 export function ManagementPanel({
-  cohortId,
+  groupName,
   products,
-  cohortBrandObjects = {},
+  brand,
   onSuccess,
 }: ManagementPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [cascadeConfigured, setCascadeConfigured] = useState<boolean | null>(null);
   const [checkingCascade, setCheckingCascade] = useState(false);
 
   useEffect(() => {
-    if (products.length > 0) {
-      let brand: Brand | null = null;
-      if (cohortId && cohortBrandObjects[cohortId]) {
-        brand = cohortBrandObjects[cohortId];
-      } else {
-        brand = products[0].cohort_brands || null;
-      }
-      setSelectedBrand(brand);
-    } else {
-      setSelectedBrand(null);
-    }
-  }, [cohortId, products.length, cohortBrandObjects]);
-
-  // Check cascade readiness
-  useEffect(() => {
-    if (!selectedBrand?.id) {
+    if (!brand?.id) {
       setCascadeConfigured(false);
       return;
     }
 
-    const brandId = selectedBrand.id;
+    const brandId = brand.id;
     let active = true;
     setCheckingCascade(true);
     async function check() {
@@ -68,15 +52,25 @@ export function ManagementPanel({
     }
     void check();
     return () => { active = false; };
-  }, [selectedBrand?.id]);
+  }, [brand?.id]);
 
-    const handleStartExtraction = async () => {
-    if (!cohortId) return;
+  const handleStartExtraction = async () => {
+    const upcs = products.map((product) => product.upc);
+    if (upcs.length === 0) return;
+
+    const missingBrandUpcs = products
+      .filter((product) => !product.brand_id)
+      .map((product) => product.upc);
+
+    if (missingBrandUpcs.length > 0) {
+      toast.error('Assign a brand before extraction', {
+        description: `${missingBrandUpcs.length} selected product${missingBrandUpcs.length === 1 ? '' : 's'} missing a brand.`,
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
-      const upcs = products.map((product) => product.upc);
-
       const response = await fetch('/api/admin/enrichment/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,7 +93,7 @@ export function ManagementPanel({
         description: jobIds.length > 0
           ? `Job ID${jobIds.length > 1 ? 's' : ''}: ${jobIds.map((id: string) => id.slice(0, 8)).join(', ')}`
           : skippedCount > 0
-            ? `${skippedCount} product${skippedCount > 1 ? 's' : ''} skipped (missing brand/cascade)`
+            ? `${skippedCount} product${skippedCount > 1 ? 's' : ''} skipped (missing cascade)`
             : undefined,
       });
       onSuccess();
@@ -111,25 +105,25 @@ export function ManagementPanel({
     }
   };
 
-  if (!cohortId) {
+  const brandName = brand?.name || 'No Brand';
+  const isBrandAssigned = Boolean(brand?.id);
+
+  if (products.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center border-t border-border bg-card p-6 text-center text-muted-foreground xl:border-l xl:border-t-0">
         <Package className="mb-2 h-12 w-12 opacity-20" />
-        <h3 className="text-sm font-semibold text-foreground">No cohort selected</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Select a cohort to manage extraction.</p>
+        <h3 className="text-sm font-semibold text-foreground">No products selected</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Select a brand group to manage extraction.</p>
       </div>
     );
   }
-
-  const brandName = selectedBrand?.name || 'Unknown Brand';
-  const isBrandAssigned = Boolean(selectedBrand?.id);
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-t border-border bg-card xl:w-[320px] xl:border-l xl:border-t-0">
       <div className="border-b border-border bg-muted/30 p-4">
         <div className="mb-1 text-xs font-medium text-primary">Management</div>
         <h2 className="truncate text-sm font-semibold text-foreground">
-          {cohortId === 'ungrouped' ? 'Ungrouped Products' : `Batch: ${cohortId}`}
+          {groupName}
         </h2>
         <div className="mt-1 text-sm text-muted-foreground">
           {products.length} Products included
@@ -137,7 +131,6 @@ export function ManagementPanel({
       </div>
 
       <div className="flex-1 space-y-6 overflow-y-auto p-4">
-        {/* Brand & Cascade Status */}
         <div className="space-y-3">
           <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-muted-foreground" />
@@ -151,7 +144,7 @@ export function ManagementPanel({
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-foreground">No Brand Assigned</span>
                   <span className="text-[9px] text-muted-foreground font-semibold mt-0.5">
-                    Assign a brand to this cohort before starting extraction.
+                    Assign a brand before starting extraction.
                   </span>
                 </div>
               </div>
@@ -214,7 +207,7 @@ export function ManagementPanel({
 
         <Button
           className="h-11 w-full bg-brand-gold text-ledger-charcoal hover:bg-brand-gold/90"
-          disabled={isSaving || !cascadeConfigured}
+          disabled={isSaving || !cascadeConfigured || !isBrandAssigned}
           onClick={handleStartExtraction}
         >
           {isSaving ? (

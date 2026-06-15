@@ -104,14 +104,6 @@ interface ReviewingResultsViewProps {
   filters?: PipelineFiltersState;
   onFilterChange?: (filters: PipelineFiltersState) => void;
   availableSources?: string[];
-  groupedProducts?: {
-    groups: Record<string, PipelineProduct[]>;
-    cohortIds: string[];
-    names?: Record<string, string>;
-  };
-  cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, Brand>;
-  onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   selectedUpcs?: Set<string>;
   onSelectUpc?: (
     upc: string,
@@ -224,10 +216,6 @@ export function ReviewingResultsView({
   filters,
   onFilterChange,
   availableSources = [],
-  groupedProducts,
-  cohortBrands = {},
-  cohortBrandObjects = {},
-  onEditCohort,
   selectedUpcs = new Set(),
   onSelectUpc,
   isSearching = false,
@@ -1014,7 +1002,7 @@ export function ReviewingResultsView({
       if (isInput || sortedProducts.length === 0) return;
 
       // Arrow navigation is now handled by PipelineSidebarTable in the sidebar
-      // to ensure consistency with cohort grouping and expansion.
+      // to ensure consistency with sidebar navigation.
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -1743,11 +1731,6 @@ export function ReviewingResultsView({
           onFilterChange={onFilterChange}
           availableSources={availableSources}
           showSourceFilter={false}
-          groupedProducts={groupedProducts}
-          cohortBrands={cohortBrands}
-          cohortBrandObjects={cohortBrandObjects}
-          onEditCohort={onEditCohort}
-
           selectedUpcs={selectedUpcs}
           onSelectUpc={onSelectUpc}
           isLoading={isSearching}

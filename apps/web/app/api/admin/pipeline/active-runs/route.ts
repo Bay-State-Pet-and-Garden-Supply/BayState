@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
-// Phase 10: official-brand-workflow imports removed — deprecated modules retained on disk.
-// Inline constants for legacy job type matching.
-const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
-const DIRECT_URL_EXTRACTION_TYPE = 'direct_url_extraction';
-
 interface ChunkDetail {
   id: string;
   jobId: string;
@@ -31,7 +26,6 @@ interface ActiveJob {
   id: string;
   jobType: string | null;
   officialBrandPhase: string | null;
-  cohortId: string | null;
   upcCount: number;
   scrapers: string[];
   status: "pending" | "running" | "completed" | "failed" | "cancelled";
@@ -63,34 +57,6 @@ interface ActiveJob {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function toOptionalString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : null;
-}
-
-function getOfficialBrandPhase(job: { type?: unknown; config?: unknown; metadata?: unknown }): string | null {
-  if (job.type === OFFICIAL_BRAND_URL_DISCOVERY_TYPE) {
-    return "url_discovery";
-  }
-
-  if (job.type === DIRECT_URL_EXTRACTION_TYPE) {
-    return "extraction";
-  }
-
-  const config = isRecord(job.config) ? job.config : {};
-  const metadata = isRecord(job.metadata) ? job.metadata : {};
-  return toOptionalString(config.phase) ?? toOptionalString(metadata.official_brand_phase);
-}
-
-function getCohortId(config: unknown): string | null {
-  if (!isRecord(config) || !isRecord(config.cohort)) {
-    return null;
-  }
-
-  return toOptionalString(config.cohort.id);
 }
 
 export async function GET(request: NextRequest) {
@@ -207,7 +173,6 @@ export async function GET(request: NextRequest) {
       id: job.id,
       jobType: "enrichment",
       officialBrandPhase: null,
-      cohortId: getCohortId(job.config),
       upcCount: Array.isArray(job.upcs) ? job.upcs.length : 0,
       scrapers: isRecord(job.config) && Array.isArray(job.config.scrapers) ? (job.config.scrapers as string[]) : [],
       status: job.status as "pending" | "running" | "completed" | "failed" | "cancelled",

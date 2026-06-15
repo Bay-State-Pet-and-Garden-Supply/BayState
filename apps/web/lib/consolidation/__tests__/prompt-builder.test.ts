@@ -115,7 +115,7 @@ describe('brand placement in prompt-builder', () => {
             expect(prompt).toMatch(/plain ASCII characters/i);
         });
 
-        it('adds optional cohort consistency guidance and examples', () => {
+        it('adds optional group consistency guidance and examples', () => {
             const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
 
             expect(prompt).toMatch(/sibling product context/i);

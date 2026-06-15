@@ -23,7 +23,7 @@ export type { ScrapeOptions } from './pipeline-scraping-types';
 
 interface PipelineInputRow {
     upc: string;
-    cohort_id?: string | null;
+    brand_id?: unknown;
     consolidated?: {
         brand_id?: unknown;
         brand_name?: unknown;
@@ -123,13 +123,6 @@ interface ScrapeContextItem {
     category?: string;
     preferred_domains?: string[];
     official_domains?: string[];
-}
-
-interface CohortLookupRow {
-    id?: string | null;
-    brand_name?: unknown;
-    brand_id?: unknown;
-    brands?: BrandRegistryRow | BrandRegistryRow[] | null;
 }
 
 function compactScrapeContextItem(item: ScrapeContextItem): ScrapeContextItem {
@@ -232,52 +225,6 @@ function getCatalogBrandEntry(
     brandRelation: ProductCatalogRow['brand']
 ): BrandRegistryEntry | undefined {
     return toBrandRegistryEntry(brandRelation);
-}
-
-async function loadCohortBrandRegistryEntries(
-    supabase: Awaited<ReturnType<typeof createClient>>,
-    cohortIds: string[]
-): Promise<Map<string, BrandRegistryEntry>> {
-    const normalizedCohortIds = Array.from(new Set(cohortIds.filter(Boolean)));
-    if (normalizedCohortIds.length === 0) {
-        return new Map();
-    }
-
-    const { data, error } = await supabase
-        .from('cohort_batches')
-        .select('id, brand_name, brand_id, brands(id, name, slug, official_domains, preferred_domains)')
-        .in('id', normalizedCohortIds);
-
-    if (error) {
-        console.warn('[Pipeline Scraping] Failed to load cohort brand registry context:', error);
-        return new Map();
-    }
-
-    const entries = new Map<string, BrandRegistryEntry>();
-    const rows = Array.isArray(data) ? (data as CohortLookupRow[]) : [];
-    rows.forEach((row) => {
-        const cohortId = toOptionalString(row.id);
-        if (!cohortId) {
-            return;
-        }
-
-        const joinedBrand = toBrandRegistryEntry(row.brands);
-        const fallbackName = toOptionalString(row.brand_name);
-        const fallbackId = toOptionalString(row.brand_id);
-        const entry: BrandRegistryEntry = {
-            id: joinedBrand?.id ?? fallbackId,
-            slug: joinedBrand?.slug,
-            name: joinedBrand?.name ?? fallbackName,
-            preferredDomains: joinedBrand?.preferredDomains,
-            officialDomains: joinedBrand?.officialDomains,
-        };
-
-        if (entry.id || entry.slug || entry.name || entry.preferredDomains) {
-            entries.set(cohortId, entry);
-        }
-    });
-
-    return entries;
 }
 
 function getCatalogCategoryName(
@@ -403,7 +350,7 @@ async function loadScrapeContextItems(
     const [{ data: ingestionData, error: ingestionError }, { data: productData, error: productError }] = await Promise.all([
         supabase
             .from('products_ingestion')
-            .select('upc, cohort_id, consolidated, input')
+            .select('upc, brand_id, consolidated, input')
             .in('upc', upcs),
         supabase
             .from('products')
@@ -435,12 +382,10 @@ async function loadScrapeContextItems(
         byId: new Map(),
         bySlug: new Map(),
     };
-    let cohortBrandEntries = new Map<string, BrandRegistryEntry>();
 
     if (useBrandRegistryFallback) {
         const brandIds = new Set<string>();
         const brandSlugs = new Set<string>();
-        const cohortIds = new Set<string>();
 
         if (fallbackBrandHint) {
             const fallbackSlug = brandHintToSlug(fallbackBrandHint);
@@ -451,7 +396,9 @@ async function loadScrapeContextItems(
 
         ingestionRows.forEach((row) => {
             const consolidated = row.consolidated;
-            const brandId = toOptionalString(consolidated?.brand_id);
+            const directBrandId = toOptionalString(row.brand_id);
+            const consolidatedBrandId = toOptionalString(consolidated?.brand_id);
+            const brandId = directBrandId ?? consolidatedBrandId;
             if (brandId) {
                 brandIds.add(brandId);
             }
@@ -475,17 +422,12 @@ async function loadScrapeContextItems(
                 });
             }
 
-            const cohortId = toOptionalString(row.cohort_id);
-            if (cohortId) {
-                cohortIds.add(cohortId);
-            }
         });
 
         brandRegistryLookup = await loadBrandRegistryEntries(supabase, {
             brandIds: Array.from(brandIds),
             brandSlugs: Array.from(brandSlugs),
         });
-        cohortBrandEntries = await loadCohortBrandRegistryEntries(supabase, Array.from(cohortIds));
     }
 
     return upcs.map((upc) => {
@@ -493,10 +435,12 @@ async function loadScrapeContextItems(
         const input = ingestion?.input ?? null;
         const product = productByUpc.get(upc);
         const catalogBrandEntry = getCatalogBrandEntry(product?.brand);
+        const directBrandId = toOptionalString(ingestion?.brand_id);
         const consolidatedBrandId = toOptionalString(ingestion?.consolidated?.brand_id);
+        const registryBrandId = directBrandId ?? consolidatedBrandId;
         const nameDerivedBrandHints = getLeadingBrandHintCandidates(input?.name);
-        const registryBrandById = consolidatedBrandId
-            ? brandRegistryLookup.byId.get(consolidatedBrandId)
+        const registryBrandById = registryBrandId
+            ? brandRegistryLookup.byId.get(registryBrandId)
             : undefined;
         const registryBrandByHint = findBrandRegistryByHints(
             [
@@ -508,14 +452,9 @@ async function loadScrapeContextItems(
             ],
             brandRegistryLookup.bySlug,
         );
-        const cohortBrandEntry = (() => {
-            const cohortId = toOptionalString(ingestion?.cohort_id);
-            return cohortId ? cohortBrandEntries.get(cohortId) : undefined;
-        })();
         const resolvedBrandEntry = catalogBrandEntry
             ?? registryBrandById
-            ?? registryBrandByHint
-            ?? cohortBrandEntry;
+            ?? registryBrandByHint;
 
         const ingestionName = toOptionalString(input?.name);
         const catalogName = toOptionalString(product?.name);
@@ -528,13 +467,11 @@ async function loadScrapeContextItems(
             catalogBrandEntry?.officialDomains,
             registryBrandById?.officialDomains,
             registryBrandByHint?.officialDomains,
-            cohortBrandEntry?.officialDomains,
         );
         const resolvedPreferredDomains = mergePreferredDomains(
             catalogBrandEntry?.preferredDomains,
             registryBrandById?.preferredDomains,
             registryBrandByHint?.preferredDomains,
-            cohortBrandEntry?.preferredDomains,
         );
 
         return compactScrapeContextItem({

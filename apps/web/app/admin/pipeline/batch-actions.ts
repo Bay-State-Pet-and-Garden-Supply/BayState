@@ -66,19 +66,6 @@ export async function updateProductsBatch(
       return { success: false, error: 'Failed to update products batch' };
     }
 
-    // If brand_id is being assigned, transition any 'awaiting_brand' products in this batch to 'imported'
-    if (validatedUpdates.brand_id) {
-      const { error: transitionError } = await supabase
-        .from('products_ingestion')
-        .update({ pipeline_status: 'imported' })
-        .in('upc', upcs)
-        .eq('pipeline_status', 'awaiting_brand');
-
-      if (transitionError) {
-        console.error('Failed to transition products from awaiting_brand to imported:', transitionError);
-      }
-    }
-    
     revalidatePath('/admin/pipeline');
     return { success: true };
   } catch (err) {
@@ -86,50 +73,6 @@ export async function updateProductsBatch(
       return { success: false, error: 'Validation failed: ' + err.issues[0].message };
     }
     console.error('Unexpected error in updateProductsBatch:', err);
-    return { success: false, error: 'An unexpected error occurred' };
-  }
-}
-
-const cohortBatchUpdateSchema = z.object({
-  brand_id: z.string().uuid().nullable().optional(),
-  brand_name: z.string().nullable().optional(),
-  name: z.string().nullable().optional(),
-});
-
-export async function updateCohortBatch(
-  cohortId: string,
-  updates: z.infer<typeof cohortBatchUpdateSchema>
-): Promise<ActionState> {
-  const user = await requireAdminOrStaff();
-  if (!user) {
-    return { success: false, error: 'Forbidden: Admin or staff access required' };
-  }
-
-  if (!cohortId) {
-    return { success: false, error: 'Cohort ID is required' };
-  }
-
-  try {
-    const validatedUpdates = cohortBatchUpdateSchema.parse(updates);
-    const supabase = await createClient();
-    
-    const { error } = await supabase
-      .from('cohort_batches')
-      .update(validatedUpdates)
-      .eq('id', cohortId);
-
-    if (error) {
-      console.error('Database Error in updateCohortBatch:', error);
-      return { success: false, error: 'Failed to update cohort batch' };
-    }
-    
-    revalidatePath('/admin/pipeline');
-    return { success: true };
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return { success: false, error: 'Validation failed: ' + err.issues[0].message };
-    }
-    console.error('Unexpected error in updateCohortBatch:', err);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }

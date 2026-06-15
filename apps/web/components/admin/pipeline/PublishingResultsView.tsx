@@ -39,12 +39,10 @@ interface PublishingResultsViewProps {
   filters?: {
     source?: string;
     product_line?: string;
-    cohort_id?: string;
   };
   onFilterChange?: (filters: {
     source?: string;
     product_line?: string;
-    cohort_id?: string;
   }) => void;
   availableSources?: string[];
   selectedUpcs: Set<string>;

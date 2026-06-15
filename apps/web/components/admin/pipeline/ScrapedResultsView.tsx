@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
-import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -44,24 +43,13 @@ interface ScrapedResultsViewProps {
   filters?: {
     source?: string;
     product_line?: string;
-    cohort_id?: string;
   };
   onFilterChange?: (filters: {
     source?: string;
     product_line?: string;
-    cohort_id?: string;
   }) => void;
   availableSources?: string[];
   isSearching?: boolean;
-  // Cohort grouping props
-  groupedProducts?: {
-    groups: Record<string, PipelineProduct[]>;
-    cohortIds: string[];
-    names?: Record<string, string>;
-  };
-  cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, Brand>;
-  onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
 }
 
 interface SourceDetails extends Record<string, unknown> {
@@ -130,10 +118,6 @@ export function ScrapedResultsView({
   onFilterChange,
   availableSources = [],
   isSearching = false,
-  groupedProducts,
-  cohortBrands = {},
-  cohortBrandObjects = {},
-  onEditCohort,
 }: ScrapedResultsViewProps) {
   // 1. Data Transformation & Memoized State
   const sortedProducts = useMemo(() => {
@@ -394,9 +378,6 @@ export function ScrapedResultsView({
         
         <PipelineSidebarTable
           products={sortedProducts}
-          groupedProducts={groupedProducts}
-          cohortBrands={cohortBrands}
-          cohortBrandObjects={cohortBrandObjects}
           selectedUpcs={selectedUpcs}
           preferredUpc={preferredUpc}
           onSelectUpc={onSelectUpc}
@@ -404,7 +385,6 @@ export function ScrapedResultsView({
           onDeselectAll={onDeselectAll}
           onPreferredUpcChange={setPreferredUpc}
           variant="processed"
-          onEditCohort={onEditCohort}
         />
       </div>
 

@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CohortBrandPicker } from '../cohorts/CohortBrandPicker';
+import { BrandPicker } from '@/components/admin/brands/BrandPicker';
 import type { Brand } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
@@ -46,13 +46,13 @@ export function BulkAssignBrandDialog({
           <DialogTitle className="text-xl font-bold uppercase tracking-tight">Assign Brand</DialogTitle>
           <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
             Assigning brand to {selectedCount} product{selectedCount !== 1 ? 's' : ''}.
-            Products will be re-grouped into brand-specific cohorts.
+            Products will appear under the selected brand group.
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-6">
           <p className="mb-4 text-xs font-bold uppercase text-foreground">Select target brand:</p>
-          <CohortBrandPicker
+          <BrandPicker
             value={null}
             onAssign={handleAssign}
             triggerClassName="w-full justify-between py-6"

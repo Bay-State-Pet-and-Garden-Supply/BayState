@@ -5,16 +5,28 @@
 jest.mock('next/server', () => require('@/__tests__/helpers/next-server'));
 jest.mock('@/lib/admin/api-auth');
 jest.mock('@/lib/pipeline-scraping');
+jest.mock('@/lib/supabase/server');
 
 const { NextRequest, NextResponse } = require('next/server');
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
 const { scrapeProducts } = require('@/lib/pipeline-scraping');
+const { createAdminClient } = require('@/lib/supabase/server');
 const { POST } = require('@/app/api/admin/enrichment/jobs/route');
 
 describe('POST /api/admin/enrichment/jobs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     requireAdminAuth.mockResolvedValue({ authorized: true, user: { id: 'admin-1' }, role: 'admin' });
+    createAdminClient.mockResolvedValue({
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          in: jest.fn().mockResolvedValue({
+            data: [{ upc: '072705115310', brand_id: 'brand-1' }],
+            error: null,
+          }),
+        })),
+      })),
+    });
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -54,6 +66,26 @@ describe('POST /api/admin/enrichment/jobs', () => {
     scrapeProducts.mockResolvedValue({ success: true, jobIds: ['job-1'] });
     await POST(new NextRequest('http://localhost/api/admin/enrichment/jobs', { method: 'POST', body: JSON.stringify({ upcs: ['072705115310'], retryMode: 'failed_or_untried', testMode: true }) }));
     expect(scrapeProducts).toHaveBeenCalledWith(['072705115310'], expect.objectContaining({ retryMode: 'failed_or_untried', testMode: true }));
+  });
+
+  it('returns 400 when any selected UPC is missing brand_id', async () => {
+    createAdminClient.mockResolvedValue({
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          in: jest.fn().mockResolvedValue({
+            data: [{ upc: '072705115310', brand_id: null }],
+            error: null,
+          }),
+        })),
+      })),
+    });
+
+    const res = await POST(new NextRequest('http://localhost/api/admin/enrichment/jobs', { method: 'POST', body: JSON.stringify({ upcs: ['072705115310'] }) }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('must have a brand');
+    expect(body.missingBrandUpcs).toEqual(['072705115310']);
+    expect(scrapeProducts).not.toHaveBeenCalled();
   });
 
   it('returns 400 on scrape failure', async () => {

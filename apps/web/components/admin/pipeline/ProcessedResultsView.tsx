@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
-import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -57,27 +56,13 @@ interface ProcessedResultsViewProps {
   filters?: {
     source?: string;
     product_line?: string;
-    cohort_id?: string;
   };
   onFilterChange?: (filters: {
     source?: string;
     product_line?: string;
-    cohort_id?: string;
   }) => void;
   availableSources?: string[];
   isSearching?: boolean;
-  groupedProducts?: {
-    groups: Record<string, PipelineProduct[]>;
-    cohortIds: string[];
-    names?: Record<string, string>;
-    brands?: Record<string, Brand>;
-    productLines?: Record<string, string>;
-  };
-  onGroupSelect?: (cohortId: string, selected: boolean) => void;
-  onGroupDeselectAll?: (cohortId: string) => void;
-  cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, Brand>;
-  onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   // Classification progress (from Grouping flow)
   classificationRun?: {
     isActive: boolean;
@@ -175,10 +160,6 @@ export function ProcessedResultsView({
   onFilterChange,
   availableSources = [],
   isSearching = false,
-  groupedProducts,
-  cohortBrands = {},
-  cohortBrandObjects = {},
-  onEditCohort,
   classificationRun,
   classifyingUpcs = new Set(),
   onViewGroups,
@@ -660,12 +641,8 @@ export function ProcessedResultsView({
               onSelectUpc={onSelectUpc as any}
               onSelectAll={onSelectAll}
               onDeselectAll={onDeselectAll}
-              groupedProducts={groupedProducts as any}
               preferredUpc={preferredUpc}
               onPreferredUpcChange={setPreferredUpc}
-              cohortBrands={cohortBrands}
-              cohortBrandObjects={cohortBrandObjects}
-              onEditCohort={onEditCohort}
             />
           )}
         </div>

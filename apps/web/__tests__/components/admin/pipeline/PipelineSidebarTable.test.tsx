@@ -16,79 +16,55 @@ jest.mock('@/components/admin/pipeline/VirtualizedPipelineTable', () => ({
   ),
 }));
 
-function makeProduct(upc: string, cohortId: string, cohortName: string): PipelineProduct {
+function makeProduct(upc: string): PipelineProduct {
   return {
     upc,
     input: { name: `Product ${upc}`, price: 10 },
     sources: {},
     consolidated: { name: `Product ${upc}`, price: 10 },
-    pipeline_status: 'imported',
-    cohort_id: cohortId,
-    cohort_name: cohortName,
+    pipeline_status: 'processed',
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
   };
 }
 
 describe('PipelineSidebarTable', () => {
-  it('selects an entire collapsed imported cohort from its header checkbox', () => {
-    const products = [
-      makeProduct('UPC001', 'cohort-1', 'Test Batch'),
-      makeProduct('UPC002', 'cohort-1', 'Test Batch'),
-    ];
-    const onSelectAll = jest.fn();
-
+  it('renders products in a flat sidebar list', () => {
     render(
       <PipelineSidebarTable
-        products={products}
-        groupedProducts={{
-          groups: { 'cohort-1': products },
-          cohortIds: ['cohort-1'],
-          names: { 'cohort-1': 'Test Batch' },
-        }}
+        products={[makeProduct('UPC001'), makeProduct('UPC002')]}
         selectedUpcs={new Set()}
         preferredUpc={null}
         onSelectUpc={jest.fn()}
-        onSelectAll={onSelectAll}
+        onSelectAll={jest.fn()}
         onDeselectAll={jest.fn()}
         onPreferredUpcChange={jest.fn()}
         variant="processed"
       />
     );
 
-    expect(screen.queryByText('UPC001')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('checkbox'));
-
-    expect(onSelectAll).toHaveBeenCalledWith(['UPC001', 'UPC002']);
+    expect(screen.getByText('UPC001')).toBeInTheDocument();
+    expect(screen.getByText('UPC002')).toBeInTheDocument();
   });
 
-  it('handles cohort selection checkbox when variant is "imported"', () => {
-    const products = [
-      makeProduct('UPC001', 'cohort-1', 'Test Batch'),
-    ];
-    const onSelectCohort = jest.fn();
+  it('selects a product through its row checkbox', () => {
+    const onSelectUpc = jest.fn();
 
     render(
       <PipelineSidebarTable
-        products={products}
-        groupedProducts={{
-          groups: { 'cohort-1': products },
-          cohortIds: ['cohort-1'],
-          names: { 'cohort-1': 'Test Batch' },
-        }}
+        products={[makeProduct('UPC001')]}
         selectedUpcs={new Set()}
         preferredUpc={null}
-        onSelectUpc={jest.fn()}
+        onSelectUpc={onSelectUpc}
+        onSelectAll={jest.fn()}
+        onDeselectAll={jest.fn()}
         onPreferredUpcChange={jest.fn()}
-        variant="imported"
-        selectedCohortIds={new Set()}
-        onSelectCohort={onSelectCohort}
+        variant="processed"
       />
     );
 
     fireEvent.click(screen.getByRole('checkbox'));
 
-    expect(onSelectCohort).toHaveBeenCalledWith('cohort-1', true);
+    expect(onSelectUpc).toHaveBeenCalledWith('UPC001', true, 0, false, [expect.objectContaining({ upc: 'UPC001' })]);
   });
 });

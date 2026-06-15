@@ -157,7 +157,6 @@ export function getJobLabel(job: JobAssignment) {
   const preferredLabel = [
     getConfigString(config, "batch_label"),
     getConfigString(config, "batch_name"),
-    getConfigString(config, "cohort_name"),
     getConfigString(config, "job_label"),
     getConfigString(config, "job_name"),
     getConfigString(config, "name"),

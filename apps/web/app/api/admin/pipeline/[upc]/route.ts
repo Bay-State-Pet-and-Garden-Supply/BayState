@@ -10,7 +10,6 @@ import {
 import {
   validateStatusTransition,
 } from '@/lib/pipeline';
-import { recohortProducts } from '@/lib/pipeline/cohorts';
 import {
   PERSISTED_PIPELINE_STATUSES,
   isPersistedStatus,
@@ -214,16 +213,6 @@ export async function PATCH(
         { error: error.message },
         { status: 500 }
       );
-    }
-
-    // Trigger re-cohorting if brand_id changed
-    if (consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)) {
-      const brandId = (consolidated as Record<string, unknown>).brand_id;
-      if (brandId !== undefined) {
-        // We use wait_for_previous: true to ensure this runs after the update, 
-        // though here it's inside the same handler.
-        await recohortProducts(supabase, [upc], brandId as string | null);
-      }
     }
 
     revalidatePath('/admin/pipeline');

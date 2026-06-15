@@ -74,34 +74,10 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
   },
 };
 
-const COHORT_BRAND_RELATION_SELECT =
+const BRAND_RELATION_SELECT =
   "id, name, slug, logo_url, description, official_domains, preferred_domains, source_cascade_configured_at, source_cascade_configured_by, created_at";
-const COHORT_BATCH_METADATA_SELECT =
-  `id, name, brand_id, brand_name, brands(${COHORT_BRAND_RELATION_SELECT})`;
 
-type CohortBrandRecord = NonNullable<PipelineProduct["cohort_brands"]>;
-
-interface CohortBatchMetadata {
-  name: string | null;
-  brand_id: string | null;
-  brand_name: string | null;
-  brands: CohortBrandRecord | null;
-}
-
-interface CohortBatchMetadataRow {
-  id: string;
-  name: string | null;
-  brand_id: string | null;
-  brand_name: string | null;
-  brands: CohortBrandRecord | CohortBrandRecord[] | null;
-}
-
-interface CohortBatchRelationRow {
-  name: string | null;
-  brand_id: string | null;
-  brand_name: string | null;
-  brands: CohortBrandRecord | CohortBrandRecord[] | null;
-}
+type BrandRecord = NonNullable<PipelineProduct["brand"]>;
 
 function toSingleRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) {
@@ -111,33 +87,16 @@ function toSingleRelation<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
-function normalizeCohortMetadata(
-  cohort: CohortBatchRelationRow | CohortBatchRelationRow[] | null | undefined,
-): CohortBatchMetadata | null {
-  const relation = toSingleRelation(cohort);
-  if (!relation) {
-    return null;
-  }
+type PipelineRowWithBrand = Omit<PipelineProduct, "brand"> & {
+  brand?: BrandRecord | BrandRecord[] | null;
+};
 
-  return {
-    name: relation.name,
-    brand_id: relation.brand_id,
-    brand_name: relation.brand_name,
-    brands: toSingleRelation(relation.brands),
-  };
-}
-
-function withCohortBatchMetadata(
-  product: PipelineProduct,
-  cohort: CohortBatchMetadata,
-): PipelineProduct {
-  return {
+function withBrandRelation(product: PipelineRowWithBrand): PipelineProduct {
+  const brand = toSingleRelation(product.brand);
+  return withMergedImageCandidates({
     ...product,
-    cohort_name: cohort.name,
-    cohort_brand_name: cohort.brands?.name ?? cohort.brand_name,
-    cohort_brand_id: cohort.brands?.id ?? cohort.brand_id,
-    cohort_brands: cohort.brands,
-  };
+    brand,
+  });
 }
 
 function getInvalidTargetStatusError(targetStatus: string): string {
@@ -232,7 +191,6 @@ export async function getProductsByStatus(
     minConfidence?: number;
     maxConfidence?: number;
     product_line?: string;
-    cohort_id?: string;
   },
 ): Promise<{ products: PipelineProduct[]; count: number }> {
   const supabase = await createClient();
@@ -240,7 +198,7 @@ export async function getProductsByStatus(
   let query = supabase
     .from("products_ingestion")
     .select(
-      `*, cohort_batches(${COHORT_BATCH_METADATA_SELECT})`,
+      `*, brand:brands(${BRAND_RELATION_SELECT})`,
       { count: "exact" },
     )
     .order("upc", { ascending: true })
@@ -249,10 +207,6 @@ export async function getProductsByStatus(
 
   if (options?.product_line) {
     query = query.eq("product_line", options.product_line);
-  }
-
-  if (options?.cohort_id) {
-    query = query.eq("cohort_id", options.cohort_id);
   }
 
   if (options?.search) {
@@ -301,80 +255,8 @@ export async function getProductsByStatus(
     return { products: [], count: 0 };
   }
 
-  interface PipelineRow extends PipelineProduct {
-    cohort_batches?: CohortBatchRelationRow | CohortBatchRelationRow[] | null;
-  }
-
-  const products = ((data as PipelineRow[]) || []).map((row) => {
-    const product = withMergedImageCandidates(row);
-    const cohort = normalizeCohortMetadata(row.cohort_batches);
-    if (!cohort) {
-      return product;
-    }
-
-    return withCohortBatchMetadata(product, cohort);
-  });
+  const products = ((data as PipelineRowWithBrand[]) || []).map(withBrandRelation);
   return { products, count: count || 0 };
-}
-
-async function hydrateCohortMetadata(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  products: PipelineProduct[],
-): Promise<PipelineProduct[]> {
-  const cohortIds = Array.from(
-    new Set(
-      products
-        .map((product) => product.cohort_id)
-        .filter(
-          (cohortId): cohortId is string =>
-            typeof cohortId === "string" && cohortId.length > 0,
-        ),
-    ),
-  );
-
-  if (cohortIds.length === 0) {
-    return products.map((product) => withMergedImageCandidates(product));
-  }
-
-  const { data, error } = await supabase
-    .from("cohort_batches")
-    .select(COHORT_BATCH_METADATA_SELECT)
-    .in("id", cohortIds);
-
-  if (error) {
-    console.error("Error fetching cohort metadata:", error);
-    return products.map((product) => withMergedImageCandidates(product));
-  }
-
-  const cohortsById = new Map<
-    string,
-    CohortBatchMetadata
-  >();
-  ((data as CohortBatchMetadataRow[]) || []).forEach((row) => {
-    const cohort = normalizeCohortMetadata(row);
-    if (!cohort) {
-      return;
-    }
-
-    cohortsById.set(row.id, {
-      name: cohort.name,
-      brand_id: cohort.brand_id,
-      brand_name: cohort.brand_name,
-      brands: cohort.brands,
-    });
-  });
-
-  return products.map((product) => {
-    const hydrated = withMergedImageCandidates(product);
-    const cohort = product.cohort_id
-      ? cohortsById.get(product.cohort_id)
-      : undefined;
-    if (!cohort) {
-      return hydrated;
-    }
-
-    return withCohortBatchMetadata(hydrated, cohort);
-  });
 }
 
 export async function getProductsByStage(
@@ -389,15 +271,17 @@ export async function getProductsByStage(
     minConfidence?: number;
     maxConfidence?: number;
     product_line?: string;
-    cohort_id?: string;
   },
 ): Promise<{ products: PipelineProduct[]; count: number }> {
   const supabase = await createClient();
   const querySource = getStageQuerySource(stage);
 
   let query = supabase
-    .from(querySource.table)
-    .select("*", { count: "exact" })
+    .from("products_ingestion")
+    .select(
+      `*, brand:brands(${BRAND_RELATION_SELECT})`,
+      { count: "exact" },
+    )
     .order("upc", { ascending: true });
 
   if (querySource.status) {
@@ -408,16 +292,10 @@ export async function getProductsByStage(
     query = query.in("pipeline_status", querySource.statuses);
   }
 
-  if (querySource.table === "products_ingestion") {
-    query = query.is("exported_at", null);
-  }
+  query = query.is("exported_at", null);
 
   if (options?.product_line) {
     query = query.eq("product_line", options.product_line);
-  }
-
-  if (options?.cohort_id) {
-    query = query.eq("cohort_id", options.cohort_id);
   }
 
   if (options?.search) {
@@ -464,10 +342,7 @@ export async function getProductsByStage(
     return { products: [], count: 0 };
   }
 
-  const products = await hydrateCohortMetadata(
-    supabase,
-    (data as PipelineProduct[]) || [],
-  );
+  const products = ((data as unknown as PipelineRowWithBrand[]) || []).map(withBrandRelation);
 
   return {
     products,
@@ -489,7 +364,6 @@ export async function getUpcsByStatus(
     minConfidence?: number;
     maxConfidence?: number;
     product_line?: string;
-    cohort_id?: string;
   },
 ): Promise<{ upcs: string[]; count: number }> {
   const supabase = await createClient();
@@ -503,10 +377,6 @@ export async function getUpcsByStatus(
 
   if (options?.product_line) {
     query = query.eq("product_line", options.product_line);
-  }
-
-  if (options?.cohort_id) {
-    query = query.eq("cohort_id", options.cohort_id);
   }
 
   if (options?.search) {
@@ -557,7 +427,6 @@ export async function getUpcsByStage(
     minConfidence?: number;
     maxConfidence?: number;
     product_line?: string;
-    cohort_id?: string;
   },
 ): Promise<{ upcs: string[]; count: number }> {
   const supabase = await createClient();
@@ -582,10 +451,6 @@ export async function getUpcsByStage(
 
   if (options?.product_line) {
     query = query.eq("product_line", options.product_line);
-  }
-
-  if (options?.cohort_id) {
-    query = query.eq("cohort_id", options.cohort_id);
   }
 
   if (options?.search) {

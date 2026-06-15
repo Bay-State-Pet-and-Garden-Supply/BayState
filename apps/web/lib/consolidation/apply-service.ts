@@ -821,35 +821,6 @@ export async function applyConsolidationResults(
         }
     }
 
-    // Re-cohort products whose brand has changed or been newly assigned
-    if (updateRows.length > 0) {
-        const { recohortProducts } = await import('@/lib/pipeline/cohorts');
-        const upcsByBrand = new Map<string | null, string[]>();
-
-        for (const row of updateRows) {
-            if (row.outcome === 'finalized') {
-                const brandId = ((row.next_fields.core as any)?.brand_id as string | null) || null;
-                const existingRow = existingByUpc.get(row.upc);
-                const oldBrandId = existingRow?.brand_id || null;
-
-                if (brandId !== oldBrandId) {
-                    const list = upcsByBrand.get(brandId) || [];
-                    list.push(row.upc);
-                    upcsByBrand.set(brandId, list);
-                }
-            }
-        }
-
-        for (const [brandId, brandUpcs] of upcsByBrand.entries()) {
-            try {
-                await recohortProducts(supabase, brandUpcs, brandId);
-            } catch (err) {
-                console.error(`[applyConsolidationResults] Failed to re-cohort products for brand ${brandId}:`, err);
-                errors.push(`Cohort assignment failed for some products with brand ${brandId}`);
-            }
-        }
-    }
-
     if (batchJobRow) {
         const priorMetadata = parseBatchMetadata(batchJobRow.metadata);
         const qualityMetrics = {

@@ -50,7 +50,6 @@ describe('/api/admin/pipeline route', () => {
             endDate: '2026-01-31',
             source: 'amazon',
             product_line: undefined,
-            cohort_id: undefined,
             minConfidence: 0.4,
             maxConfidence: 0.9,
         });
@@ -78,7 +77,6 @@ describe('/api/admin/pipeline route', () => {
             endDate: undefined,
             source: 'chewy',
             product_line: undefined,
-            cohort_id: undefined,
             minConfidence: undefined,
             maxConfidence: undefined,
         });

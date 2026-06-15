@@ -1,8 +1,8 @@
 /**
  * Product Line Utilities
  *
- * Replaces cohort-based grouping (cohort-utils.ts) with Product Group assignment
- * via the product_lines table. Products are grouped by their product_line_id FK.
+ * Supports Product Group assignment via the product_lines table. Products are
+ * grouped by their product_line_id FK after extraction and classification.
  *
  * @see docs/adr/0004-group-based-consolidation.md
  */
