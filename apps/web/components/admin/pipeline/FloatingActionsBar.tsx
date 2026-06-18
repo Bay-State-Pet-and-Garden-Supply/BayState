@@ -20,7 +20,7 @@ const BULK_ACTIONS: Record<
   imported: { label: '', nextStage: null },
   extracting: { label: '', nextStage: null },
   processed: {
-    label: 'Consolidate selected',
+    label: 'Group selected',
     nextStage: 'grouping',
     resetLabel: 'Return to Imported',
     previousStage: 'imported',
