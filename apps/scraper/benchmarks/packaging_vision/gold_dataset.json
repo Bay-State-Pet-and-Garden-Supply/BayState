@@ -1,0 +1,5 @@
+{
+  "schema_version": "packaging-vision-gold-dataset-v1",
+  "description": "Human-reviewed gold dataset for packaging vision/OCR title extraction",
+  "entries": []
+}

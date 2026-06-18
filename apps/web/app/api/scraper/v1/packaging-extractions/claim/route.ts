@@ -74,20 +74,21 @@ export async function POST(request: NextRequest) {
 
     const metadata = (runnerRow.metadata as Record<string, unknown>) ?? {};
     const capabilities = metadata.capabilities as Record<string, unknown> | undefined;
-    const packagingVision = capabilities?.packaging_vision as PackagingVisionCapability | undefined;
+    const storedCapability = capabilities?.packaging_vision as PackagingVisionCapability | undefined;
 
-    // Accept capabilities from the request body if runner metadata doesn't have them
-    if ((!packagingVision?.enabled) && claimBody.capabilities?.packaging_vision?.enabled) {
-      packagingVision = claimBody.capabilities.packaging_vision;
+    // Determine effective capability: prefer stored metadata, fallback to request body
+    let effectiveCapability: PackagingVisionCapability | undefined = storedCapability;
+    if ((!storedCapability?.enabled) && claimBody.capabilities?.packaging_vision?.enabled) {
+      effectiveCapability = claimBody.capabilities.packaging_vision;
       // Persist to runner metadata for future claims
-      const updatedCaps = { ...(capabilities || {}), packaging_vision: packagingVision };
+      const updatedCaps = { ...(capabilities || {}), packaging_vision: effectiveCapability };
       await supabase
         .from('scraper_runners')
         .update({ metadata: { ...metadata, capabilities: updatedCaps } })
         .eq('name', runnerName);
     }
 
-    if (!packagingVision?.enabled) {
+    if (!effectiveCapability?.enabled) {
       return NextResponse.json(
         { job: null, reason: 'Runner does not advertise packaging_vision capability' },
         { status: 200 },

@@ -48,7 +48,7 @@ const PACKAGING_DEFAULTS: PackagingVisionSettings = {
  */
 export async function getPackagingVisionSettings(): Promise<PackagingVisionSettings> {
   const supabase = await createAdminClient();
-  const keys = ['packaging_title_mode', 'fallback_policy', 'packaging_timeout_seconds'];
+  const keys = ['packaging_title_mode', 'packaging_fallback_policy', 'packaging_timeout_seconds'];
 
   const { data, error } = await supabase
     .from('site_settings')
@@ -70,7 +70,7 @@ export async function getPackagingVisionSettings(): Promise<PackagingVisionSetti
   }
 
   const mode = settingsMap.get('packaging_title_mode');
-  const fallback = settingsMap.get('fallback_policy');
+  const fallback = settingsMap.get('packaging_fallback_policy');
   const timeout = settingsMap.get('packaging_timeout_seconds');
 
   return {

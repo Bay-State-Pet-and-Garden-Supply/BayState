@@ -17,6 +17,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import {
+  composePackagingTitle,
+  type PackagingFacts,
+  type FieldConfidence,
+  type PackagingContext,
+} from '@/lib/packaging/title-composer';
 import crypto from 'crypto';
 
 interface ResultBody {
@@ -195,7 +201,38 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // 11. Create a product_title_suggestions row if succeeded
     if (body.status === 'succeeded') {
       const titleSuggestionId = crypto.randomUUID();
-      const packagingTitle = extractField(body.structured_facts, 'packaging_title');
+
+      // Load product context for deterministic title composition
+      let productContext: PackagingContext | undefined;
+      try {
+        const { data: product } = await supabase
+          .from('products_ingestion')
+          .select('consolidated, input')
+          .eq('upc', extraction.upc)
+          .maybeSingle();
+
+        if (product) {
+          const consolidated = product.consolidated as Record<string, unknown> | undefined;
+          const core = consolidated?.core as Record<string, unknown> | undefined;
+          const input = product.input as Record<string, unknown> | undefined;
+          productContext = {
+            consolidationDraftCore: {
+              name: (core?.name as string) || (consolidated?.name as string) || (input?.name as string) || undefined,
+              brand_name: (core?.brand_name as string) || undefined,
+              weight_lbs: (core?.weight_lbs as number) || undefined,
+              canonical_category_breadcrumb: (core?.canonical_category_breadcrumb as string) || undefined,
+            },
+            consolidationCategory: (core?.canonical_category_breadcrumb as string) || undefined,
+          };
+        }
+      } catch {
+        // Non-fatal — composer can still produce a suggestion without context
+      }
+
+      // Use deterministic composer to produce a BayState-normalized title
+      const facts = (body.structured_facts ?? {}) as PackagingFacts;
+      const fieldConf = (body.field_confidence ?? {}) as FieldConfidence;
+      const composerResult = composePackagingTitle(facts, fieldConf, productContext);
 
       const { error: suggestionError } = await supabase
         .from('product_title_suggestions')
@@ -205,13 +242,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
           workflow_run_id: extraction.workflow_run_id,
           packaging_extraction_id: extractionId,
           suggestion_type: 'packaging_vision',
-          title: packagingTitle || body.raw_text || '',
-          confidence_score: body.overall_confidence ?? null,
-          field_confidence: body.field_confidence ?? null,
-          composer_version: 'packaging-extraction-v1',
+          title: composerResult.title || body.raw_text || '',
+          confidence_score: composerResult.overall_confidence,
+          field_confidence: composerResult.field_confidence,
+          composer_version: 'packaging-title-v1',
           mode: effectiveMode,
-          reasons: body.notes ?? [],
-          conflicts: body.conflicts ?? [],
+          reasons: composerResult.reasons,
+          conflicts: composerResult.conflicts,
           status: 'created',
           created_at: nowIso,
           updated_at: nowIso,
@@ -244,12 +281,3 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 }
 
-/**
- * Extract a field from structured_facts, trying both dot-notation and direct keys.
- */
-function extractField(facts: Record<string, unknown> | undefined, key: string): string | undefined {
-  if (!facts) return undefined;
-  const value = facts[key];
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  return undefined;
-}
