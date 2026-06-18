@@ -491,11 +491,11 @@ def _get_vlm_env() -> dict[str, Any]:
     return {
         "base_url": os.environ.get(
             "PACKAGING_VISION_BASE_URL",
-            "http://127.0.0.1:8000/v1",
+            "http://127.0.0.1:11434/v1",
         ),
         "model": os.environ.get(
             "PACKAGING_VISION_MODEL",
-            "qwen2.5-vl-7b-instruct",
+            "qwen2.5vl",
         ),
         "api_key": os.environ.get(
             "PACKAGING_VISION_API_KEY",
@@ -507,7 +507,7 @@ def _get_vlm_env() -> dict[str, Any]:
 
 def _get_text_env() -> dict[str, Any]:
     """Load text-only LLM env configuration."""
-    vision_base = os.environ.get("PACKAGING_VISION_BASE_URL", "http://127.0.0.1:8000/v1")
+    vision_base = os.environ.get("PACKAGING_VISION_BASE_URL", "http://127.0.0.1:11434/v1")
     return {
         "base_url": os.environ.get("PACKAGING_TEXT_BASE_URL", vision_base),
         "model": os.environ.get("PACKAGING_TEXT_MODEL", "llama3.2:3b"),

@@ -49,11 +49,16 @@ Optional: extract product packaging text to improve consolidation titles.
 
 ### Prerequisites (Mac)
 
+Recommended — Qwen2.5-VL (single-pass, ~6GB, best quality):
 ```bash
 brew install ollama
-brew services start ollama  # or: ollama serve
-ollama pull glm-ocr
-ollama pull llama3.2:3b
+brew services start ollama
+ollama pull qwen2.5vl
+```
+
+Fallback — Two-stage for low memory (GLM-OCR + llama3.2, ~2GB):
+```bash
+ollama pull glm-ocr && ollama pull llama3.2:3b
 ```
 
 ### Prerequisites (Linux/Docker)
@@ -71,13 +76,22 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
 
 ### Enable in .env
 
+Recommended (Qwen2.5-VL single-pass):
 ```env
 PACKAGING_VISION_ENABLED=true
 PACKAGING_VISION_BASE_URL=http://127.0.0.1:11434/v1
-PACKAGING_VISION_MODEL=glm-ocr
+PACKAGING_VISION_MODEL=qwen2.5vl
 PACKAGING_VISION_API_KEY=ollama
+PACKAGING_VISION_PIPELINE=structured_vlm
+PACKAGING_VISION_TIMEOUT_SECONDS=180
+PACKAGING_VISION_MAX_IMAGES=1
+PACKAGING_VISION_MAX_CONCURRENCY=1
+```
+
+Fallback (two-stage, ~2GB total for low-memory Macs):
+```env
 PACKAGING_VISION_PIPELINE=ocr_then_parse
-PACKAGING_TEXT_BASE_URL=http://127.0.0.1:11434/v1
+PACKAGING_VISION_MODEL=glm-ocr
 PACKAGING_TEXT_MODEL=llama3.2:3b
 PACKAGING_TEXT_API_KEY=ollama
 ```

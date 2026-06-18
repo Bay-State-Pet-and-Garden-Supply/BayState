@@ -580,8 +580,8 @@ async def main_async():
     packaging_running_count = 0
 
     if PACKAGING_VISION_ENABLED:
-        vision_model = os.environ.get("PACKAGING_VISION_MODEL", "glm-ocr")
-        pipeline = os.environ.get("PACKAGING_VISION_PIPELINE", "ocr_then_parse")
+        vision_model = os.environ.get("PACKAGING_VISION_MODEL", "qwen2.5vl")
+        pipeline = os.environ.get("PACKAGING_VISION_PIPELINE", "structured_vlm")
         text_model = os.environ.get("PACKAGING_TEXT_MODEL", "llama3.2:3b") if pipeline == "ocr_then_parse" else None
         
         # Preflight: verify Ollama endpoint is reachable and models are available.
