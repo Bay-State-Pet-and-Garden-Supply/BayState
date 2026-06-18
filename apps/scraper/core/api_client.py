@@ -59,6 +59,20 @@ class ClaimedEnrichment:
     source_plan: dict[str, Any] | None = None
 
 
+@dataclass
+class ClaimedPackagingExtraction:
+    """Packaging extraction job claimed from the coordinator."""
+
+    extraction_id: str
+    upc: str
+    image_urls: list[str]
+    prompt_version: str = "packaging-title-v1"
+    schema_version: str = "packaging-extraction-v1"
+    lease_token: str | None = None
+    lease_expires_at: str | None = None
+    max_images: int = 2
+
+
 class AuthenticationError(Exception):
     """Raised when authentication fails."""
 
@@ -444,6 +458,84 @@ class ScraperAPIClient:
             logger.error(f"Error claiming enrichment: {e}")
             return None
 
+    def claim_packaging_extraction(self, runner_name: str | None = None) -> ClaimedPackagingExtraction | None:
+        """
+        Claim the next pending packaging extraction job.
+
+        Returns:
+            ClaimedPackagingExtraction if a job was claimed, None if none available.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return None
+
+        if os.environ.get("PACKAGING_VISION_ENABLED", "").lower() not in ("true", "1", "yes"):
+            return None
+
+        payload_dict: dict[str, Any] = {
+            "runner_name": runner_name or self.runner_name,
+            "capabilities": {
+                "packaging_vision": {
+                    "enabled": True,
+                    "model": os.environ.get("PACKAGING_VISION_MODEL", "glm-ocr"),
+                    "pipeline": os.environ.get("PACKAGING_VISION_PIPELINE", "ocr_then_parse"),
+                    "text_model": os.environ.get("PACKAGING_TEXT_MODEL", "llama3.2:3b"),
+                    "max_images": int(os.environ.get("PACKAGING_VISION_MAX_IMAGES", "1")),
+                    "max_concurrency": int(os.environ.get("PACKAGING_VISION_MAX_CONCURRENCY", "1")),
+                }
+            },
+        }
+        payload = json.dumps(payload_dict)
+
+        try:
+            data = self._make_request(
+                "POST", "/api/scraper/v1/packaging-extractions/claim", payload=payload
+            )
+
+            job_data = data.get("job")
+            if not job_data or not isinstance(job_data, dict):
+                logger.info("No pending packaging extraction jobs available")
+                return None
+
+            extraction_id = str(job_data.get("extraction_id", ""))
+            upc = str(job_data.get("upc", ""))
+            image_urls = job_data.get("image_urls", [])
+            if not isinstance(image_urls, list):
+                image_urls = []
+
+            logger.info(
+                "Claimed packaging extraction %s for UPC %s (%d images)",
+                extraction_id, upc, len(image_urls),
+            )
+            return ClaimedPackagingExtraction(
+                extraction_id=extraction_id,
+                upc=upc,
+                image_urls=image_urls,
+                prompt_version=str(job_data.get("prompt_version", "packaging-title-v1")),
+                schema_version=str(job_data.get("schema_version", "packaging-extraction-v1")),
+                lease_token=str(job_data.get("lease_token", "")) or None,
+                lease_expires_at=str(job_data.get("lease_expires_at", "")) or None,
+                max_images=int(job_data.get("max_images", 2)),
+            )
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return None
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in {404, 204}:
+                logger.debug("No pending packaging extraction jobs available")
+                return None
+            logger.error(
+                "Failed to claim packaging extraction: %s - %s",
+                e.response.status_code, _format_error_response(e.response),
+            )
+            return None
+        except Exception as e:
+            logger.error(f"Error claiming packaging extraction: {e}")
+            return None
+
     def submit_enrichment_result(
         self,
         attempt_id: str,
@@ -523,6 +615,82 @@ class ScraperAPIClient:
             logger.error(f"Error submitting enrichment result: {e}")
             return False
 
+    def submit_packaging_extraction_result(
+        self,
+        extraction_id: str,
+        status: str,
+        *,
+        result_json: str | None = None,
+        error_message: str | None = None,
+        lease_token: str | None = None,
+    ) -> bool:
+        """Submit the result of a packaging extraction job.
+
+        Args:
+            extraction_id: The extraction ID from claim_packaging_extraction.
+            status: "succeeded", "failed", "timed_out", or "skipped_no_images".
+            result_json: JSON string of the full extraction result payload.
+            error_message: Error message if failed.
+            lease_token: Lease token from claim_packaging_extraction.
+
+        Returns:
+            True if accepted, False otherwise.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return False
+
+        if result_json:
+            result_dict = json.loads(result_json)
+            result_dict["lease_token"] = lease_token
+            if error_message:
+                result_dict["error_message"] = error_message
+            payload = json.dumps(result_dict)
+        else:
+            payload_dict: dict[str, Any] = {
+                "status": status,
+                "lease_token": lease_token,
+                "upc": "unknown",
+                "schema_version": "packaging-extraction-v1",
+                "prompt_version": "packaging-title-v1",
+                "raw_text": None,
+                "structured_facts": {},
+                "field_confidence": {},
+                "overall_confidence": 0.0,
+                "image_urls": [],
+                "image_fingerprints": [],
+                "image_metadata": [],
+            }
+            if error_message:
+                payload_dict["error_message"] = error_message
+            payload = json.dumps(payload_dict)
+
+        try:
+            self._make_request(
+                "POST",
+                f"/api/scraper/v1/packaging-extractions/{extraction_id}/result",
+                payload=payload,
+            )
+            logger.info(
+                "Submitted packaging extraction result for %s: status=%s",
+                extraction_id, status,
+            )
+            return True
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return False
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "Failed to submit packaging extraction result: %s - %s",
+                e.response.status_code, _format_error_response(e.response),
+            )
+            return False
+        except Exception as e:
+            logger.error(f"Error submitting packaging extraction result: {e}")
+            return False
 
     def heartbeat(
         self,

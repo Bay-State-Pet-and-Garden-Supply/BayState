@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
-from core.api_client import ClaimedEnrichment
+from core.api_client import ClaimedEnrichment, ClaimedPackagingExtraction
 from core.settings_manager import settings
 from scrapers.product_url_extraction.extractor import ProductPageExtractor
 from scrapers.ai_search.enrichment_models import (
@@ -20,6 +20,10 @@ from scrapers.ai_search.enrichment_models import (
 logger = logging.getLogger(__name__)
 
 ENRICHMENT_JOB_TYPE = "enrichment"
+PACKAGING_EXTRACTION_JOB_TYPE = "packaging_extraction"
+
+# Re-export packaging extraction runner
+from runner.packaging_extraction import _run_packaging_extraction_job  # noqa: E402, F401
 
 
 class ConfigurationError(Exception):

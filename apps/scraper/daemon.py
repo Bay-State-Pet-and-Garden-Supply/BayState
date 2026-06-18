@@ -181,6 +181,202 @@ def signal_handler(signum, frame):
 
 
 
+async def _process_packaging_extraction(attempt, client, rm):
+    """Process a claimed packaging extraction job (local VLM/OCR)."""
+    from runner.packaging_extraction import _run_packaging_extraction_job
+    from utils.logging_handlers import JobLoggingSession
+
+    extraction_id = attempt.extraction_id
+    upc = attempt.upc
+    job_id = extraction_id
+
+    try:
+        await asyncio.to_thread(
+            client.heartbeat,
+            current_job_id=job_id,
+            lease_token=attempt.lease_token,
+            status="busy",
+        )
+
+        with JobLoggingSession(
+            job_id=job_id,
+            runner_name=client.runner_name,
+            lease_token=attempt.lease_token,
+            api_client=client,
+            realtime_manager=rm,
+        ) as job_logging:
+            try:
+                logger.info(
+                    "Processing packaging extraction %s for UPC %s",
+                    extraction_id, upc,
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "claimed",
+                        "details": {
+                            "extraction_id": extraction_id,
+                            "upc": upc,
+                            "image_count": len(attempt.image_urls) if attempt.image_urls else 0,
+                        },
+                        "flush_immediately": True,
+                    },
+                )
+
+                job_logging.emit_progress(
+                    status="running",
+                    progress=0,
+                    message=f"Packaging extraction started for UPC {upc}",
+                    phase="claimed",
+                    details={
+                        "extraction_id": extraction_id,
+                        "upc": upc,
+                        "image_count": len(attempt.image_urls) if attempt.image_urls else 0,
+                    },
+                    items_total=1,
+                )
+
+                start_time = time.time()
+                results = await _run_packaging_extraction_job(
+                    attempt,
+                    runner_name=client.runner_name,
+                    log_buffer=None,
+                    api_client=client,
+                    job_logging=job_logging,
+                )
+                elapsed = time.time() - start_time
+
+                logger.info(
+                    "Packaging extraction %s completed in %.1fs",
+                    extraction_id, elapsed,
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "completed",
+                        "details": {
+                            "extraction_id": extraction_id,
+                            "upc": upc,
+                            "elapsed_seconds": round(elapsed, 2),
+                            "success": results.get("upcs_processed", 0) > 0,
+                        },
+                        "flush_immediately": True,
+                    },
+                )
+            except Exception as e:
+                logger.exception(
+                    "Packaging extraction %s failed",
+                    extraction_id,
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "failed",
+                        "extraction_id": extraction_id,
+                        "flush_immediately": True,
+                    },
+                )
+                try:
+                    client.submit_packaging_extraction_result(
+                        extraction_id=extraction_id,
+                        status="failed",
+                        error_message=str(e),
+                        lease_token=getattr(attempt, "lease_token", None),
+                    )
+                except Exception:
+                    logger.exception("Failed to submit packaging extraction failure result")
+
+    except Exception as e:
+        logger.exception(
+            "Packaging extraction job prep/heartbeat failed for %s",
+            extraction_id,
+            extra={
+                "job_id": job_id,
+                "runner_name": client.runner_name,
+                "phase": "failed",
+                "extraction_id": extraction_id,
+            },
+        )
+
+
+async def _preflight_packaging_vision(
+    base_url: str,
+    vision_model: str,
+    text_model: str | None = None,
+) -> bool:
+    """Verify the Ollama/local VLM endpoint is reachable and models are available.
+    
+    Prevents a misconfigured runner from claiming packaging extraction jobs
+    when the VLM endpoint is down or models are missing, which would drain
+    the queue with repeated failures.
+    
+    Returns True if both required models are available, False otherwise.
+    """
+    import httpx
+    
+    try:
+        # Step 1: Check endpoint reachability via /v1/models
+        models_url = f"{base_url.rstrip('/')}/models"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(models_url)
+            resp.raise_for_status()
+            model_list = resp.json()
+        
+        # Extract model IDs (OpenAI-compatible format)
+        available = set()
+        for entry in model_list.get("data", []):
+            model_id = entry.get("id", "")
+            if model_id:
+                available.add(model_id)
+        
+        if not available:
+            logger.warning(
+                "[Preflight] VLM endpoint at %s returned no models",
+                base_url,
+            )
+            return False
+        
+        # Step 2: Check vision model is present (exact or prefix match for Ollama tags)
+        vision_available = any(
+            m == vision_model or m.startswith(f"{vision_model}:")
+            for m in available
+        )
+        if not vision_available:
+            logger.warning(
+                "[Preflight] Vision model '%s' not found at %s. Available: %s",
+                vision_model,
+                base_url,
+                ", ".join(sorted(available)[:10]),
+            )
+            return False
+        
+        logger.info("[Preflight] Vision model '%s' confirmed", vision_model)
+        
+        # Step 3: Check text model if two-stage pipeline
+        if text_model:
+            text_available = any(
+                m == text_model or m.startswith(f"{text_model}:")
+                for m in available
+            )
+            if not text_available:
+                logger.warning(
+                    "[Preflight] Text model '%s' not found at %s. Available: %s",
+                    text_model,
+                    base_url,
+                    ", ".join(sorted(available)[:10]),
+                )
+                return False
+            logger.info("[Preflight] Text model '%s' confirmed", text_model)
+        
+        logger.info("[Preflight] Packaging vision endpoint healthy — ready to claim jobs")
+        return True
+        
+    except Exception as e:
+        logger.warning(
+            "[Preflight] VLM endpoint at %s unreachable: %s",
+            base_url,
+            str(e)[:120],
+        )
+        return False
+
+
 async def _process_enrichment(attempt, client, rm):
     """Process a claimed enrichment attempt (AI extraction)."""
     from runner import _run_enrichment_job
@@ -378,6 +574,51 @@ async def main_async():
     MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_JOBS", "4"))
     running_tasks: set[asyncio.Task] = set()
 
+    # Packaging extraction concurrency tracking
+    PACKAGING_VISION_ENABLED = os.environ.get("PACKAGING_VISION_ENABLED", "").lower() in ("true", "1", "yes")
+    packaging_max_concurrency = int(os.environ.get("PACKAGING_VISION_MAX_CONCURRENCY", "1"))
+    packaging_running_count = 0
+
+    if PACKAGING_VISION_ENABLED:
+        vision_model = os.environ.get("PACKAGING_VISION_MODEL", "glm-ocr")
+        pipeline = os.environ.get("PACKAGING_VISION_PIPELINE", "ocr_then_parse")
+        text_model = os.environ.get("PACKAGING_TEXT_MODEL", "llama3.2:3b") if pipeline == "ocr_then_parse" else None
+        
+        # Preflight: verify Ollama endpoint is reachable and models are available.
+        # A misconfigured runner with ENABLED=true but no Ollama would drain packaging
+        # jobs with repeated failures. Preflight prevents that.
+        preflight_ok = await _preflight_packaging_vision(
+            os.environ.get("PACKAGING_VISION_BASE_URL", "http://127.0.0.1:11434/v1"),
+            vision_model,
+            text_model,
+        )
+        
+        if preflight_ok:
+            if text_model:
+                logger.info(
+                    "[Daemon] Packaging vision enabled (model=%s, pipeline=%s, text_model=%s, max_concurrency=%d)",
+                    vision_model,
+                    pipeline,
+                    text_model,
+                    packaging_max_concurrency,
+                )
+            else:
+                logger.info(
+                    "[Daemon] Packaging vision enabled (model=%s, pipeline=%s, max_concurrency=%d)",
+                    vision_model,
+                    pipeline,
+                    packaging_max_concurrency,
+                )
+        else:
+            logger.warning(
+                "[Daemon] Packaging vision preflight FAILED — endpoint or models unavailable. "
+                "Disabling packaging jobs to avoid draining the queue. "
+                "Fix Ollama and restart."
+            )
+            PACKAGING_VISION_ENABLED = False
+    else:
+        logger.info("[Daemon] Packaging vision disabled — will not claim packaging extraction jobs")
+
     logger.info("[Daemon] Entering main polling loop")
 
     while not _shutdown_requested:
@@ -405,48 +646,87 @@ async def main_async():
                 done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
                 continue
 
+            # -------------------------------------------------------------------
+            # Try to claim enrichment work
+            # -------------------------------------------------------------------
             logger.info("[Daemon] Claiming next enrichment attempt...")
 
             enrichment_attempt = await asyncio.to_thread(client.claim_enrichment, runner_name=client.runner_name)
 
+            claimed_any = False
+
             if enrichment_attempt:
                 # Process enrichment work in a background task
                 consecutive_idle_polls = 0
+                claimed_any = True
                 logger.info(
                     f"[Enrichment {enrichment_attempt.attempt_id}] Claimed - "
                     f"job={enrichment_attempt.job_id}, upc={enrichment_attempt.upc}"
                 )
                 task = asyncio.create_task(_process_enrichment(enrichment_attempt, client, rm))
                 running_tasks.add(task)
-                # Yield control briefly to let the task start executing
+
+            # -------------------------------------------------------------------
+            # Try to claim packaging extraction work (if enabled and within concurrency limit)
+            # -------------------------------------------------------------------
+            if PACKAGING_VISION_ENABLED:
+                packaging_running_count = sum(
+                    1 for t in running_tasks
+                    if t.get_name and "packaging_extraction" in t.get_name()
+                )
+                if packaging_running_count < packaging_max_concurrency:
+                    packaging_attempt = await asyncio.to_thread(
+                        client.claim_packaging_extraction,
+                        runner_name=client.runner_name,
+                    )
+
+                    if packaging_attempt:
+                        consecutive_idle_polls = 0
+                        claimed_any = True
+                        logger.info(
+                            f"[PackagingExtraction {packaging_attempt.extraction_id}] Claimed - "
+                            f"upc={packaging_attempt.upc}, images={len(packaging_attempt.image_urls)}"
+                        )
+                        task = asyncio.create_task(
+                            _process_packaging_extraction(packaging_attempt, client, rm)
+                        )
+                        task.set_name(f"packaging_extraction_{packaging_attempt.extraction_id}")
+                        running_tasks.add(task)
+
+            # -------------------------------------------------------------------
+            # Yield control briefly so tasks can start executing
+            # -------------------------------------------------------------------
+            if claimed_any:
                 await asyncio.sleep(0.1)
                 continue
-            else:
-                # No work available - idle backoff
-                consecutive_idle_polls += 1
-                now = time.time()
-                if now - last_heartbeat >= HEARTBEAT_INTERVAL:
-                    status = "busy" if running_tasks else "idle"
-                    await asyncio.to_thread(client.heartbeat, status=status)
-                    last_heartbeat = now
-                    logger.debug(f"Heartbeat ({status}) sent")
 
-                import random
+            # -------------------------------------------------------------------
+            # No work at all — idle backoff with heartbeat
+            # -------------------------------------------------------------------
+            consecutive_idle_polls += 1
+            now = time.time()
+            if now - last_heartbeat >= HEARTBEAT_INTERVAL:
+                status = "busy" if running_tasks else "idle"
+                await asyncio.to_thread(client.heartbeat, status=status)
+                last_heartbeat = now
+                logger.debug(f"Heartbeat ({status}) sent")
 
-                max_interval = MAX_POLL_INTERVAL
-                base_interval = POLL_INTERVAL
-                backoff = base_interval * (1.5 ** (consecutive_idle_polls - 1))
-                current_interval = min(max_interval, backoff)
-                
-                # Cap polling interval when we have active background tasks to claim new work quickly
-                if running_tasks:
-                    current_interval = min(current_interval, 10.0)
+            import random
 
-                jitter = current_interval * 0.1
-                sleep_time = current_interval + random.uniform(-jitter, jitter)
-                logger.debug(f"No jobs found. Backing off for {sleep_time:.1f}s")
-                await asyncio.sleep(sleep_time)
-                continue
+            max_interval = MAX_POLL_INTERVAL
+            base_interval = POLL_INTERVAL
+            backoff = base_interval * (1.5 ** (consecutive_idle_polls - 1))
+            current_interval = min(max_interval, backoff)
+
+            # Cap polling interval when we have active background tasks to claim new work quickly
+            if running_tasks:
+                current_interval = min(current_interval, 10.0)
+
+            jitter = current_interval * 0.1
+            sleep_time = current_interval + random.uniform(-jitter, jitter)
+            logger.debug(f"No jobs found. Backing off for {sleep_time:.1f}s")
+            await asyncio.sleep(sleep_time)
+            continue
 
         except RunnerBuildMismatchError as e:
             latest_build_id = getattr(e, "latest_build_id", None)

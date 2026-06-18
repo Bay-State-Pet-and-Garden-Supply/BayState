@@ -25,6 +25,7 @@ interface HeartbeatRequest {
     lease_token?: string;
     jobs_completed?: number;
     memory_usage_mb?: number;
+    capabilities?: Record<string, unknown>;
 }
 
 export async function POST(request: NextRequest) {
@@ -89,64 +90,131 @@ export async function POST(request: NextRequest) {
         let leaseExpiresAt: string | null = null;
 
         if (body.current_job_id) {
+            // Try enrichment_jobs first (legacy)
             const { data: job, error: jobError } = await supabase
                 .from('enrichment_jobs')
                 .select('id, status, lease_token, claimed_by')
                 .eq('id', body.current_job_id)
-                .single();
+                .maybeSingle();
 
-            if (jobError || !job) {
+            if (job) {
+                if (job.claimed_by && job.claimed_by !== runnerName) {
+                    return NextResponse.json(
+                        { error: 'Runner does not own current job' },
+                        { status: 409 }
+                    );
+                }
+
+                if (job.lease_token && body.lease_token !== job.lease_token) {
+                    return NextResponse.json(
+                        { error: 'Lease token mismatch' },
+                        { status: 409 }
+                    );
+                }
+
+                if (job.status !== 'running') {
+                    return NextResponse.json(
+                        { error: 'Current job is not running' },
+                        { status: 409 }
+                    );
+                }
+
+                leaseExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+                const { error: jobUpdateError } = await supabase
+                    .from('enrichment_jobs')
+                    .update({
+                        heartbeat_at: nowIso,
+                        lease_expires_at: leaseExpiresAt,
+                        updated_at: nowIso,
+                    })
+                    .eq('id', body.current_job_id);
+
+                if (jobUpdateError) {
+                    console.error(`[Heartbeat] Failed to update job heartbeat ${body.current_job_id}:`, jobUpdateError);
+                    return NextResponse.json(
+                        { error: 'Failed to update job heartbeat' },
+                        { status: 500 }
+                    );
+                }
+            } else if (!jobError) {
+                // Not an enrichment_job — try product_packaging_extractions
+                const { data: extraction, error: extractError } = await supabase
+                    .from('product_packaging_extractions')
+                    .select('id, status, lease_token, claimed_by')
+                    .eq('id', body.current_job_id)
+                    .maybeSingle();
+
+                if (extractError || !extraction) {
+                    return NextResponse.json(
+                        { error: 'Current job not found (enrichment_jobs or product_packaging_extractions)' },
+                        { status: 404 }
+                    );
+                }
+
+                if (extraction.claimed_by && extraction.claimed_by !== runnerName) {
+                    return NextResponse.json(
+                        { error: 'Runner does not own current extraction' },
+                        { status: 409 }
+                    );
+                }
+
+                if (extraction.lease_token && body.lease_token !== extraction.lease_token) {
+                    return NextResponse.json(
+                        { error: 'Lease token mismatch' },
+                        { status: 409 }
+                    );
+                }
+
+                if (!['claimed', 'running'].includes(extraction.status)) {
+                    return NextResponse.json(
+                        { error: 'Current extraction is not active' },
+                        { status: 409 }
+                    );
+                }
+
+                leaseExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+                const { error: extractUpdateError } = await supabase
+                    .from('product_packaging_extractions')
+                    .update({
+                        lease_expires_at: leaseExpiresAt,
+                        updated_at: nowIso,
+                    })
+                    .eq('id', body.current_job_id);
+
+                if (extractUpdateError) {
+                    console.error(`[Heartbeat] Failed to update extraction lease ${body.current_job_id}:`, extractUpdateError);
+                    return NextResponse.json(
+                        { error: 'Failed to update extraction lease' },
+                        { status: 500 }
+                    );
+                }
+            } else {
                 return NextResponse.json(
                     { error: 'Current job not found' },
                     { status: 404 }
                 );
             }
+        }
 
-            if (job.claimed_by && job.claimed_by !== runnerName) {
-                return NextResponse.json(
-                    { error: 'Runner does not own current job' },
-                    { status: 409 }
-                );
-            }
-
-            if (job.lease_token && body.lease_token !== job.lease_token) {
-                return NextResponse.json(
-                    { error: 'Lease token mismatch' },
-                    { status: 409 }
-                );
-            }
-
-            if (job.status !== 'running') {
-                return NextResponse.json(
-                    { error: 'Current job is not running' },
-                    { status: 409 }
-                );
-            }
-
-            leaseExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
-            const { error: jobUpdateError } = await supabase
-                .from('enrichment_jobs')
-                .update({
-                    heartbeat_at: nowIso,
-                    lease_expires_at: leaseExpiresAt,
-                    updated_at: nowIso,
-                })
-                .eq('id', body.current_job_id);
-
-            if (jobUpdateError) {
-                console.error(`[Heartbeat] Failed to update job heartbeat ${body.current_job_id}:`, jobUpdateError);
-                return NextResponse.json(
-                    { error: 'Failed to update job heartbeat' },
-                    { status: 500 }
-                );
-            }
+        // Merge packaging vision capabilities into metadata if provided
+        let mergedMetadata = versionMetadata;
+        if (body.capabilities && typeof body.capabilities === 'object') {
+            const existingCaps = (versionMetadata as Record<string, unknown>)?.capabilities as Record<string, unknown> | undefined;
+            mergedMetadata = {
+                ...versionMetadata,
+                capabilities: {
+                    ...(existingCaps || {}),
+                    ...body.capabilities,
+                },
+            };
         }
 
         const updatePayload: Record<string, unknown> = {
             last_seen_at: nowIso,
             status: body.status || 'idle',
-            metadata: versionMetadata,
+            metadata: mergedMetadata,
         };
 
         if (body.current_job_id !== undefined) {

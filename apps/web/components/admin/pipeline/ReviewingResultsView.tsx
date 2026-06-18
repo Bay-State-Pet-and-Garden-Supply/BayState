@@ -39,6 +39,7 @@ import type { PipelineFiltersState } from "./PipelineFilters";
 import type { VirtualizedPipelineTableHandle } from "./VirtualizedPipelineTable";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { formatPipelineSourceSlug } from "./source-view-model";
+import { PackagingEvidencePanel } from "./PackagingEvidencePanel";
 import {
   applyProductNameTransform,
   applySetProductFieldsToDraft,
@@ -1867,8 +1868,16 @@ export function ReviewingResultsView({
                   </div>
                 </div>
 
-                <div className="pt-4">
-                  <Separator className="mb-4 bg-border" />
+                <div className="pt-4 space-y-2">
+                  <PackagingEvidencePanel
+                    upc={selectedUpc}
+                    onTitleApplied={() => {
+                      // Refresh the product data to pick up the new title
+                      void persistCurrentDraft({ silent: true });
+                    }}
+                  />
+
+                  <Separator className="bg-border" />
                   <details className="group overflow-hidden rounded-none border border-border">
                     <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-semibold text-muted-foreground hover:bg-muted/30 list-none">
                       <div className="flex items-center gap-2">
