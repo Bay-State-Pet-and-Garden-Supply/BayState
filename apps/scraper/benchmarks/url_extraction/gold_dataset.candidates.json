@@ -1,0 +1,1356 @@
+{
+  "schema_version": "url-extraction-gold-dataset-v1",
+  "description": "Expanded URL extraction candidate dataset",
+  "entries": [
+    {
+      "id": "orijen-original-dog-4-5-lb",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.orijenpetfoods.com/en-US/dogs/dog-food/original/ds-ori-original-dog.html",
+      "evidence_url": "https://www.orijenpetfoods.com/en-US/dogs/dog-food/original/ds-ori-original-dog.html",
+      "evidence_notes": "Official PDP for ORIJEN Original dry dog food. Page shows available sizes including 4.5lb.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "ORIJEN",
+          "evidence_snippet": "Original Dry Dog Food for All Breeds | ORIJEN"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Original",
+            "Dog"
+          ],
+          "evidence_snippet": "Original Dry Dog Food for All Breeds"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "31 lb",
+          "evidence_snippet": "Available Sizes 4.5lb / 13lb / 23.5lb / 31lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "dry-food",
+        "kibble"
+      ]
+    },
+    {
+      "id": "orijen-tundra-freeze-dried-medallions-6-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.orijenpetfoods.com/en-US/dogs/dog-food/tundra%2C-freeze-dried-food-medallions/ds-ori-fdf-tundra.html",
+      "evidence_url": "https://www.orijenpetfoods.com/en-US/dogs/dog-food/tundra%2C-freeze-dried-food-medallions/ds-ori-fdf-tundra.html",
+      "evidence_notes": "Official PDP for ORIJEN Tundra Freeze-Dried Food Medallions. Page shows available sizes including 6oz.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "ORIJEN",
+          "evidence_snippet": "Tundra, Freeze-Dried Food Medallions"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Tundra",
+            "Freeze-Dried",
+            "Medallions"
+          ],
+          "evidence_snippet": "Tundra, Freeze-Dried Food Medallions"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "16 oz",
+          "evidence_snippet": "Available Sizes 6oz / 16oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "freeze-dried-raw"
+      ]
+    },
+    {
+      "id": "orijen-puppy-poultry-fish-pate-12-8-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.orijenpetfoods.com/en-US/dogs/dog-food/puppy-poultry-and-fish-p%C3%A2t%C3%A9-recipe/064992716158.html",
+      "evidence_url": "https://www.orijenpetfoods.com/en-US/dogs/dog-food/puppy-poultry-and-fish-p%C3%A2t%C3%A9-recipe/064992716158.html",
+      "evidence_notes": "Official PDP for ORIJEN Puppy Poultry & Fish Pâté Recipe wet dog food in 12.8oz.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "ORIJEN",
+          "evidence_snippet": "ORIJEN Puppy Poultry & Fish Pâté Recipe"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Puppy",
+            "Poultry",
+            "Fish",
+            "Pâté"
+          ],
+          "evidence_snippet": "Puppy Poultry & Fish Pâté Recipe Wet Dog Food"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "12.8oz",
+          "evidence_snippet": "Available Sizes 12.8OZ"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "pate"
+      ]
+    },
+    {
+      "id": "acana-classics-chicken-and-barley-4-lb",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.acana.com/en-US/dogs/dog-food/classics%2C-chicken-and-barley-recipe/ds-aca-classics-chicken-barley.html",
+      "evidence_url": "https://www.acana.com/en-US/dogs/dog-food/classics%2C-chicken-and-barley-recipe/ds-aca-classics-chicken-barley.html",
+      "evidence_notes": "Official PDP for ACANA Classics Chicken and Barley dry dog food. Page shows 4LB as an available size.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "ACANA",
+          "evidence_snippet": "ACANA Classics Chicken & Barley Recipe"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Chicken",
+            "Barley"
+          ],
+          "evidence_snippet": "Classics, Chicken and Barley Recipe Dry Dog Food"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "4LB",
+          "evidence_snippet": "Available Sizes 4LB / 22.5LB"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "dry-food",
+        "kibble"
+      ]
+    },
+    {
+      "id": "acana-classics-chicken-pate-12-5-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.acana.com/en-US/dogs/dog-food/classics-p%C3%A2t%C3%A9%2C-chicken-recipe/064992725914.html",
+      "evidence_url": "https://www.acana.com/en-US/dogs/dog-food/classics-p%C3%A2t%C3%A9%2C-chicken-recipe/064992725914.html",
+      "evidence_notes": "Official PDP for ACANA Classics Chicken Recipe Pâté wet dog food in 12.5oz.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "ACANA",
+          "evidence_snippet": "ACANA Classics Chicken Recipe Pâté"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Chicken",
+            "Pâté"
+          ],
+          "evidence_snippet": "Classics Pâté, Chicken Recipe Wet Dog Food"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "12.5oz",
+          "evidence_snippet": "Available Sizes 12.5oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "pate"
+      ]
+    },
+    {
+      "id": "acana-jerky-bites-duck-6-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.acana.com/en-US/dogs/dog-food/acana-jerky-bites-duck-recipe/064992727581.html",
+      "evidence_url": "https://www.acana.com/en-US/dogs/dog-food/acana-jerky-bites-duck-recipe/064992727581.html",
+      "evidence_notes": "Official PDP for ACANA Jerky Bites Duck Recipe soft chewy treats in 6OZ.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "ACANA",
+          "evidence_snippet": "ACANA Jerky Bites Duck Recipe"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Jerky",
+            "Bites",
+            "Duck"
+          ],
+          "evidence_snippet": "ACANA Jerky Bites Duck Recipe Soft Chewy Treats"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "6OZ",
+          "evidence_snippet": "Available Sizes 6OZ"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-treats",
+        "dog",
+        "soft-chewy-treats"
+      ]
+    },
+    {
+      "id": "taste-high-prairie-bison-in-gravy-13-2-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/high-prairie-with-bison-gravy/",
+      "evidence_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/high-prairie-with-bison-gravy/",
+      "evidence_notes": "Official PDP for Taste of the Wild High Prairie Canine Recipe with Bison in Gravy in 13.2 oz can.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Taste of the Wild",
+          "evidence_snippet": "Taste of the Wild High Prairie Canine Recipe With Bison in Gravy"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "High",
+            "Prairie",
+            "Bison",
+            "Gravy"
+          ],
+          "evidence_snippet": "High Prairie Canine Recipe with Bison in Gravy"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "13.2 oz.",
+          "evidence_snippet": "Available Sizes 13.2 oz."
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "canned-food"
+      ]
+    },
+    {
+      "id": "taste-pacific-stream-salmon-in-gravy-13-2-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/pacific-stream-with-salmon-gravy/",
+      "evidence_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/pacific-stream-with-salmon-gravy/",
+      "evidence_notes": "Official PDP for Taste of the Wild Pacific Stream Canine Recipe with Salmon in Gravy in 13.2 oz can.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Taste of the Wild",
+          "evidence_snippet": "Taste of the Wild Pacific Stream Canine Recipe With Salmon in Gravy"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Pacific",
+            "Stream",
+            "Salmon",
+            "Gravy"
+          ],
+          "evidence_snippet": "Pacific Stream Canine Recipe with Salmon in Gravy"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "13.2 oz.",
+          "evidence_snippet": "Available Sizes 13.2 oz."
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "canned-food"
+      ]
+    },
+    {
+      "id": "taste-sierra-mountain-lamb-in-gravy-13-2-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/sierra-mountain-with-lamb-gravy/",
+      "evidence_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/sierra-mountain-with-lamb-gravy/",
+      "evidence_notes": "Official PDP for Taste of the Wild Sierra Mountain Canine Recipe with Lamb in Gravy in 13.2 oz can.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Taste of the Wild",
+          "evidence_snippet": "Taste of the Wild Sierra Mountain Canine Recipe With Lamb in Gravy"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Sierra",
+            "Mountain",
+            "Lamb",
+            "Gravy"
+          ],
+          "evidence_snippet": "Sierra Mountain Canine Recipe with Lamb in Gravy"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "13.2 oz.",
+          "evidence_snippet": "Available Sizes 13.2 oz."
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "canned-food"
+      ]
+    },
+    {
+      "id": "taste-high-prairie-puppy-5-lb",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/high-prairie-puppy-with-roasted-bison-roasted-venison/",
+      "evidence_url": "https://www.tasteofthewildpetfood.com/dog/grain-free/high-prairie-puppy-with-roasted-bison-roasted-venison/",
+      "evidence_notes": "Official PDP for Taste of the Wild High Prairie Puppy dry dog food. Page shows available sizes including 5 lb.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Taste of the Wild",
+          "evidence_snippet": "Taste of the Wild High Prairie Puppy Recipe"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "High",
+            "Prairie",
+            "Puppy"
+          ],
+          "evidence_snippet": "High Prairie Puppy Recipe with Roasted Bison & Roasted Venison"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "5 lb.",
+          "evidence_snippet": "Available Sizes 28 lb. 14 lb. 5 lb."
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "dry-food",
+        "kibble",
+        "puppy"
+      ]
+    },
+    {
+      "id": "fromm-salmon-tunalini-4-lb",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://frommfamily.com/products/dog/four-star/dry/salmon-tunalini-recipe/",
+      "evidence_url": "https://frommfamily.com/products/dog/four-star/dry/salmon-tunalini-recipe/",
+      "evidence_notes": "Official PDP for Fromm Four-Star Salmon Tunalini dry dog food. Page shows 4 lb among available sizes.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Fromm",
+          "evidence_snippet": "Fromm Four-Star Nutritionals Salmon Tunalini Recipe Food for Dogs"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Salmon",
+            "Tunalini"
+          ],
+          "evidence_snippet": "Four-Star Salmon Tunalini Recipe Dry Dog Food"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "4 lb",
+          "evidence_snippet": "Available Sizes 4 lb, 12 lb, 26 lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "dry-food",
+        "kibble"
+      ]
+    },
+    {
+      "id": "fromm-banana-kablammas-6-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://frommfamily.com/products/dog/crunchy-os/treats/banana-kablammas-flavor/",
+      "evidence_url": "https://frommfamily.com/products/dog/crunchy-os/treats/banana-kablammas-flavor/",
+      "evidence_notes": "Official PDP for Fromm Crunchy Os Banana Kablammas dog treats. Page shows available sizes including 6 oz.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Fromm",
+          "evidence_snippet": "Fromm Crunchy Os Banana Kablammas Flavor Dog Treats"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Banana",
+            "Kablammas"
+          ],
+          "evidence_snippet": "Crunchy Os Banana Kablammas Flavor Dog Treats"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "6 oz",
+          "evidence_snippet": "Available Sizes 6 oz, 26 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-treats",
+        "dog",
+        "crunchy-treats"
+      ]
+    },
+    {
+      "id": "fromm-chicken-and-rice-pate-12-2-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://frommfamily.com/products/dog/pate/can/chicken-and-rice-pate/",
+      "evidence_url": "https://frommfamily.com/products/dog/pate/can/chicken-and-rice-pate/",
+      "evidence_notes": "Official PDP for Fromm Chicken & Rice Pâté wet dog food in 12.2 oz can.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Fromm",
+          "evidence_snippet": "Fromm Pâté Chicken & Rice Pâté Wet Dog Food"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Chicken",
+            "Rice",
+            "Pâté"
+          ],
+          "evidence_snippet": "Chicken & Rice Pâté Wet Dog Food"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "12.2 oz",
+          "evidence_snippet": "Available Sizes 12.2 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "canned-food"
+      ]
+    },
+    {
+      "id": "primal-freeze-dried-nuggets-beef-14-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.primalpetfoods.com/products/canine-freeze-dried-nuggets-beef",
+      "evidence_url": "https://www.primalpetfoods.com/products/canine-freeze-dried-nuggets-beef",
+      "evidence_notes": "Official PDP for Primal Freeze-Dried Raw Nuggets Beef Recipe dog food. Page shows available sizes including 14 oz.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Primal",
+          "evidence_snippet": "Freeze-Dried Raw Nuggets Dog Food Beef Recipe"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Beef",
+            "Nuggets"
+          ],
+          "evidence_snippet": "Freeze-Dried Raw Nuggets Dog Food Beef Recipe"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "14 oz",
+          "evidence_snippet": "Available Sizes: 5.5 oz, 14 oz, 30 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "freeze-dried-raw"
+      ]
+    },
+    {
+      "id": "primal-freeze-dried-nuggets-duck-14-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.primalpetfoods.com/products/freeze-dried-raw-nuggets-dog-food-duck-recipe",
+      "evidence_url": "https://www.primalpetfoods.com/products/freeze-dried-raw-nuggets-dog-food-duck-recipe",
+      "evidence_notes": "Official PDP for Primal Freeze-Dried Raw Nuggets Duck Recipe dog food. Page shows available sizes including 14 oz.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Primal",
+          "evidence_snippet": "Freeze-Dried Raw Nuggets Dog Food Duck Recipe"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Duck",
+            "Nuggets"
+          ],
+          "evidence_snippet": "Freeze-Dried Raw Nuggets Dog Food Duck Recipe"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "14 oz",
+          "evidence_snippet": "Available Sizes: 5.5 oz, 14 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "freeze-dried-raw"
+      ]
+    },
+    {
+      "id": "koha-turkey-entree-13-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://kohapet.com/products/turkey-entree-wet-dog-food",
+      "evidence_url": "https://kohapet.com/products/turkey-entree-wet-dog-food",
+      "evidence_notes": "Official PDP for KOHA Limited Ingredient Diet Turkey Entrée wet dog food. Page shows 13oz cans.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "KOHA",
+          "evidence_snippet": "Limited Ingredient Diet Turkey Entrée for Dogs"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Turkey",
+            "Entrée"
+          ],
+          "evidence_snippet": "Limited Ingredient Diet Turkey Entrée Wet Dog Food"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "13oz",
+          "evidence_snippet": "Select Size: 13oz cans"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "limited-ingredient"
+      ]
+    },
+    {
+      "id": "koha-lamb-entree-13-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://kohapet.com/products/lamb-entree-wet-dog-food",
+      "evidence_url": "https://kohapet.com/products/lamb-entree-wet-dog-food",
+      "evidence_notes": "Official PDP for KOHA Limited Ingredient Diet Lamb Entrée wet dog food. Page shows 13oz cans.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "KOHA",
+          "evidence_snippet": "Limited Ingredient Diet Lamb Entrée for Dogs"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Lamb",
+            "Entrée"
+          ],
+          "evidence_snippet": "Limited Ingredient Diet Lamb Entrée Wet Dog Food"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "13oz",
+          "evidence_snippet": "Select Size: 13oz cans"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "wet-food",
+        "limited-ingredient"
+      ]
+    },
+    {
+      "id": "wellness-chicken-and-oatmeal-15-pound",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.wellnesspetfood.com/product-catalog/wellness-complete-health-grained-chicken-oatmeal/",
+      "evidence_url": "https://www.wellnesspetfood.com/product-catalog/wellness-complete-health-grained-chicken-oatmeal/",
+      "evidence_notes": "Official PDP for Wellness Complete Health Chicken & Oatmeal dry dog food. Page shows available sizes including 15 Pound bag.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Wellness",
+          "evidence_snippet": "Wellness Complete Health Chicken & Oatmeal"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Chicken",
+            "Oatmeal"
+          ],
+          "evidence_snippet": "Wellness Complete Health Chicken & Oatmeal"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "15 Pound",
+          "evidence_snippet": "Available Sizes: 26 Pound, 38 Pound, 15 Pound, 30 Pound Bag"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "dog",
+        "dry-food",
+        "kibble"
+      ]
+    },
+    {
+      "id": "wellness-pate-chicken-entree-12-5-ounce",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.wellnesspetfood.com/product-catalog/wellness-complete-health-pate-chicken-entree/",
+      "evidence_url": "https://www.wellnesspetfood.com/product-catalog/wellness-complete-health-pate-chicken-entree/",
+      "evidence_notes": "Official PDP for Wellness Complete Health Pate Chicken Entrée Smooth Loaf wet cat food. Page shows 12.5 Ounce can size.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Wellness",
+          "evidence_snippet": "Wellness Complete Health Pate Chicken Entrée Smooth Loaf"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Pate",
+            "Chicken",
+            "Entrée"
+          ],
+          "evidence_snippet": "Pate Chicken Entrée Smooth Loaf"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "12.5 Ounce",
+          "evidence_snippet": "12.5 Ounce, 3 Ounce, 5.5 Ounce Can"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-food",
+        "cat",
+        "wet-food",
+        "pate"
+      ]
+    },
+    {
+      "id": "wellness-soft-puppy-bites-lamb-salmon-8-ounce",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.wellnesspetfood.com/product-catalog/wellness-soft-puppy-bites-lamb-salmon/",
+      "evidence_url": "https://www.wellnesspetfood.com/product-catalog/wellness-soft-puppy-bites-lamb-salmon/",
+      "evidence_notes": "Official PDP for Wellness Soft Puppy Bites Lamb & Salmon treats. Page shows 8 Ounce bag size.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Wellness",
+          "evidence_snippet": "Wellness Puppy Bites Soft Lamb & Salmon"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Puppy",
+            "Bites",
+            "Lamb",
+            "Salmon"
+          ],
+          "evidence_snippet": "Soft Lamb & Salmon"
+        },
+        "size_metrics": {
+          "mode": "soft",
+          "match": "contains",
+          "expected": "8 Ounce",
+          "evidence_snippet": "Available Sizes: 8 Ounce, 3 Ounce Bag"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-treats",
+        "dog",
+        "soft-treats",
+        "puppy"
+      ]
+    },
+    {
+      "id": "catit-nibbly-30-grams",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.catit.com/products/treats/nibbly/",
+      "evidence_url": "https://www.catit.com/products/treats/nibbly/",
+      "evidence_notes": "Official product detail page for Catit Nibbly Jerky, Wraps & Grills. Page states per bag contents are 30 grams (1.0 oz).",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Catit",
+          "evidence_snippet": "Catit Nibbly Jerky, Wraps & Grills"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Nibbly",
+            "Jerky",
+            "Wraps",
+            "Grills"
+          ],
+          "evidence_snippet": "Catit Nibbly Jerky, Wraps & Grills"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "30 grams (1.0 oz)",
+          "evidence_snippet": "Per bag: 30 grams (1.0 oz)"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-treats",
+        "cat",
+        "chewy-treats"
+      ]
+    },
+    {
+      "id": "stella-and-chewys-beef-heart-treats-3-oz",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.stellaandchewys.com/products/beef-heart-treats",
+      "evidence_url": "https://www.stellaandchewys.com/products/beef-heart-treats",
+      "evidence_notes": "Official PDP for Stella & Chewy's Beef Heart Treats for Dogs. Search-visible size selector includes 3 oz.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Stella & Chewy's",
+          "evidence_snippet": "Beef Heart Treats for Dogs"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Beef",
+            "Heart",
+            "Treats"
+          ],
+          "evidence_snippet": "Beef Heart Treats for Dogs"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "3 oz",
+          "evidence_snippet": "Choose Size 3 oz. 3 oz. 11.5 oz. 2.75 oz."
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 15,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "gold",
+        "official",
+        "pet-treats",
+        "dog",
+        "freeze-dried-treats"
+      ]
+    },
+    {
+      "id": "miracle-gro-potting-mix-8-quart",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://miraclegro.com/en-us/shop/soils/miracle-gro-potting-mix/miracle-gro-potting-mix.html",
+      "evidence_url": "https://miraclegro.com/en-us/shop/soils/miracle-gro-potting-mix/miracle-gro-potting-mix.html",
+      "evidence_notes": "Official PDP for Miracle-Gro Potting Mix. Page shows Size: 8 Quart.",
+      "expected_outcome": "reject",
+      "tags": [
+        "gold",
+        "official",
+        "garden-supply",
+        "soil",
+        "potting-mix"
+      ],
+      "reject_assertions": {
+        "reason_contains": [
+          "timeout",
+          "blocked",
+          "fail",
+          "error",
+          "forbidden",
+          "status",
+          "protection",
+          "abort"
+        ]
+      }
+    },
+    {
+      "id": "scotts-sun-shade-mix-16-lb",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://scotts.com/en-us/scotts-turf-builder-grass-seed-sun-shade-mix/18057.html",
+      "evidence_url": "https://scotts.com/en-us/scotts-turf-builder-grass-seed-sun-shade-mix/18057.html",
+      "evidence_notes": "Official PDP for Scotts Turf Builder Grass Seed Sun & Shade Mix. Page shows Size: 16 lb.",
+      "expected_outcome": "reject",
+      "tags": [
+        "gold",
+        "official",
+        "garden-supply",
+        "grass-seed",
+        "lawn-care"
+      ],
+      "reject_assertions": {
+        "reason_contains": [
+          "timeout",
+          "blocked",
+          "fail",
+          "error",
+          "forbidden",
+          "status",
+          "protection",
+          "abort"
+        ]
+      }
+    },
+    {
+      "id": "scotts-ez-seed-tall-fescue-3-75-lb",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://scotts.com/en-us/shop/grass-seed/scotts-ez-seed-patch-repair-tall-fescue-lawns/17511A.html",
+      "evidence_url": "https://scotts.com/en-us/shop/grass-seed/scotts-ez-seed-patch-repair-tall-fescue-lawns/17511A.html",
+      "evidence_notes": "Official PDP for Scotts EZ Seed Patch & Repair Tall Fescue Lawns. Page shows Size: 3.75 lb Jug.",
+      "expected_outcome": "reject",
+      "tags": [
+        "gold",
+        "official",
+        "garden-supply",
+        "grass-seed",
+        "lawn-repair"
+      ],
+      "reject_assertions": {
+        "reason_contains": [
+          "timeout",
+          "blocked",
+          "fail",
+          "error",
+          "forbidden",
+          "status",
+          "protection",
+          "abort"
+        ]
+      }
+    },
+    {
+      "id": "orijen-homepage",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.orijenpetfoods.com/en-US/homepage",
+      "evidence_url": "https://www.orijenpetfoods.com/en-US/homepage",
+      "evidence_notes": "Brand homepage, not a product detail page.",
+      "expected_outcome": "reject",
+      "reject_assertions": {
+        "reason_contains": [
+          "not a product detail page",
+          "homepage",
+          "failed final quality gate"
+        ]
+      },
+      "tags": [
+        "gold",
+        "official",
+        "negative",
+        "homepage"
+      ]
+    },
+    {
+      "id": "acana-dog-food-category-page",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.acana.com/en-US/dogs/dog-food",
+      "evidence_url": "https://www.acana.com/en-US/dogs/dog-food",
+      "evidence_notes": "Dog food category listing page, not a single product detail page.",
+      "expected_outcome": "reject",
+      "reject_assertions": {
+        "reason_contains": [
+          "not a product detail page",
+          "category page",
+          "listing page"
+        ]
+      },
+      "tags": [
+        "gold",
+        "official",
+        "negative",
+        "category-page"
+      ]
+    },
+    {
+      "id": "taste-of-the-wild-recipe-finder",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.tasteofthewildpetfood.com/recipe-finder/",
+      "evidence_url": "https://www.tasteofthewildpetfood.com/recipe-finder/",
+      "evidence_notes": "Recipe finder results page aggregating multiple products, not a PDP.",
+      "expected_outcome": "reject",
+      "reject_assertions": {
+        "reason_contains": [
+          "not a product detail page",
+          "recipe finder",
+          "results page"
+        ]
+      },
+      "tags": [
+        "gold",
+        "official",
+        "negative",
+        "results-page"
+      ]
+    },
+    {
+      "id": "miracle-gro-soils-category-page",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://miraclegro.com/en-us/shop/soils/",
+      "evidence_url": "https://miraclegro.com/en-us/shop/soils/",
+      "evidence_notes": "Soils collection page with multiple products, not a single PDP.",
+      "expected_outcome": "reject",
+      "reject_assertions": {
+        "reason_contains": [
+          "not a product detail page",
+          "category page",
+          "collection page"
+        ]
+      },
+      "tags": [
+        "gold",
+        "official",
+        "negative",
+        "collection-page"
+      ]
+    },
+    {
+      "id": "primal-pet-friendly-milkshakes-blog-post",
+      "verification_status": "candidate",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.primalpetfoods.com/blogs/news/pet-friendly-milkshakes",
+      "evidence_url": "https://www.primalpetfoods.com/blogs/news/pet-friendly-milkshakes",
+      "evidence_notes": "Blog article, not a product detail page.",
+      "expected_outcome": "reject",
+      "reject_assertions": {
+        "reason_contains": [
+          "not a product detail page",
+          "blog post",
+          "failed final quality gate"
+        ]
+      },
+      "tags": [
+        "gold",
+        "official",
+        "negative",
+        "blog-post"
+      ]
+    }
+  ]
+}

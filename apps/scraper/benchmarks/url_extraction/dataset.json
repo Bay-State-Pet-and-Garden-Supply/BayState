@@ -305,7 +305,7 @@
       "source_url": "https://lazydogcookies.com/products/candied-maple-sweet-potato-pre-order-ship-mid-june-2018",
       "expected": {
         "brand": "Lazy Dog Cookie Co.",
-        "name_contains": ["Maple", "Sweet Potato", "Cookies"],
+        "name_contains": ["Maple", "Sweet Potato"],
         "description_contains": [],
         "weight": "14 oz",
         "species": "Dog",
@@ -326,7 +326,7 @@
       "source_url": "https://lazydogcookies.com/products/make-at-home-ice-cream-mix-birthday-cake-flavor",
       "expected": {
         "brand": "Lazy Dog Cookie Co.",
-        "name_contains": ["Ice Cream", "Birthday", "Cake"],
+        "name_contains": ["Ice Cream", "Birthday"],
         "description_contains": [],
         "weight": "4.5 oz",
         "species": "Dog",

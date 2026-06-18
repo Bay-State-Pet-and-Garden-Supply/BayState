@@ -9,7 +9,11 @@ This benchmark tests extraction quality **separately from SERP URL discovery**. 
 ```
 benchmarks/url_extraction/
 ├── __init__.py              # Package marker
-├── dataset.json             # Benchmark entries (Open Farm URLs)
+├── dataset.json             # Legacy/audit benchmark entries
+├── gold_dataset.json        # Human-approved gold rows only
+├── gold_dataset.candidates.json # AI/tool-drafted rows awaiting review
+├── gold_schema.py           # Gold/candidate dataset validator
+├── gold_gates.py            # Explicit gold hard-gate evaluator
 ├── metrics.py               # Pure scoring functions (no I/O, no network)
 ├── runner.py                # CLI runner (live extraction)
 ├── report.py                # JSON + Markdown report writer
@@ -133,7 +137,25 @@ Weights:
 
 Hard fails cap overall score at 0.49.
 
-## Adding new entries
+## Human-reviewed gold workflow
+
+Existing AI-generated benchmark rows are candidate/audit data, not production truth. Human-approved rows live separately in `gold_dataset.json` and use explicit `field_assertions` for accept rows or `reject_assertions` for non-PDP/rejection rows.
+
+Rules:
+
+- `gold_dataset.json` contains only `verification_status: "gold"` rows.
+- `gold_dataset.candidates.json` contains AI/tool-drafted rows awaiting review.
+- Positive rows use `expected_outcome: "accept"` and must include required `brand` and `product_name` assertions with `evidence_snippet`.
+- Negative rows use `expected_outcome: "reject"` and `reject_assertions`.
+- Image exact counts should be hard gates only for frozen/snapshot evidence; live smoke should use ranges and warnings.
+
+Validate the schema/gates with:
+
+```bash
+python3 -m pytest tests/unit/test_gold_dataset_schema.py tests/unit/test_gold_gates.py -q
+```
+
+## Adding legacy audit entries
 
 1. Add a new entry to `dataset.json` with the product URL, UPC, expected values, and tags.
 2. Run the benchmark: `python -m benchmarks.url_extraction.runner --dataset benchmarks/url_extraction/dataset.json`

@@ -45,6 +45,48 @@ def get_scroll_javascript() -> str:
             return [...urls];
         };
 
+        const isSafeToClick = (el) => {
+            if (el.closest("a")) return false;
+
+            const btn = el.closest("button");
+            if (btn) {
+                const type = (btn.getAttribute("type") || "submit").toLowerCase();
+                if (type === "submit") return false;
+                
+                const btnText = (btn.textContent || "").toLowerCase();
+                const btnAria = (btn.getAttribute("aria-label") || "").toLowerCase();
+                const triggerWords = ["cart", "buy", "checkout", "add", "purchase", "order", "shop", "subscribe"];
+                if (triggerWords.some(w => btnText.includes(w) || btnAria.includes(w))) {
+                    return false;
+                }
+            }
+
+            const form = el.closest("form");
+            if (form) {
+                const action = (form.getAttribute("action") || "").toLowerCase();
+                const formId = (form.id || "").toLowerCase();
+                const formClass = (form.className || "").toLowerCase();
+                const triggerWords = ["cart", "checkout", "buy", "add", "purchase", "order", "subscribe"];
+                if (triggerWords.some(w => action.includes(w) || formId.includes(w) || formClass.includes(w))) {
+                    return false;
+                }
+            }
+
+            let current = el;
+            for (let depth = 0; depth < 5 && current; depth++) {
+                const id = (current.id || "").toLowerCase();
+                const className = (typeof current.className === 'string' ? current.className : "").toLowerCase();
+                const name = (current.getAttribute("name") || "").toLowerCase();
+                const triggerWords = ["add-to-cart", "add_to_cart", "buy-now", "checkout", "purchase", "subscribe-btn"];
+                if (triggerWords.some(w => id.includes(w) || className.includes(w) || name.includes(w))) {
+                    return false;
+                }
+                current = current.parentElement;
+            }
+
+            return true;
+        };
+
         const selectors = [
             "[class*='carousel'] button",
             "[class*='gallery'] button",
@@ -61,6 +103,7 @@ def get_scroll_javascript() -> str:
             for (const selector of selectors) {
                 for (const el of document.querySelectorAll(selector)) {
                     if (el.offsetParent !== null) { // Visible only
+                        if (!isSafeToClick(el)) continue;
                         try { el.click(); } catch(e) {}
                         await sleep(100);
                     }
@@ -86,6 +129,7 @@ def get_scroll_javascript() -> str:
         window.scrollTo(0, 0);
     }
     """
+
 
 def load_prompt_from_file(version: str) -> Optional[str]:
     """Load prompt template from file with caching."""

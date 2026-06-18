@@ -372,7 +372,8 @@ class Crawl4AIEngine:
         is_dynamic_session = False
         session_id = self.config.get("crawler", {}).get("session_id")
         if not session_id:
-            session_id = self._get_domain_session_id(url)
+            import uuid
+            session_id = f"{self._get_domain_session_id(url)}_{uuid.uuid4().hex[:8]}"
             is_dynamic_session = True
             
         run_config = self._build_run_config(session_id=session_id)
@@ -490,8 +491,9 @@ class Crawl4AIEngine:
             run_config: CrawlerRunConfig | list[CrawlerRunConfig] = self._build_run_config(session_id=global_session_id)
         else:
             run_config = []
+            import uuid
             for url in urls:
-                sid = self._get_domain_session_id(url)
+                sid = f"{self._get_domain_session_id(url)}_{uuid.uuid4().hex[:8]}"
                 dynamic_sessions.append(sid)
                 run_config.append(self._build_run_config(session_id=sid, url_matcher=url))
 

@@ -325,6 +325,18 @@ class MatchingUtils:
             brand_norm = self.normalize_token_text(brand)
             if brand_norm and brand_norm in hostname:
                 is_brand_domain = True
+            elif hostname:
+                # Fall back to token-based check
+                brand_tokens = [token for token in re.findall(r"[a-z0-9]+", str(brand).lower()) if len(token) >= 3 and token not in self.STOP_WORDS]
+                if brand_tokens:
+                    hostname_normalized = self.normalize_token_text(hostname)
+                    matched_tokens = [token for token in brand_tokens if token in hostname_normalized]
+                    if len(matched_tokens) == len(brand_tokens):
+                        is_brand_domain = True
+                    else:
+                        longest_token = max(brand_tokens, key=len)
+                        if longest_token in hostname_normalized and (len(matched_tokens) / len(brand_tokens)) >= 0.5:
+                            is_brand_domain = True
 
         # Check if standard match passes
         standard_match = self.is_name_match(expected_clean, actual_clean)

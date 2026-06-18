@@ -159,7 +159,7 @@ class ProductPageExtractor:
                     "url": url,
                     "final_url": result.get("url") or attempt_url,
                     "product_name": result.get("product_name"),
-                    "brand": result.get("brand"),
+                    "brand": brand or result.get("brand"),
                     "description": result.get("description"),
                     "images": result.get("images") or [],
                     "categories": result.get("categories") or [],
@@ -199,7 +199,7 @@ class ProductPageExtractor:
                 # Construct EnrichedProductFacts structure
                 product_facts = {
                     "name": result.get("product_name"),
-                    "brand": result.get("brand"),
+                    "brand": brand or result.get("brand"),
                     "description": result.get("description"),
                     "category": result.get("categories")[0] if isinstance(result.get("categories"), list) and result.get("categories") else None,
                     "upc": upc,
@@ -346,7 +346,7 @@ class ProductPageExtractor:
                         success=True,
                         upc=upc,
                         product_name=result.get("product_name"),
-                        brand=result.get("brand") or brand,
+                        brand=brand or result.get("brand"),
                         description=result.get("description"),
                         size_metrics=result.get("size_metrics"),
                         images=result.get("images"),

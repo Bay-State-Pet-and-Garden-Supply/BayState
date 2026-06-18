@@ -1,0 +1,1047 @@
+{
+  "schema_version": "url-extraction-gold-dataset-v1",
+  "description": "Human-reviewed gold dataset for URL extraction testing",
+  "entries": [
+    {
+      "id": "openfarm-goodgut-chicken-19lb",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://openfarmpet.com/products/goodgut-harvest-chicken-dog-kibble",
+      "evidence_url": "https://openfarmpet.com/products/goodgut-harvest-chicken-dog-kibble",
+      "evidence_notes": "Verified product details showing brand, name contains ['GoodGut', 'Harvest Chicken', 'Dog Kibble'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Open Farm",
+          "evidence_snippet": "Open Farm"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "GoodGut",
+            "Harvest Chicken",
+            "Dog Kibble"
+          ],
+          "evidence_snippet": "GoodGut Harvest Chicken Dog Kibble - 19 lb"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "19 lb",
+          "evidence_snippet": "19 lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 3,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "dry-food",
+        "open-farm",
+        "shopify",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "openfarm-goodgut-salmon-19lb",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://openfarmpet.com/products/goodgut-wild-caught-salmon-dog-kibble",
+      "evidence_url": "https://openfarmpet.com/products/goodgut-wild-caught-salmon-dog-kibble",
+      "evidence_notes": "Verified product details showing brand, name contains ['GoodGut', 'Wild-Caught Salmon', 'Dog Kibble'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Open Farm",
+          "evidence_snippet": "Open Farm"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "GoodGut",
+            "Wild-Caught Salmon",
+            "Dog Kibble"
+          ],
+          "evidence_snippet": "GoodGut Wild-Caught Salmon Dog Kibble - 19 lb"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "19 lb",
+          "evidence_snippet": "19 lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 4,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "dry-food",
+        "open-farm",
+        "shopify",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "openfarm-cat-chicken-salmon-pate-5-3oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://openfarmpet.com/products/chicken-and-salmon-pate-recipe-for-cats",
+      "evidence_url": "https://openfarmpet.com/products/chicken-and-salmon-pate-recipe-for-cats",
+      "evidence_notes": "Verified product details showing brand, name contains ['Chicken', 'Salmon', 'Pâté', 'Cats'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Open Farm",
+          "evidence_snippet": "Open Farm"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Chicken",
+            "Salmon",
+            "Pâté",
+            "Cats"
+          ],
+          "evidence_snippet": "Chicken & Salmon Pâté for Cats - 5.3 oz Case of 12"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "5.3 oz",
+          "evidence_snippet": "5.3 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 1,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "cat",
+        "wet-food",
+        "pate",
+        "open-farm",
+        "shopify",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "openfarm-goodgut-chicken-3-5lb",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://openfarmpet.com/products/goodgut-harvest-chicken-dog-kibble",
+      "evidence_url": "https://openfarmpet.com/products/goodgut-harvest-chicken-dog-kibble",
+      "evidence_notes": "Verified product details showing brand, name contains ['GoodGut', 'Harvest Chicken', 'Dog Kibble'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Open Farm",
+          "evidence_snippet": "Open Farm"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "GoodGut",
+            "Harvest Chicken",
+            "Dog Kibble"
+          ],
+          "evidence_snippet": "GoodGut Harvest Chicken Dog Kibble - 3.5 lb"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "3.5 lb",
+          "evidence_snippet": "3.5 lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 3,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "dry-food",
+        "open-farm",
+        "shopify",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "openfarm-goodgut-salmon-3-5lb",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://openfarmpet.com/products/goodgut-wild-caught-salmon-dog-kibble",
+      "evidence_url": "https://openfarmpet.com/products/goodgut-wild-caught-salmon-dog-kibble",
+      "evidence_notes": "Verified product details showing brand, name contains ['GoodGut', 'Wild-Caught Salmon', 'Dog Kibble'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Open Farm",
+          "evidence_snippet": "Open Farm"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "GoodGut",
+            "Wild-Caught Salmon",
+            "Dog Kibble"
+          ],
+          "evidence_snippet": "GoodGut Wild-Caught Salmon Dog Kibble - 3.5 lb"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "3.5 lb",
+          "evidence_snippet": "3.5 lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 4,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "dry-food",
+        "open-farm",
+        "shopify",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "openfarm-goodgut-beef-3-5lb",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://openfarmpet.com/products/goodgut-grass-fed-beef-dog-kibble",
+      "evidence_url": "https://openfarmpet.com/products/goodgut-grass-fed-beef-dog-kibble",
+      "evidence_notes": "Verified product details showing brand, name contains ['GoodGut', 'Grass-Fed Beef', 'Dog Kibble'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Open Farm",
+          "evidence_snippet": "Open Farm"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "GoodGut",
+            "Grass-Fed Beef",
+            "Dog Kibble"
+          ],
+          "evidence_snippet": "GoodGut Grass-Fed Beef Dog Kibble - 3.5 lb"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "3.5 lb",
+          "evidence_snippet": "3.5 lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 3,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "dry-food",
+        "open-farm",
+        "shopify",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "blue-buffalo-tastefuls-chicken-3oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.bluebuffalo.com/wet-cat-food/tastefuls/tastefuls-purees-with-chicken/",
+      "evidence_url": "https://www.bluebuffalo.com/wet-cat-food/tastefuls/tastefuls-purees-with-chicken/",
+      "evidence_notes": "Verified product details showing brand, name contains ['Tastefuls', 'Chicken'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Blue Buffalo",
+          "evidence_snippet": "Blue Buffalo"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Tastefuls",
+            "Chicken"
+          ],
+          "evidence_snippet": "BLUE Tastefuls Purées with Chicken - 3 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "3 oz",
+          "evidence_snippet": "3 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 2,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "cat",
+        "wet-food",
+        "blue-buffalo",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "blue-buffalo-tastefuls-salmon-3oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.bluebuffalo.com/wet-cat-food/tastefuls/tastefuls-purees-with-salmon/",
+      "evidence_url": "https://www.bluebuffalo.com/wet-cat-food/tastefuls/tastefuls-purees-with-salmon/",
+      "evidence_notes": "Verified product details showing brand, name contains ['Tastefuls', 'Salmon'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Blue Buffalo",
+          "evidence_snippet": "Blue Buffalo"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Tastefuls",
+            "Salmon"
+          ],
+          "evidence_snippet": "BLUE Tastefuls Purées with Salmon - 3 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "3 oz",
+          "evidence_snippet": "3 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 2,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "cat",
+        "wet-food",
+        "blue-buffalo",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "blue-buffalo-true-chews-beef-12oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.bluebuffalo.com/dog-treats/true-chews/beef-meatball-recipe/",
+      "evidence_url": "https://www.bluebuffalo.com/dog-treats/true-chews/beef-meatball-recipe/",
+      "evidence_notes": "Verified product details showing brand, name contains ['True Chews', 'Beef', 'Meatball'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Blue Buffalo",
+          "evidence_snippet": "Blue Buffalo"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "True Chews",
+            "Beef",
+            "Meatball"
+          ],
+          "evidence_snippet": "BLUE True Chews Beef Meatball Recipe - 12 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "12 oz",
+          "evidence_snippet": "12 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 1,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "treat",
+        "blue-buffalo",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "dr-marty-natures-blend-48oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://drmartypets.com/product/natures-blend",
+      "evidence_url": "https://drmartypets.com/product/natures-blend",
+      "evidence_notes": "Verified product details showing brand, name contains [\"Nature's Blend\", 'Essential', 'Wellness'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Dr. Marty",
+          "evidence_snippet": "Dr. Marty"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Nature's Blend",
+            "Essential",
+            "Wellness"
+          ],
+          "evidence_snippet": "Nature's Blend"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "48 oz",
+          "evidence_snippet": "48 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 0,
+          "max_count": 12,
+          "reviewed_product_image_count": 0,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "raw-food",
+        "dr-marty",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "dr-marty-premium-origin-80oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://drmartypets.com/product/natures-blend-premium-origin",
+      "evidence_url": "https://drmartypets.com/product/natures-blend-premium-origin",
+      "evidence_notes": "Verified product details showing brand, name contains ['Premium', 'Origin'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Dr. Marty",
+          "evidence_snippet": "Dr. Marty"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Premium",
+            "Origin"
+          ],
+          "evidence_snippet": "Premium Origin"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "80 oz",
+          "evidence_snippet": "80 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 0,
+          "max_count": 12,
+          "reviewed_product_image_count": 0,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "raw-food",
+        "dr-marty",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "koha-bland-diet-lamb-rice-12-5oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://kohapet.com/products/limited-ingredient-wet-bland-diet-lamb-white-rice-recipe-for-dogs",
+      "evidence_url": "https://kohapet.com/products/limited-ingredient-wet-bland-diet-lamb-white-rice-recipe-for-dogs",
+      "evidence_notes": "Verified product details showing brand, name contains ['Limited Ingredient', 'Bland Diet', 'Lamb', 'Rice'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Koha",
+          "evidence_snippet": "Koha"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Limited Ingredient",
+            "Bland Diet",
+            "Lamb",
+            "Rice"
+          ],
+          "evidence_snippet": "Koha Limited Ingredient Bland Diet Lamb & White Rice Recipe for Dogs - 12.5 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "12.5",
+          "evidence_snippet": "12.5 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 1,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "wet-food",
+        "koha",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "wholesomes-chewy-chicken-strips-25oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://wholesomespetfood.com/product/rewards-chewy-chicken-strips-25-oz/",
+      "evidence_url": "https://wholesomespetfood.com/product/rewards-chewy-chicken-strips-25-oz/",
+      "evidence_notes": "Verified product details showing brand, name contains ['Rewards', 'Chewy', 'Chicken', 'Strips'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Wholesomes",
+          "evidence_snippet": "Wholesomes"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Rewards",
+            "Chewy",
+            "Chicken",
+            "Strips"
+          ],
+          "evidence_snippet": "Wholesomes Rewards Chewy Chicken Strips Dog Treats - 25 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "25 oz",
+          "evidence_snippet": "25 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 8,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "treat",
+        "wholesomes",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "wholesomes-chewy-beef-mini-sticks-7oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://wholesomespetfood.com/product/rewards-chewy-beef-mini-sticks-7-oz/",
+      "evidence_url": "https://wholesomespetfood.com/product/rewards-chewy-beef-mini-sticks-7-oz/",
+      "evidence_notes": "Verified product details showing brand, name contains ['Rewards', 'Chewy', 'Beef', 'Mini', 'Sticks'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Wholesomes",
+          "evidence_snippet": "Wholesomes"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Rewards",
+            "Chewy",
+            "Beef",
+            "Mini",
+            "Sticks"
+          ],
+          "evidence_snippet": "Wholesomes Rewards Chewy Beef Mini Sticks Dog Treats - 7 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "7 oz",
+          "evidence_snippet": "7 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 8,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "treat",
+        "wholesomes",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "lazy-dog-maple-sweet-potato-14oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://lazydogcookies.com/products/candied-maple-sweet-potato-pre-order-ship-mid-june-2018",
+      "evidence_url": "https://lazydogcookies.com/products/candied-maple-sweet-potato-pre-order-ship-mid-june-2018",
+      "evidence_notes": "Verified product details showing brand, name contains ['Maple', 'Sweet Potato', 'Cookies'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Lazy Dog Cookie Co.",
+          "evidence_snippet": "Lazy Dog Cookie Co."
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Maple",
+            "Sweet Potato"
+          ],
+          "evidence_snippet": "Lazy Dog Treat Them With LOVE Candied Maple Sweet Potato Cookies - 14 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "14 oz",
+          "evidence_snippet": "14 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 1,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "treat",
+        "lazy-dog-cookie-co",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "lazy-dog-ice-cream-birthday-4-5oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://lazydogcookies.com/products/make-at-home-ice-cream-mix-birthday-cake-flavor",
+      "evidence_url": "https://lazydogcookies.com/products/make-at-home-ice-cream-mix-birthday-cake-flavor",
+      "evidence_notes": "Verified product details showing brand, name contains ['Ice Cream', 'Birthday', 'Cake'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Lazy Dog Cookie Co.",
+          "evidence_snippet": "Lazy Dog Cookie Co."
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Ice Cream",
+            "Birthday"
+          ],
+          "evidence_snippet": "Lazy Dog Make at Home Birthday Cake Ice Cream Mix - 4.5 oz"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "4.5 oz",
+          "evidence_snippet": "4.5 oz"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 1,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "treat",
+        "lazy-dog-cookie-co",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "dogginstix-collagen-collabone-6in",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://dogginstix.com/products/beef-collagen-collabone-case-of-50",
+      "evidence_url": "https://dogginstix.com/products/beef-collagen-collabone-case-of-50",
+      "evidence_notes": "Verified product details showing brand, name contains ['Collagen', 'Collabone'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "Dogginstix",
+          "evidence_snippet": "Dogginstix"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Collagen",
+            "Collabone"
+          ],
+          "evidence_snippet": "Dogginstix 6\" Beef Collagen Collabone"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 8,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "dog",
+        "treat",
+        "dogginstix",
+        "pet-food"
+      ]
+    },
+    {
+      "id": "catit-nibbly-wraps-chicken-fish-1-05oz",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.catit.com/products/treats/nibbly/",
+      "evidence_url": "https://www.catit.com/products/treats/nibbly/",
+      "evidence_notes": "Category/collection page, not a product detail page.",
+      "expected_outcome": "reject",
+      "brand": "Catit",
+      "product_name": "Catit Nibbly Wraps Whole Fish Wrapped in Chicken Breast Cat Treats - 1.05 oz",
+      "reject_assertions": {
+        "reason_contains": [
+          "not a product detail page",
+          "failed final quality gate",
+          "collection page",
+          "title mismatch",
+          "does not match"
+        ]
+      },
+      "tags": [
+        "official",
+        "gold",
+        "cat",
+        "treat",
+        "catit",
+        "pet-food",
+        "negative",
+        "collection-page"
+      ]
+    },
+    {
+      "id": "honest-kitchen-clusters-cat-1lb",
+      "verification_status": "gold",
+      "reviewed_by": "nick",
+      "reviewed_at": "2026-06-16",
+      "source_of_truth": "official_manufacturer_page",
+      "source_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+      "evidence_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+      "evidence_notes": "Verified product details showing brand, name contains ['Clusters', 'Turkey', 'Chicken'], and image range.",
+      "expected_outcome": "accept",
+      "field_assertions": {
+        "brand": {
+          "mode": "required",
+          "match": "exact",
+          "expected": "The Honest Kitchen",
+          "evidence_snippet": "The Honest Kitchen"
+        },
+        "product_name": {
+          "mode": "required",
+          "match": "contains_all",
+          "tokens": [
+            "Clusters",
+            "Turkey",
+            "Chicken"
+          ],
+          "evidence_snippet": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food - 1 lb"
+        },
+        "size_metrics": {
+          "mode": "required_if_visible",
+          "match": "contains",
+          "expected": "1 lb",
+          "evidence_snippet": "1 lb"
+        },
+        "images": {
+          "mode": "required",
+          "min_count": 1,
+          "max_count": 12,
+          "reviewed_product_image_count": 8,
+          "count_strictness": "range"
+        },
+        "price": {
+          "mode": "forbidden"
+        },
+        "stock_status": {
+          "mode": "forbidden"
+        }
+      },
+      "tags": [
+        "official",
+        "gold",
+        "cat",
+        "dry-food",
+        "honest-kitchen",
+        "shopify",
+        "pet-food"
+      ]
+    }
+  ]
+}

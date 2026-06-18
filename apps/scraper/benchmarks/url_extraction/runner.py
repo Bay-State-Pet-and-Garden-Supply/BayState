@@ -84,10 +84,34 @@ async def _run_single(
     """Run extraction for a single entry and write raw output."""
     upc = str(entry.get("upc", "")).strip()
     source_url = str(entry.get("source_url", "")).strip()
-    product_name = str(entry.get("product_name", "")).strip()
-    brand = str(entry.get("brand", "")).strip()
-    expected = entry.get("expected", {})
     tags = entry.get("tags", [])
+
+    # Map from field_assertions if present (gold schema format)
+    field_assertions = entry.get("field_assertions")
+    if field_assertions and isinstance(field_assertions, dict):
+        brand = str(field_assertions.get("brand", {}).get("expected", "")).strip()
+        
+        name_assertion = field_assertions.get("product_name", {})
+        product_name = str(name_assertion.get("evidence_snippet", "")).strip()
+        if not product_name:
+            tokens = name_assertion.get("tokens", [])
+            product_name = " ".join(tokens)
+            
+        expected = {
+            "brand": brand,
+            "name_contains": name_assertion.get("tokens", []),
+            "description_contains": field_assertions.get("description", {}).get("tokens", []),
+            "weight": field_assertions.get("size_metrics", {}).get("expected", "") or field_assertions.get("weight", {}).get("expected", ""),
+            "species": field_assertions.get("pet_type", {}).get("expected", "") or field_assertions.get("species", {}).get("expected", ""),
+            "food_form": field_assertions.get("food_form", {}).get("expected", ""),
+            "flavor_contains": field_assertions.get("flavor", {}).get("tokens", []),
+            "min_approved_images": field_assertions.get("images", {}).get("min_count", 1),
+            "max_approved_images": field_assertions.get("images", {}).get("max_count", 12),
+        }
+    else:
+        product_name = str(entry.get("product_name", "")).strip()
+        brand = str(entry.get("brand", "")).strip()
+        expected = entry.get("expected", {})
 
     logger.info("[%s] Extracting %s", entry_id, source_url)
 
@@ -103,7 +127,7 @@ async def _run_single(
         result["duration_ms"] = duration_ms
     except Exception as e:
         duration_ms = (time.perf_counter() - start) * 1000
-        result: dict[str, Any] = {
+        result = {
             "success": False,
             "error": str(e),
             "duration_ms": duration_ms,
@@ -111,6 +135,19 @@ async def _run_single(
 
     # Score the result
     score = score_extraction(result, expected, tags, entry_id=entry_id)
+
+    # If the entry has field_assertions or reject_assertions, evaluate using gold gates
+    if "field_assertions" in entry or "reject_assertions" in entry:
+        from benchmarks.url_extraction.gold_gates import evaluate_gold_row
+        import dataclasses
+        gold_res = evaluate_gold_row(entry, result)
+        
+        score = dataclasses.replace(
+            score,
+            hard_fails=gold_res.hard_fails,
+            warnings=gold_res.warnings,
+            overall_score=0.99 if gold_res.passed else 0.49
+        )
     logger.info(
         "[%s] Score: %.3f, hard_fails=%d, warnings=%d",
         entry_id,

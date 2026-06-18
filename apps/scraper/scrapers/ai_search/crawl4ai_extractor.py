@@ -97,6 +97,12 @@ class Crawl4AIExtractor:
         "whoops! 404",
         "404 it looks like you are lost",
         "product not found",
+        "error loading content",
+        "attention required! | cloudflare",
+        "access denied",
+        "security check",
+        "just a moment...",
+        "cloudflare",
     )
 
     def __init__(
@@ -152,19 +158,213 @@ class Crawl4AIExtractor:
         brand: Optional[str],
         html: str,
         markdown: str,
+        crawl_media: Optional[dict[str, Any]] = None,
+        fetch_time_ms: int = 0,
+        llm_time_ms: int = 0,
     ) -> dict[str, Any]:
+        """Fetch and extract page data using HTTP fallback, with LLM second-pass enrichment if needed."""
+        # 1. Clean pre-fetched inputs
+        if html or markdown:
+            is_too_short = False
+            if html and len(html) < 2000:
+                is_too_short = True
+            elif not html and markdown and len(markdown) < 2000:
+                is_too_short = True
+
+            if self._looks_like_not_found_page(html, markdown):
+                logger.info("[AI Search] Pre-fetched content is a block/error/404 page. Discarding to force direct HTTP fetch in fallback.")
+                html = ""
+                markdown = ""
+            elif is_too_short:
+                logger.info(
+                    f"[AI Search] Pre-fetched content is too short (html_len={len(html) if html else 0}, markdown_len={len(markdown) if markdown else 0}). "
+                    "Discarding to force direct HTTP fetch in fallback."
+                )
+                html = ""
+                markdown = ""
+
         fallback_content = html or markdown
         logger.info(
             f"[AI Search] Passing Crawl4AI-fetched HTML to fallback extractor (length={len(fallback_content)}, source={'html' if html else 'markdown'})"
         )
         self._fallback_extractor._last_resolver_status = getattr(self, "_last_resolver_status", "ambiguous")
-        return await self._fallback_extractor.extract(
+        
+        # 2. Extract using HTTP GET JSON-LD / Meta tags
+        fallback_result = await self._fallback_extractor.extract(
             url,
             upc,
             product_name,
             brand,
             html=fallback_content,
         )
+
+        # 3. Check completeness and run LLM second pass if strategy is not json_css
+        if fallback_result.get("success") and self.extraction_strategy != "json_css":
+            check_result = self._check_extraction_completeness(fallback_result, brand, url=url, expected_name=product_name)
+
+            if not check_result["is_complete"]:
+                logger.info(
+                    "[AI Search] Fallback extraction incomplete (desc=%s, size=%s, generic=%s, brand_only=%s), "
+                    "attempting LLM second pass",
+                    "present" if check_result["description"] else "missing",
+                    "present" if check_result["size"] else "missing",
+                    check_result["is_generic_description"],
+                    check_result["is_brand_only_name"],
+                )
+                
+                # Store fallback result as safety net
+                jsonld_fallback = dict(fallback_result)
+                
+                # 4. Generate markdown from the fetched HTML if we don't have it
+                fallback_html = fallback_result.get("html") or html
+                llm_markdown = markdown or ""
+                if fallback_html and not llm_markdown:
+                    try:
+                        from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+                        generator = DefaultMarkdownGenerator()
+                        md_res = generator.generate_markdown(fallback_html)
+                        fallback_raw_md = getattr(md_res, "raw_markdown", "") or ""
+                        fallback_fit_md = getattr(md_res, "fit_markdown", "") or ""
+                        llm_markdown, _ = self._select_llm_markdown(
+                            fit_md=fallback_fit_md,
+                            raw_md=fallback_raw_md,
+                            markdown_value="",
+                            html=fallback_html,
+                            upc=upc,
+                            brand=brand,
+                            product_name=product_name,
+                        )
+                    except Exception as md_err:
+                        logger.warning("[AI Search] Failed to generate markdown from fallback HTML: %s", md_err)
+
+                # Attempt LLM second pass
+                try:
+                    from crawl4ai import LLMConfig
+                    from crawl4ai.extraction_strategy import LLMExtractionStrategy
+
+                    if self._llm_runtime.api_key:
+                        instruction = build_extraction_instruction(upc, brand, product_name, self.prompt_version)
+                        llm_strategy = LLMExtractionStrategy(
+                            llm_config=LLMConfig(
+                                provider=self._llm_runtime.crawl4ai_provider,
+                                api_token=self._llm_runtime.api_key,
+                                base_url=self._llm_runtime.base_url,
+                            ),
+                            schema=self._product_schema,
+                            extraction_type="schema",
+                            instruction=instruction,
+                            input_format="fit_markdown",
+                            chunk_token_threshold=12000,
+                            overlap_rate=0.15,
+                            extra_args={
+                                "max_tokens": 4000,
+                                "temperature": 0.01,
+                            },
+                        )
+                        llm_start = time.perf_counter()
+                        safe_markdown = llm_markdown if llm_markdown else ""
+                        extracted_content = await asyncio.to_thread(llm_strategy.extract, url, 0, safe_markdown)
+                        llm_result = {
+                            "success": bool(extracted_content),
+                            "extracted_content": extracted_content
+                        }
+
+                        if llm_result.get("success") and llm_result.get("extracted_content"):
+                            extracted_content = llm_result["extracted_content"]
+                            import json
+                            if isinstance(extracted_content, str):
+                                data = json.loads(extracted_content)
+                            elif isinstance(extracted_content, dict):
+                                data = [extracted_content]
+                            elif isinstance(extracted_content, list):
+                                data = extracted_content
+                            else:
+                                data = None
+
+                            if data and isinstance(data, list) and data and isinstance(data[0], dict):
+                                if not self._is_llm_error_payload(data[0]):
+                                    product_data = self._normalize_llm_product_data(
+                                        data[0],
+                                        url=url,
+                                        html=fallback_html or html,
+                                        expected_name=product_name,
+                                        expected_brand=brand,
+                                    )
+                                    if product_data and product_name:
+                                        extracted_name = product_data.get("product_name")
+                                        if not extracted_name or not self._matching.is_contextual_product_name_match(product_name, extracted_name, brand or product_data.get("brand"), url):
+                                            logger.warning("[AI Search] LLM second pass extracted product name '%s' does not match expected name '%s', returning fallback result as failure", extracted_name, product_name)
+                                            if jsonld_fallback:
+                                                logger.info("[AI Search] Returning incomplete JSON-LD result as fallback after second-pass name mismatch")
+                                                fallback_result = jsonld_fallback
+                                                raise RuntimeError("Name mismatch fallback trigger")
+                                            return {
+                                                "success": False,
+                                                "error": f"LLM second pass extracted product name '{extracted_name}' does not match expected name '{product_name}'"
+                                            }
+                                    product_data["images"] = await _resolve_grounding_images(
+                                        self._grounding_redirect_resolver,
+                                        self._extraction.coerce_string_list(product_data.get("images")),
+                                    )
+                                    product_data["success"] = True
+                                    product_data["url"] = url
+                                    required_fields = ["product_name", "brand", "description", "size_metrics", "images", "categories"]
+                                    filled = sum(1 for f in required_fields if product_data.get(f))
+                                    product_data["confidence"] = filled / len(required_fields)
+
+                                    enriched_llm, image_diag = await self._enrich_images(
+                                        product_data,
+                                        url=url,
+                                        html=fallback_html or html,
+                                        markdown=llm_markdown or markdown,
+                                        crawl_media=crawl_media or {},
+                                        expected_name=product_name,
+                                        expected_brand=brand,
+                                    )
+                                    llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
+                                    self._log_telemetry(
+                                        url, upc, "llm", True, fetch_time_ms, 0, llm_time_ms,
+                                        None, enriched_llm["confidence"],
+                                        pruning_enabled=True, fit_markdown_used=True,
+                                        fallback_triggered=True,
+                                        image_diagnostics=image_diag,
+                                    )
+                                    logger.info("[AI Search] LLM second pass succeeded after incomplete fallback")
+                                    enriched_llm["method"] = "llm"
+                                    enriched_llm["llm_used"] = True
+                                    enriched_llm = self._apply_context_derivation(
+                                        enriched_llm,
+                                        product_name=product_name,
+                                        url=url,
+                                        brand=brand,
+                                    )
+                                    return enriched_llm
+                except Exception as llm_exc:
+                    logger.warning("[AI Search] LLM second pass after fallback failed: %s", self._summarize_error(llm_exc))
+
+        if not fallback_result.get("success"):
+            return fallback_result
+
+        # Enrich and return fallback
+        enriched_fb, image_diag = await self._enrich_images(
+            fallback_result,
+            url=url,
+            html=fallback_result.get("html") or html,
+            markdown=markdown,
+            crawl_media=crawl_media or {},
+            expected_name=product_name,
+            expected_brand=brand,
+        )
+        enriched_fb["method"] = fallback_result.get("method", "fallback_regex")
+        if "llm_used" not in enriched_fb:
+            enriched_fb["llm_used"] = False
+        enriched_fb = self._apply_context_derivation(
+            enriched_fb,
+            product_name=product_name,
+            url=url,
+            brand=brand,
+        )
+        return enriched_fb
 
     async def extract_from_fixture(
         self,
@@ -188,9 +388,18 @@ class Crawl4AIExtractor:
             html_text = markdown_text
 
         if Crawl4AIExtractor._looks_like_not_found_page(html_text, markdown_text or html_text):
+            error_msg = "Fixture content landed on a not-found page"
+            normalized_html = html_text.lower() if html_text else ""
+            is_transient = (
+                (status_code in (403, 429, 502, 503, 504)) or
+                any(kw in normalized_html for kw in ["cloudflare", "access denied", "security check", "forbidden", "attention required"])
+            )
+            if is_transient:
+                status_str = f"status {status_code}" if status_code else "unknown status"
+                error_msg += f" (Cloudflare/Forbidden/Access Denied/Security Check; HTTP {status_str})"
             return {
                 "success": False,
-                "error": "Fixture content landed on a not-found page",
+                "error": error_msg,
             }
 
         jsonld_result = self._extraction.extract_product_from_html_jsonld(
@@ -341,7 +550,7 @@ class Crawl4AIExtractor:
             "extracted_url": raw_result.get("url", url),
             # Product facts (v1 contract fields)
             "name": raw_result.get("product_name") or raw_result.get("name"),
-            "brand": raw_result.get("brand"),
+            "brand": brand or raw_result.get("brand"),
             "description": raw_result.get("description"),
             "category": category_str,
             "weight": raw_result.get("weight") or raw_result.get("size_metrics"),
@@ -475,18 +684,41 @@ class Crawl4AIExtractor:
 
     @classmethod
     def _looks_like_not_found_page(cls, html: str, markdown: str) -> bool:
-        """Detect branded 404/soft-404 pages before extraction heuristics run."""
+        """Detect branded 404/soft-404/cart/error pages before extraction heuristics run."""
         snippets: list[str] = []
+        titles: list[str] = []
         if isinstance(html, str) and html:
             title_match = cls._TITLE_PATTERN.search(html)
             if title_match:
+                titles.append(title_match.group(1).lower())
                 snippets.append(title_match.group(1))
             og_title_match = cls._OG_TITLE_PATTERN.search(html)
             if og_title_match:
+                titles.append(og_title_match.group(1).lower())
                 snippets.append(og_title_match.group(1))
             snippets.append(html[:1500])
         if isinstance(markdown, str) and markdown:
             snippets.append(markdown[:1500])
+
+        # Title-specific checks for invalid pages (cart, error, block)
+        invalid_title_markers = (
+            "shopping cart",
+            "your shopping cart",
+            "your cart",
+            "checkout",
+            "shopping bag",
+            "your bag",
+            "something went wrong",
+            "error page",
+            "access denied",
+            "forbidden",
+            "robot check",
+            "captcha",
+            "just a moment",
+            "cloudflare",
+        )
+        if any(any(marker in t for marker in invalid_title_markers) for t in titles):
+            return True
 
         normalized = " ".join(snippets).lower()
         if not normalized:
@@ -680,7 +912,7 @@ class Crawl4AIExtractor:
                             }
 
                             check_result = self._check_extraction_completeness(
-                                product_data, brand, url=url
+                                product_data, brand, url=url, expected_name=product_name
                             )
 
                             if check_result["is_complete"]:
@@ -807,7 +1039,7 @@ class Crawl4AIExtractor:
 
         normalized = dict(product_data)
         normalized["product_name"] = normalized_name
-        normalized["brand"] = normalized_brand or ""
+        normalized["brand"] = expected_brand or normalized_brand or ""
         normalized["description"] = description
         normalized["size_metrics"] = size_metrics
         normalized["images"] = images
@@ -819,6 +1051,7 @@ class Crawl4AIExtractor:
         data: dict[str, Any],
         brand: Optional[str],
         url: Optional[str] = None,
+        expected_name: Optional[str] = None,
     ) -> dict[str, Any]:
         """Centralized check to determine if an extracted product payload is complete and high-quality.
 
@@ -826,6 +1059,7 @@ class Crawl4AIExtractor:
             data: The extracted product data dict.
             brand: Expected brand for name-vs-brand comparison.
             url: Optional source URL for weak-evidence checks (search/listing URLs).
+            expected_name: Optional expected product name for name keyword checking.
 
         Returns:
             Dict with is_complete flag and detailed check results.
@@ -867,13 +1101,38 @@ class Crawl4AIExtractor:
         check_notes: list[str] = []
         if url:
             url_lower = url.lower()
-            weak_url_markers = ["/search", "/category/", "/collection/", "/listing/", "/shop/"]
+            weak_url_markers = ["/search", "/category/", "/collection/", "/listing/", "/shop/", "/collections/"]
             product_markers = ["/products/", "/product/", "/p/", "/item/", "/dp/"]
             has_weak_marker = any(m in url_lower for m in weak_url_markers)
             has_product_marker = any(m in url_lower for m in product_markers)
-            if has_weak_marker and not has_product_marker:
+            
+            from urllib.parse import urlparse
+            parsed = urlparse(url_lower)
+            path = parsed.path
+            segments = [s for s in path.split("/") if s]
+            
+            has_multiple_product_segments = False
+            for marker in ("products", "product"):
+                if marker in segments:
+                    idx = segments.index(marker)
+                    if len(segments) - 1 - idx > 1:
+                        has_multiple_product_segments = True
+                        break
+            
+            is_collection_path = has_multiple_product_segments or ("/collections/" in url_lower and not has_product_marker)
+            is_archive_name = False
+            if name:
+                name_lower = name.lower()
+                if name_lower.endswith(" archives") or name_lower.endswith(" archive") or " archives -" in name_lower or name_lower == "archives":
+                    is_archive_name = True
+            
+            if (has_weak_marker and not has_product_marker) or is_collection_path or is_archive_name:
                 weak_evidence_url = True
                 check_notes.append("url_looks_like_search_listing")
+                if is_collection_path:
+                    check_notes.append("collection_path_detected")
+                if is_archive_name:
+                    check_notes.append("archive_name_detected")
 
         # Logo-only image check
         if isinstance(images, list) and len(images) > 0:
@@ -895,6 +1154,32 @@ class Crawl4AIExtractor:
         logo_only = "logo_only_images" in check_notes
         facet_sparse = "facet_sparse_for_pet_product" in check_notes
 
+        # Check if any non-brand, non-variant expected keyword is missing in the actual name
+        missing_expected_keywords = False
+        if expected_name and name:
+            expected_clean = self._matching._normalize_diacritics(expected_name)
+            actual_clean = self._matching._normalize_diacritics(name)
+            expected_tokens = self._matching.tokenize_keywords(expected_clean)
+            actual_tokens = self._matching.tokenize_keywords(actual_clean)
+            brand_tokens = self._matching.tokenize_keywords(brand) if brand else set()
+            specific_expected = expected_tokens.difference(brand_tokens)
+            variant_tokens = self._matching.extract_variant_tokens(expected_clean)
+            specific_expected = specific_expected.difference(variant_tokens)
+            
+            missing_kws = set()
+            for expected_kw in specific_expected:
+                found = False
+                for actual_kw in actual_tokens:
+                    if expected_kw == actual_kw or expected_kw.startswith(actual_kw) or actual_kw.startswith(expected_kw):
+                        found = True
+                        break
+                if not found:
+                    missing_kws.add(expected_kw)
+            
+            if missing_kws:
+                check_notes.append(f"missing_expected_keywords:{','.join(sorted(missing_kws))}")
+                missing_expected_keywords = True
+
         # Facet-sparse is a warning indicator, not a hard block when other evidence is strong.
         # Only degrade completeness when already marginal on core identity fields.
         is_complete = not (
@@ -904,6 +1189,7 @@ class Crawl4AIExtractor:
             or is_brand_only_name
             or weak_evidence_url
             or logo_only
+            or missing_expected_keywords
         )
 
         if logo_only:
@@ -1087,6 +1373,7 @@ class Crawl4AIExtractor:
         resolver_status = "ambiguous"
         self._last_resolver_status = "ambiguous"
         jsonld_fallback = None  # Stored when JSON-LD is incomplete, used if LLM also fails
+        llm_markdown = ""
         fetch_start = time.perf_counter()
         parse_start = fetch_start
         parse_time_ms = 0
@@ -1180,7 +1467,7 @@ class Crawl4AIExtractor:
                 markdown = fit_markdown or raw_markdown or markdown_value
 
                 # Pre-select best markdown for LLM extraction (may include spec snippets)
-                self._llm_markdown, self._llm_input_source = self._select_llm_markdown(
+                llm_markdown, llm_input_source = self._select_llm_markdown(
                     fit_md=fit_markdown, raw_md=raw_markdown, markdown_value=markdown_value,
                     html=html, upc=upc, brand=brand, product_name=product_name,
                 )
@@ -1242,7 +1529,12 @@ class Crawl4AIExtractor:
                             # Completeness check: if JSON-LD is missing key fields
                             # or has generic/placeholder content, fall through to LLM
                             # extraction for richer data.
-                            check_result = self._check_extraction_completeness(jsonld_result, brand, url=url)
+                            check_result = self._check_extraction_completeness(jsonld_result, brand, url=url, expected_name=product_name)
+                            if product_name:
+                                extracted_name = jsonld_result.get("product_name")
+                                if not extracted_name or not self._matching.is_contextual_product_name_match(product_name, extracted_name, brand, url):
+                                    logger.warning("[AI Search] JSON-LD product name '%s' does not match expected '%s', treating as incomplete", extracted_name, product_name)
+                                    check_result["is_complete"] = False
 
                             if not check_result["is_complete"]:
                                 logger.info(
@@ -1313,7 +1605,12 @@ class Crawl4AIExtractor:
 
                             # Completeness check: if microdata is missing key fields,
                             # fall through to meta tags / LLM for richer extraction.
-                            check_result = self._check_extraction_completeness(microdata_result, brand, url=url)
+                            check_result = self._check_extraction_completeness(microdata_result, brand, url=url, expected_name=product_name)
+                            if product_name:
+                                extracted_name = microdata_result.get("product_name")
+                                if not extracted_name or not self._matching.is_contextual_product_name_match(product_name, extracted_name, brand, url):
+                                    logger.warning("[AI Search] Microdata product name '%s' does not match expected '%s', treating as incomplete", extracted_name, product_name)
+                                    check_result["is_complete"] = False
 
                             if not check_result["is_complete"]:
                                 logger.info(
@@ -1387,7 +1684,12 @@ class Crawl4AIExtractor:
                                                         # Completeness check: if meta-tags is missing key fields
                             # or has generic/placeholder content, fall through to LLM
                             # extraction for richer data.
-                            check_result = self._check_extraction_completeness(meta_result, brand, url=url)
+                            check_result = self._check_extraction_completeness(meta_result, brand, url=url, expected_name=product_name)
+                            if product_name:
+                                extracted_name = meta_result.get("product_name")
+                                if not extracted_name or not self._matching.is_contextual_product_name_match(product_name, extracted_name, brand, url):
+                                    logger.warning("[AI Search] Meta-tags product name '%s' does not match expected '%s', treating as incomplete", extracted_name, product_name)
+                                    check_result["is_complete"] = False
 
                             if (not check_result["is_complete"]) and self.extraction_strategy != "json_css":
                                 logger.info(
@@ -1441,140 +1743,16 @@ class Crawl4AIExtractor:
                 if not result.get("success"):
                     error = result.get("error") or "Extraction failed or returned no content"
                     self._log_telemetry(url, upc, "crawl", False, fetch_time_ms, parse_time_ms, llm_time_ms, error)
-                    # Always try fallback extractor — it can fetch via HTTP if we have no HTML
-                    fallback_result = await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
-
-                                        # Completeness check on fallback result: if key fields are missing
-                    # or the result looks generic, try LLM extraction as a second pass
-                    if fallback_result.get("success") and self.extraction_strategy != "json_css":
-                        check_result = self._check_extraction_completeness(fallback_result, brand, url=url)
-
-                        if not check_result["is_complete"]:
-                            logger.info(
-                                "[AI Search] Fallback extraction incomplete (desc=%s, size=%s, generic=%s, brand_only=%s), "
-                                "attempting LLM second pass",
-                                "present" if check_result["description"] else "missing",
-                                "present" if check_result["size"] else "missing",
-                                check_result["is_generic_description"],
-                                check_result["is_brand_only_name"],
-                            )
-                            # Store fallback result as safety net
-                            jsonld_fallback = dict(fallback_result) if jsonld_fallback is None else jsonld_fallback
-
-                            # Attempt LLM extraction with relaxed crawl settings
-                            try:
-                                from crawl4ai import LLMConfig
-                                from crawl4ai.extraction_strategy import LLMExtractionStrategy
-
-                                if self._llm_runtime.api_key:
-                                    instruction = build_extraction_instruction(upc, brand, product_name, self.prompt_version)
-                                    llm_strategy = LLMExtractionStrategy(
-                                        llm_config=LLMConfig(
-                                            provider=self._llm_runtime.crawl4ai_provider,
-                                            api_token=self._llm_runtime.api_key,
-                                            base_url=self._llm_runtime.base_url,
-                                        ),
-                                        schema=self._product_schema,
-                                        extraction_type="schema",
-                                        instruction=instruction,
-                                        input_format="fit_markdown",
-                                        chunk_token_threshold=12000,
-                                        overlap_rate=0.15,
-                                        extra_args={
-                                            "max_tokens": 4000,
-                                            "temperature": 0.01,
-                                        },
-                                    )
-                                    llm_start = time.perf_counter()
-                                    # Use rich LLM markdown (raw/hybrid including spec snippets)
-                                    safe_markdown = self._llm_markdown if self._llm_markdown else ""
-                                    extracted_content = await asyncio.to_thread(llm_strategy.extract, url, 0, safe_markdown)
-                                    llm_result = {
-                                        "success": bool(extracted_content),
-                                        "extracted_content": extracted_content
-                                    }
-
-                                    if llm_result.get("success") and llm_result.get("extracted_content"):
-                                        extracted_content = llm_result["extracted_content"]
-                                        if isinstance(extracted_content, str):
-                                            data = json.loads(extracted_content)
-                                        elif isinstance(extracted_content, dict):
-                                            data = [extracted_content]
-                                        elif isinstance(extracted_content, list):
-                                            data = extracted_content
-                                        else:
-                                            data = None
-
-                                        if data and isinstance(data, list) and data and isinstance(data[0], dict):
-                                            if not self._is_llm_error_payload(data[0]):
-                                                product_data = self._normalize_llm_product_data(
-                                                    data[0],
-                                                    url=url,
-                                                    html=html,
-                                                    expected_name=product_name,
-                                                    expected_brand=brand,
-                                                )
-                                                product_data["images"] = await _resolve_grounding_images(
-                                                    self._grounding_redirect_resolver,
-                                                    self._extraction.coerce_string_list(product_data.get("images")),
-                                                )
-                                                product_data["success"] = True
-                                                product_data["url"] = url
-                                                required_fields = ["product_name", "brand", "description", "size_metrics", "images", "categories"]
-                                                filled = sum(1 for f in required_fields if product_data.get(f))
-                                                product_data["confidence"] = filled / len(required_fields)
-
-                                                enriched_llm, image_diag = await self._enrich_images(
-                                                    product_data,
-                                                    url=url,
-                                                    html=html,
-                                                    markdown=markdown,
-                                                    crawl_media=result.get("media", {}),
-                                                    expected_name=product_name,
-                                                    expected_brand=brand,
-                                                )
-                                                llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
-                                                self._log_telemetry(
-                                                    url, upc, "llm", True, fetch_time_ms, 0, llm_time_ms,
-                                                    None, enriched_llm["confidence"],
-                                                    pruning_enabled=True, fit_markdown_used=True,
-                                                    fallback_triggered=True,
-                                                    image_diagnostics=image_diag,
-                                                )
-                                                logger.info("[AI Search] LLM second pass succeeded after incomplete fallback")
-                                                enriched_llm["method"] = "llm"
-                                                enriched_llm["llm_used"] = True
-                                                enriched_llm = self._apply_context_derivation(
-                                                    enriched_llm,
-                                                    product_name=product_name,
-                                                    url=url,
-                                                    brand=brand,
-                                                )
-                                                return enriched_llm
-                            except Exception as llm_exc:
-                                logger.warning("[AI Search] LLM second pass after fallback failed: %s", self._summarize_error(llm_exc))
-
-                    if not fallback_result.get("success"):
-                        return fallback_result
-
-                    enriched_fb, image_diag = await self._enrich_images(
-                        fallback_result,
-                        url=url,
-                        html=html,
-                        markdown=markdown,
+                    return await self._extract_with_fallback(
+                        url,
+                        upc,
+                        product_name,
+                        brand,
+                        html,
+                        markdown,
                         crawl_media=result.get("media", {}),
-                        expected_name=product_name,
-                        expected_brand=brand,
+                        fetch_time_ms=fetch_time_ms,
                     )
-                    enriched_fb["method"] = "fallback_regex"
-                    enriched_fb["llm_used"] = False
-                    enriched_fb = self._apply_context_derivation(
-                        enriched_fb,
-                        product_name=product_name,
-                        url=url,
-                        brand=brand,
-                    )
-                    return enriched_fb
 
                 # PLATFORM PASS: Try deterministic platform-schema extraction
                 # before falling back to LLM for unknown sites.
@@ -1639,7 +1817,7 @@ class Crawl4AIExtractor:
                     # LLM path: run extraction on already-fetched rich markdown
                     llm_start = time.perf_counter()
 
-                    safe_markdown = self._llm_markdown if self._llm_markdown else ""
+                    safe_markdown = llm_markdown if llm_markdown else ""
                     if not safe_markdown:
                         logger.info("[AI Search] No markdown available for LLM second pass, using fallback extractor")
                         return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
@@ -1726,6 +1904,7 @@ class Crawl4AIExtractor:
                             if not isinstance(data[0], dict):
                                 raise TypeError(f"Unsupported extracted_content item type: {type(data[0]).__name__}")
 
+                            logger.info("[DEBUG LLM] Raw LLM data: %s", data[0])
                             product_data = self._normalize_llm_product_data(
                                 data[0],
                                 url=url,
@@ -1733,6 +1912,14 @@ class Crawl4AIExtractor:
                                 expected_name=product_name,
                                 expected_brand=brand,
                             )
+                            if product_data and product_name:
+                                extracted_name = product_data.get("product_name")
+                                if not extracted_name or not self._matching.is_contextual_product_name_match(product_name, extracted_name, brand or product_data.get("brand"), url):
+                                    logger.warning("[AI Search] LLM extracted product name '%s' does not match expected name '%s', routing to fallback recovery", extracted_name, product_name)
+                                    if jsonld_fallback:
+                                        logger.info("[AI Search] Returning incomplete JSON-LD result as fallback after name mismatch")
+                                        return jsonld_fallback
+                                    return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
                         else:
                             product_data = None
                     except (json.JSONDecodeError, TypeError):
@@ -1824,27 +2011,17 @@ class Crawl4AIExtractor:
                 if jsonld_fallback:
                     logger.info("[AI Search] LLM extraction failed, returning incomplete JSON-LD result as fallback")
                     return jsonld_fallback
-                fallback_res = await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
-                if fallback_res.get("success"):
-                    enriched_fb, image_diag = await self._enrich_images(
-                        fallback_res,
-                        url=url,
-                        html=html,
-                        markdown=markdown,
-                        crawl_media=result.get("media", {}),
-                        expected_name=product_name,
-                        expected_brand=brand,
-                    )
-                    enriched_fb["method"] = "fallback_regex"
-                    enriched_fb["llm_used"] = False
-                    enriched_fb = self._apply_context_derivation(
-                        enriched_fb,
-                        product_name=product_name,
-                        url=url,
-                        brand=brand,
-                    )
-                    return enriched_fb
-                return fallback_res
+                return await self._extract_with_fallback(
+                    url,
+                    upc,
+                    product_name,
+                    brand,
+                    html,
+                    markdown,
+                    crawl_media=result.get("media", {}),
+                    fetch_time_ms=fetch_time_ms,
+                    llm_time_ms=llm_time_ms,
+                )
 
         except Exception as e:
             error_message = self._summarize_error(e)
@@ -1882,6 +2059,20 @@ class Crawl4AIExtractor:
     ) -> Optional[dict[str, Any]]:
         """Extract product data using centralized Crawl4AIEngine with variant resolution."""
         result = await self._extract_inner(url, upc, product_name, brand)
+        
+        # Check if result is a category/collection page and reject it.
+        if isinstance(result, dict) and result.get("success"):
+            check_res = self._check_extraction_completeness(result, brand, url=url)
+            if any(note in check_res.get("check_notes", []) for note in ("collection_path_detected", "archive_name_detected")):
+                logger.warning(
+                    "[AI Search] Rejecting extraction as it is a collection/category page: url=%s, notes=%s",
+                    url, check_res.get("check_notes")
+                )
+                return {
+                    "success": False,
+                    "error": "not a product detail page (collection/category page detected)",
+                }
+        
         import sys
         if isinstance(result, dict) and not ("pytest" in sys.modules or "unittest" in sys.modules):
             result["resolver_status"] = getattr(self, "_last_resolver_status", "ambiguous")
@@ -2132,7 +2323,7 @@ class FallbackExtractor:
                     response_url = str(response.url)
                     http_status = response.status_code
 
-                    if Crawl4AIExtractor._looks_like_not_found_page(html_text, html_text):
+                    if Crawl4AIExtractor._looks_like_not_found_page(html_text, html_text) or not html_text or len(html_text) < 2000:
                         recovered = None
                         if not recovery_attempted:
                             recovered = await self._recover_from_site_search(
@@ -2149,7 +2340,7 @@ class FallbackExtractor:
             fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
             parse_start = time.perf_counter()
 
-            if Crawl4AIExtractor._looks_like_not_found_page(html_text, html_text):
+            if Crawl4AIExtractor._looks_like_not_found_page(html_text, html_text) or not html_text or len(html_text) < 2000:
                 recovered = None
                 if not recovery_attempted:
                     recovered = await self._recover_from_site_search(
@@ -2160,10 +2351,22 @@ class FallbackExtractor:
                     )
                 if recovered is not None:
                     return recovered
+                
+                error_msg = "Fallback extraction landed on a not-found page"
+                normalized_html = html_text.lower() if html_text else ""
+                is_transient = (
+                    (http_status in (403, 429, 502, 503, 504)) or
+                    (not normalized_html or len(normalized_html) < 2000) or
+                    any(kw in normalized_html for kw in ["cloudflare", "access denied", "security check", "forbidden", "attention required"])
+                )
+                if is_transient:
+                    status_str = f"status {http_status}" if http_status else "unknown status"
+                    error_msg += f" (Cloudflare/Forbidden/Access Denied/Security Check; HTTP {status_str})"
+                
                 self._log_telemetry(response_url, upc, "fallback", False, fetch_time_ms, 0, "not found page")
                 return {
                     "success": False,
-                    "error": "Fallback extraction landed on a not-found page",
+                    "error": error_msg,
                 }
 
             jsonld_result = self._extraction.extract_product_from_html_jsonld(
@@ -2178,13 +2381,22 @@ class FallbackExtractor:
             parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
 
             if jsonld_result:
-                jsonld_result["url"] = response_url
-                jsonld_result["images"] = await _resolve_grounding_images(
-                    self._grounding_redirect_resolver, self._extraction.coerce_string_list(jsonld_result.get("images"))
-                )
-                # Log JSON-LD extraction success
-                self._log_telemetry(response_url, upc, "jsonld", True, fetch_time_ms, parse_time_ms, None, jsonld_result.get("confidence", 0.0))
-                return jsonld_result
+                                jsonld_result["url"] = response_url
+                                jsonld_result["images"] = await _resolve_grounding_images(
+                                    self._grounding_redirect_resolver, self._extraction.coerce_string_list(jsonld_result.get("images"))
+                                )
+                                jsonld_result["html"] = html_text
+                                # Log JSON-LD extraction success
+                                self._log_telemetry(response_url, upc, "jsonld", True, fetch_time_ms, parse_time_ms, None, jsonld_result.get("confidence", 0.0))
+                                return jsonld_result
+
+            # Check HTTP error status before parsing meta tags for fallback matching
+            if http_status is not None and http_status >= 400:
+                self._log_telemetry(response_url, upc, "fallback", False, fetch_time_ms, parse_time_ms, f"http {http_status}")
+                return {
+                    "success": False,
+                    "error": f"Fallback extraction received HTTP {http_status} with no usable product data",
+                }
 
             # Fallback to meta tags
             import re
@@ -2210,12 +2422,15 @@ class FallbackExtractor:
                 source_url=response_url,
                 expected_name=product_name,
             )
-            if candidate_name and product_name and not self._matching.is_contextual_product_name_match(product_name, candidate_name, brand, response_url):
-                self._log_telemetry(response_url, upc, "meta", False, fetch_time_ms, parse_time_ms, "title mismatch")
-                return {
-                    "success": False,
-                    "error": "Fallback extraction title does not match expected product",
-                }
+            logger.info("[DEBUG FALLBACK] product_name=%s, candidate_name=%s, brand=%s, url=%s", product_name, candidate_name, brand, response_url)
+            logger.info("[DEBUG FALLBACK] match_res=%s", self._matching.is_contextual_product_name_match(product_name, candidate_name, brand, response_url))
+            if product_name:
+                if not candidate_name or not self._matching.is_contextual_product_name_match(product_name, candidate_name, brand, response_url):
+                    self._log_telemetry(response_url, upc, "meta", False, fetch_time_ms, parse_time_ms, "title mismatch")
+                    return {
+                        "success": False,
+                        "error": "Fallback extraction title does not match expected product",
+                    }
 
             if brand and candidate_name and not self._matching.is_brand_match(brand, inferred_brand or candidate_name, response_url):
                 self._log_telemetry(response_url, upc, "meta", False, fetch_time_ms, parse_time_ms, "brand mismatch")
@@ -2275,6 +2490,7 @@ class FallbackExtractor:
                 "categories": fallback_categories or ["Product"],
                 "confidence": confidence,
                 "url": response_url,
+                "html": html_text,
             }
 
         except Exception as error:

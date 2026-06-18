@@ -228,6 +228,32 @@ class ExtractionUtils:
 
     def normalize_brand_name(self, value: Any) -> Optional[str]:
         """Normalize a raw brand value and expand known aliases."""
+        if not value:
+            return None
+
+        # Handle list/dict structure from JSON-LD
+        if isinstance(value, dict):
+            value = value.get("name") or value.get("brand") or value
+        elif isinstance(value, list) and value:
+            if isinstance(value[0], dict):
+                value = value[0].get("name") or value[0].get("brand") or value[0]
+            else:
+                value = value[0]
+
+        if isinstance(value, str):
+            value_stripped = value.strip()
+            if value_stripped.startswith(("[", "{")):
+                try:
+                    import json as _json
+                    json_str = value_stripped.replace("'", '"')
+                    parsed = _json.loads(json_str)
+                    if isinstance(parsed, list) and parsed:
+                        parsed = parsed[0]
+                    if isinstance(parsed, dict):
+                        value = parsed.get("name") or parsed.get("brand") or value
+                except Exception:
+                    pass
+
         text = self.clean_text(value)
         if not text:
             return None

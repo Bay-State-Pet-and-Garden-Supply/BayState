@@ -46,3 +46,15 @@
 - `core/AGENTS.md`: Infrastructure and API client.
 - `src/crawl4ai_engine/AGENTS.md`: Extraction engine details.
 - `scrapers/AGENTS.md`: Scraper domain logic and AI search.
+
+## URL Extraction & Gold Benchmark
+- **Legacy audit entries**: `benchmarks/url_extraction/dataset.json` contains legacy expected-shape benchmark cases.
+- **Gold dataset**: `benchmarks/url_extraction/gold_dataset.json` contains only human-reviewed `verification_status: "gold"` rows with assertions.
+- **Candidate dataset**: `benchmarks/url_extraction/gold_dataset.candidates.json` contains AI-drafted or ChatGPT-researched candidate rows awaiting review.
+- **Validation & Gates**:
+  - `benchmarks/url_extraction/gold_schema.py` defines the JSON structure validation.
+  - `benchmarks/url_extraction/gold_gates.py` evaluates live extraction results against the assertions.
+- **Commands**:
+  - Run schema validation tests: `uv run pytest tests/unit/test_gold_dataset_schema.py tests/unit/test_gold_gates.py`
+  - Run live benchmark extractor: `uv run python -m benchmarks.url_extraction.runner --dataset benchmarks/url_extraction/gold_dataset.candidates.json`
+
