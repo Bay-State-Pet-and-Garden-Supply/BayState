@@ -1,0 +1,53 @@
+# Docker Compose — Ollama sidecar for packaging vision extraction
+# Use alongside your existing docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
+#
+# This adds a persistent Ollama service that the scraper container calls
+# for packaging OCR. Models are pulled once and cached in a Docker volume.
+#
+# To enable packaging on the scraper, add these env vars to the scraper service:
+#   PACKAGING_VISION_ENABLED=true
+#   PACKAGING_VISION_BASE_URL=http://ollama:11434/v1
+#   PACKAGING_VISION_MODEL=qwen2.5vl
+#   PACKAGING_VISION_API_KEY=ollama
+#   PACKAGING_VISION_PIPELINE=structured_vlm
+#   PACKAGING_VISION_TIMEOUT_SECONDS=180
+#   PACKAGING_VISION_MAX_IMAGES=1
+#   PACKAGING_VISION_MAX_CONCURRENCY=1
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: baystate-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+        reservations:
+          memory: 4g
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Pull the recommended model on first start.
+    # Remove or change this for low-memory machines (use glm-ocr instead).
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        ollama pull qwen2.5vl || echo "Model pull failed — pull manually"
+        wait
+
+volumes:
+  ollama-models:

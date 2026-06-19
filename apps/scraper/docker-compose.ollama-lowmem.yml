@@ -1,0 +1,53 @@
+# Docker Compose — Ollama sidecar for low-memory packaging vision
+# Use for 8GB machines where Qwen2.5-VL (6GB) won't fit.
+#   docker compose -f docker-compose.yml -f docker-compose.ollama-lowmem.yml up -d
+#
+# Scraper env vars for two-stage mode:
+#   PACKAGING_VISION_ENABLED=true
+#   PACKAGING_VISION_BASE_URL=http://ollama:11434/v1
+#   PACKAGING_VISION_MODEL=glm-ocr
+#   PACKAGING_VISION_API_KEY=ollama
+#   PACKAGING_VISION_PIPELINE=ocr_then_parse
+#   PACKAGING_TEXT_BASE_URL=http://ollama:11434/v1
+#   PACKAGING_TEXT_MODEL=llama3.2:3b
+#   PACKAGING_TEXT_API_KEY=ollama
+#   PACKAGING_VISION_TIMEOUT_SECONDS=180
+#   PACKAGING_TEXT_TIMEOUT_SECONDS=120
+#   PACKAGING_VISION_MAX_IMAGES=1
+#   PACKAGING_VISION_MAX_CONCURRENCY=1
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: baystate-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+        reservations:
+          memory: 2g
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        ollama pull glm-ocr || true
+        ollama pull llama3.2:3b || true
+        wait
+
+volumes:
+  ollama-models:
