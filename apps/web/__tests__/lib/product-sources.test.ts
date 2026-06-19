@@ -118,6 +118,43 @@ describe('normalizeProductSources', () => {
         );
     });
 
+    it('extracts size from ShopSite input name if not explicitly provided', () => {
+        const result = buildConsolidationSourcesPayload(
+            {},
+            {
+                name: 'PUPSICLE REFILL CALM ING BBQ SM 6OZ',
+            }
+        );
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                shopsite_input: {
+                    name: 'PUPSICLE REFILL CALM ING BBQ SM 6OZ',
+                    size: 'Small 6 oz.',
+                },
+            })
+        );
+    });
+
+    it('copies size directly from ShopSite input if explicitly provided', () => {
+        const result = buildConsolidationSourcesPayload(
+            {},
+            {
+                name: 'PUPSICLE REFILL CALM ING BBQ SM 6OZ',
+                size: 'Custom Size',
+            }
+        );
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                shopsite_input: {
+                    name: 'PUPSICLE REFILL CALM ING BBQ SM 6OZ',
+                    size: 'Custom Size',
+                },
+            })
+        );
+    });
+
 
 
     it('dedupes Amazon image variants by underlying image path while preserving the first host', () => {

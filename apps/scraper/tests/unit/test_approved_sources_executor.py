@@ -993,7 +993,87 @@ class TestExecutor:
         
         # Safe cases
         assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/products/dog/wilderness-chicken") is False
-        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/collections/dog-food/products/wilderness-chicken") is False  # Shopify PDP nesting style
+        assert (
+            is_candidate_unsafe_for_canonical_selection(
+                "https://www.bluebuffalo.com/collections/dog-food/products/wilderness-chicken"
+            )
+            is False
+        )  # Shopify PDP nesting style
+
+    def test_serp_discovery_candidate_scoring_prefers_matching_variant(self):
+        """SERP scoring should rank the matching size/count variant above sibling variants."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+
+        plan = _make_plan(entries=[])
+        entry = ApprovedSourcePlanEntry(
+            sourceType="official_brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
+            domains=["mywoof.com"],
+            adapterSlug="serp_discovery",
+            priority=100,
+        )
+        adapter = SerpDiscoveryAdapter(entry, plan)
+
+        candidates = [
+            {
+                "url": "https://mywoof.com/products/pupsicle-refill-large",
+                "title": "WOOF Pupsicle BBQ Calming Pops Large 8 oz",
+                "description": "Large refill pops for the Pupsicle toy",
+            },
+            {
+                "url": "https://mywoof.com/products/pupsicle-refill-small",
+                "title": "WOOF Pupsicle BBQ Calming Pops Small 6 oz",
+                "description": "Small refill pops for the Pupsicle toy",
+            },
+        ]
+
+        scored = adapter._score_candidates(
+            candidates,
+            "850075865932",
+            "WOOF Pupsicle BBQ Calming Pops Small 6 oz",
+            "mywoof.com",
+        )
+
+        assert scored[0]["url"].endswith("small")
+
+    def test_serp_discovery_no_llm_fallback_skips_conflicting_variant(self):
+        """Without an LLM, fallback selection should not choose a known wrong size variant."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+        import asyncio
+
+        plan = _make_plan(entries=[])
+        entry = ApprovedSourcePlanEntry(
+            sourceType="official_brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
+            domains=["mywoof.com"],
+            adapterSlug="serp_discovery",
+            priority=100,
+        )
+        adapter = SerpDiscoveryAdapter(entry, plan)
+        adapter._get_llm_provider = lambda: None  # type: ignore[method-assign]
+
+        selected = asyncio.run(adapter._llm_select_url(
+            upc="850075865932",
+            consolidated_name="WOOF Pupsicle BBQ Calming Pops Small 6 oz",
+            brand_name="WOOF",
+            brand_domain="mywoof.com",
+            candidates=[
+                {
+                    "url": "https://mywoof.com/products/pupsicle-refill-large",
+                    "title": "WOOF Pupsicle BBQ Calming Pops Large 8 oz",
+                    "description": "Large refill pops for the Pupsicle toy",
+                },
+                {
+                    "url": "https://mywoof.com/products/pupsicle-refill-small",
+                    "title": "WOOF Pupsicle BBQ Calming Pops Small 6 oz",
+                    "description": "Small refill pops for the Pupsicle toy",
+                },
+            ],
+        ))
+
+        assert selected == "https://mywoof.com/products/pupsicle-refill-small"
 
     @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
     def test_serp_discovery_adapter_bypasses_unsafe_direct_matches_in_phase_1(self, mock_search_client_class):

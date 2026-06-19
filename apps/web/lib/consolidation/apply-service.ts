@@ -697,7 +697,7 @@ export async function applyConsolidationResults(
         }
 
         // Could not disambiguate — warn but allow through (user can review in reviewing)
-        const warningMessage = `duplicate name "${duplicateName}" across UPCs ${group.map((row) => row.upc).join(', ')} — consider reviewing for flavor/color/material differences`;
+        const warningMessage = `duplicate name "${duplicateName}" across UPCs ${group.map((row) => row.upc).join(', ')} — consider reviewing for size/weight/count/flavor/color/material differences`;
         if (warnings.length < 10) {
             warnings.push(warningMessage);
         }

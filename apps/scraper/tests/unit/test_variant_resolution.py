@@ -7,6 +7,42 @@ from scrapers.ai_search.variant_resolvers import resolve_family_variant
 from scrapers.ai_search.variant_resolvers.shopify import ShopifyVariantResolver
 from scrapers.ai_search.variant_resolvers.woocommerce import WooCommerceVariantResolver
 from scrapers.ai_search.variant_resolvers.demandware import DemandwareVariantResolver
+from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor
+from scrapers.ai_search.matching import MatchingUtils
+
+
+def _crawl4ai_extractor_for_variant_checks() -> Crawl4AIExtractor:
+    extractor = Crawl4AIExtractor.__new__(Crawl4AIExtractor)
+    extractor._matching = MatchingUtils()
+    return extractor
+
+
+def test_family_page_variant_guard_rejects_conflicting_size():
+    extractor = _crawl4ai_extractor_for_variant_checks()
+
+    result = {
+        "product_name": "WOOF Pupsicle BBQ Calming Pops Large 8 oz",
+        "size_metrics": "8 oz",
+    }
+
+    assert extractor._family_page_variant_verified(
+        result,
+        "WOOF Pupsicle BBQ Calming Pops Small 6 oz",
+    ) is False
+
+
+def test_family_page_variant_guard_accepts_matching_size():
+    extractor = _crawl4ai_extractor_for_variant_checks()
+
+    result = {
+        "product_name": "WOOF Pupsicle BBQ Calming Pops Small 6 oz",
+        "size_metrics": "6 oz",
+    }
+
+    assert extractor._family_page_variant_verified(
+        result,
+        "WOOF Pupsicle BBQ Calming Pops Small 6 oz",
+    ) is True
 
 
 @pytest.fixture

@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Any
 from urllib.parse import urlparse
 
@@ -24,6 +25,7 @@ from scrapers.ai_search.enrichment_models import (
     build_v1_from_extraction_result,
 )
 from scrapers.ai_search.search import SearchClient
+from scrapers.ai_search.matching import MatchingUtils
 from scrapers.approved_sources.policy import (
     is_disallowed_domain,
     normalize_domain,
@@ -32,6 +34,24 @@ from scrapers.providers.factory import create_llm_provider
 from scrapers.utils.url_utils import canonicalize_result_url
 
 logger = logging.getLogger(__name__)
+
+
+QUALITATIVE_SIZE_RE = re.compile(r"\b(xs|x-small|sm|small|md|med|medium|lg|lrg|large|xl|xxl)\b", re.IGNORECASE)
+QUALITATIVE_SIZE_ALIASES = {
+    "xs": "extra_small",
+    "xsmall": "extra_small",
+    "x-small": "extra_small",
+    "sm": "small",
+    "small": "small",
+    "md": "medium",
+    "med": "medium",
+    "medium": "medium",
+    "lg": "large",
+    "lrg": "large",
+    "large": "large",
+    "xl": "xl",
+    "xxl": "xxl",
+}
 
 
 def is_candidate_unsafe_for_canonical_selection(url: str) -> bool:
@@ -96,6 +116,9 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
     def __init__(self, entry: Any, plan: Any):
         super().__init__(entry, plan)
         self._llm_used_in_discovery = False
+        self._matching = MatchingUtils()
+        self._last_consolidated_name: str | None = None
+        self._last_variant_hints: list[str] = []
 
     async def extract(self, extractor: Any) -> EnrichmentResultV1 | None:
         """Execute autonomous discovery and extraction.
@@ -120,6 +143,8 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             )
             return None
 
+        target_product_name = self._last_consolidated_name or register_name
+
         # 2. Validate resolved URL against policy
         source_policy = self.plan.sourcePolicy
         from scrapers.approved_sources.policy import validate_url_allowed
@@ -136,11 +161,13 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
         )
 
         # 3. Execute extraction
-        # Pass register_name as the fallback product name to search/validate on the page
+        # Use the LLM-cleaned, variant-preserving name as the extraction target.
+        # The raw register name is only a hint for discovery; crawl/extraction
+        # matching works better with the resolved Product Variant wording.
         extraction_result = await extractor.extract(
             url=url,
             upc=upc,
-            product_name=register_name,
+            product_name=target_product_name,
             brand=brand_name,
         )
 
@@ -200,6 +227,9 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
         brand_domain: str | None,
     ) -> str | None:
         """Execute Phase 1-3 to find the best approved URL."""
+        self._last_consolidated_name = register_name
+        self._last_variant_hints = self._variant_hints_for_name(register_name)
+
         # Phase 1: UPC Discovery (Global search for UPC/UPC)
         sku_serp_results = await self._phase1_sku_discovery(upc)
 
@@ -234,9 +264,13 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
                     e,
                 )
 
+        self._last_consolidated_name = consolidated_name
+        self._last_variant_hints = self._variant_hints_for_name(consolidated_name)
+
         logger.info(
-            "[SerpDiscoveryAdapter] Consolidated product name: '%s'",
+            "[SerpDiscoveryAdapter] Consolidated product name: '%s' (variant_hints=%s)",
             consolidated_name,
+            self._last_variant_hints,
         )
 
         # Phase 3: Brand Site Search + LLM URL Selection
@@ -555,6 +589,67 @@ Return JSON in this format:
             candidates=candidates,
         )
 
+    def _qualitative_size_tokens(self, text: str | None) -> set[str]:
+        """Extract normalized qualitative size tokens (Small/Large/etc.)."""
+        tokens: set[str] = set()
+        for match in QUALITATIVE_SIZE_RE.finditer(text or ""):
+            raw = match.group(1).lower()
+            tokens.add(QUALITATIVE_SIZE_ALIASES.get(raw, raw))
+        return tokens
+
+    def _variant_hints_for_name(self, name: str | None) -> list[str]:
+        """Extract variant hints from a target name for logging and prompts."""
+        hints = set(self._matching.extract_variant_tokens(name))
+        hints.update(self._qualitative_size_tokens(name))
+        return sorted(hints)
+
+    @staticmethod
+    def _candidate_text(candidate: dict[str, Any]) -> str:
+        return " ".join(
+            str(candidate.get(key) or "")
+            for key in ("title", "description", "url")
+        )
+
+    def _candidate_has_identifier(self, candidate_text: str, upc: str) -> bool:
+        return bool(upc and upc.lower() in candidate_text.lower())
+
+    def _candidate_has_variant_overlap(self, target_name: str | None, candidate_text: str) -> bool:
+        target_hints = set(self._variant_hints_for_name(target_name))
+        if not target_hints:
+            return False
+        candidate_hints = set(self._variant_hints_for_name(candidate_text))
+        return bool(target_hints.intersection(candidate_hints))
+
+    def _candidate_has_conflicting_variant(self, target_name: str | None, candidate_text: str) -> bool:
+        """Detect candidates that describe a different variant of the same line."""
+        if not target_name:
+            return False
+
+        if self._matching.has_conflicting_variant_tokens(target_name, candidate_text):
+            return True
+
+        target_size_tokens = self._qualitative_size_tokens(target_name)
+        candidate_size_tokens = self._qualitative_size_tokens(candidate_text)
+        return bool(target_size_tokens and candidate_size_tokens and target_size_tokens.isdisjoint(candidate_size_tokens))
+
+    def _fallback_url_from_candidates(
+        self,
+        candidates: list[dict[str, Any]],
+        *,
+        upc: str,
+        target_name: str,
+    ) -> str | None:
+        """Pick a deterministic fallback URL without accepting known wrong variants."""
+        for candidate in candidates:
+            candidate_text = self._candidate_text(candidate)
+            has_identifier = self._candidate_has_identifier(candidate_text, upc)
+            if self._candidate_has_conflicting_variant(target_name, candidate_text) and not has_identifier:
+                continue
+            url = candidate.get("url")
+            if url:
+                return url
+        return None
+
     def _score_candidates(
         self,
         results: list[dict[str, Any]],
@@ -574,6 +669,10 @@ Return JSON in this format:
             url_lower = url.lower()
             desc = (r.get("description", "") or "").lower()
             sku_lower = upc.lower()
+            candidate_text = self._candidate_text(r)
+            has_identifier = self._candidate_has_identifier(candidate_text, upc)
+            has_variant_overlap = self._candidate_has_variant_overlap(name, candidate_text)
+            has_variant_conflict = self._candidate_has_conflicting_variant(name, candidate_text)
 
             # UPC match (strongest signal)
             if sku_lower in title:
@@ -588,6 +687,18 @@ Return JSON in this format:
             name_matches = sum(1 for part in name_parts if part in title or part in desc)
             if name_parts:
                 score += min(name_matches / len(name_parts), 1.0) * 0.3
+
+            # Variant match/conflict. A conflicting size/count/weight should not
+            # outrank the exact Product Variant unless the UPC itself is present.
+            if has_variant_overlap:
+                score += 0.25
+            if has_variant_conflict and not has_identifier:
+                score -= 1.0
+                logger.debug(
+                    "[SerpDiscoveryAdapter] Penalized conflicting variant candidate for '%s': %s",
+                    name,
+                    url,
+                )
 
             # Organic vs ad
             result_type = r.get("result_type", "")
@@ -629,32 +740,49 @@ Return JSON in this format:
         candidates: list[dict[str, Any]],
     ) -> str | None:
         """Select the best matching product page URL from the candidates using an LLM."""
+        variant_hints = self._variant_hints_for_name(consolidated_name)
         llm = self._get_llm_provider()
         if not llm:
-            if candidates:
-                top_url = candidates[0].get("url")
-                logger.info(
-                    "[SerpDiscoveryAdapter] No LLM provider. Returning top candidate URL: %s",
-                    top_url,
-                )
-                return top_url
-            return None
+            fallback_url = self._fallback_url_from_candidates(
+                candidates,
+                upc=upc,
+                target_name=consolidated_name,
+            )
+            logger.info(
+                "[SerpDiscoveryAdapter] No LLM provider. Returning non-conflicting fallback URL: %s",
+                fallback_url,
+            )
+            return fallback_url
 
         candidates_evidence = ""
         for i, c in enumerate(candidates):
             title = c.get("title", "")
             desc = c.get("description", "")
             url = c.get("url", "")
-            candidates_evidence += f"[{i+1}] Title: {title}\n    Description: {desc}\n    URL: {url}\n\n"
+            candidate_text = self._candidate_text(c)
+            variant_status = "unknown"
+            if self._candidate_has_identifier(candidate_text, upc):
+                variant_status = "identifier_match"
+            elif self._candidate_has_conflicting_variant(consolidated_name, candidate_text):
+                variant_status = "conflicts_target_variant"
+            elif self._candidate_has_variant_overlap(consolidated_name, candidate_text):
+                variant_status = "matches_target_variant_hint"
+            candidates_evidence += (
+                f"[{i+1}] Title: {title}\n"
+                f"    Description: {desc}\n"
+                f"    URL: {url}\n"
+                f"    Variant Status: {variant_status}\n\n"
+            )
 
         system_prompt = (
             "You are an expert product webpage selector. Your goal is to analyze search results and select the best URL "
-            "that is a product page (rather than a collection page, a category page, a blog post, or a homepage) "
-            "for the target product. Respond ONLY with the requested JSON schema."
+            "for the exact UPC-level product variant. A Product Line/family page is acceptable only if the result evidence "
+            "identifies the requested variant or the page can be resolved to it later. Respond ONLY with the requested JSON schema."
         )
 
         user_prompt = f"""Target Product Name: {consolidated_name}
-Target UPC/UPC: {upc}
+Target UPC: {upc}
+Target Variant Hints: {', '.join(variant_hints) if variant_hints else 'None'}
 Brand Name: {brand_name or 'Unknown'}
 Brand Domain: {brand_domain or 'Unknown'}
 
@@ -663,15 +791,16 @@ Candidate URLs:
 
 Instructions:
 1. Review the candidate search results.
-2. Select the single candidate URL that is the best product detail page match for '{consolidated_name}'.
-3. Avoid selecting index/collection/category pages (e.g. URLs ending in /collections, /categories, /brand, or the homepage itself).
-4. If a URL contains the UPC/UPC, that is a strong indicator of a match.
-5. If none of the candidates match this product or are all generic/unrelated, return null for the 'selected_url'.
+2. Select the single candidate URL that best matches the exact UPC-level Product Variant for '{consolidated_name}'.
+3. Size, weight, count, flavor, color, material, and package-count conflicts are hard conflicts unless the candidate explicitly contains the target UPC.
+4. Avoid selecting index/collection/category pages, blogs, homepages, store locators, reviews, or generic product-line pages unless the candidate evidence identifies the exact variant.
+5. If a candidate appears to be the same Product Line but a different size/count/weight/flavor, return null.
+6. If none of the candidates match this exact variant or are all generic/unrelated, return null for the 'selected_url'.
 
 Return JSON in this format:
 {{
   "selected_url": "https://example.com/product-url",
-  "explanation": "Why this URL was selected"
+  "explanation": "Why this URL was selected and how it matches the target variant"
 }}
 """
         schema = {
@@ -691,7 +820,13 @@ Return JSON in this format:
                 response_schema=schema,
             )
             self._llm_used_in_discovery = True
-            data = json.loads(response.text)
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:-3].strip()
+            elif raw_text.startswith("```"):
+                raw_text = raw_text[3:-3].strip()
+
+            data = json.loads(raw_text)
             selected_url = data.get("selected_url")
             explanation = data.get("explanation", "")
             logger.info(
@@ -699,6 +834,23 @@ Return JSON in this format:
                 explanation,
             )
             if selected_url:
+                selected_candidate = next(
+                    (
+                        candidate for candidate in candidates
+                        if str(candidate.get("url") or "").rstrip("/") == str(selected_url).rstrip("/")
+                    ),
+                    {"url": selected_url},
+                )
+                selected_text = self._candidate_text(selected_candidate)
+                if (
+                    self._candidate_has_conflicting_variant(consolidated_name, selected_text)
+                    and not self._candidate_has_identifier(selected_text, upc)
+                ):
+                    logger.warning(
+                        "[SerpDiscoveryAdapter] LLM selected conflicting variant URL; rejecting: %s",
+                        selected_url,
+                    )
+                    return None
                 return selected_url
         except Exception as e:
             logger.warning(
@@ -706,8 +858,9 @@ Return JSON in this format:
                 e,
             )
 
-        # Fallback to top scored candidate
-        if candidates:
-            return candidates[0].get("url")
-
-        return None
+        # Fallback to top scored non-conflicting candidate
+        return self._fallback_url_from_candidates(
+            candidates,
+            upc=upc,
+            target_name=consolidated_name,
+        )

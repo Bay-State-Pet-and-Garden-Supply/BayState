@@ -1,3 +1,5 @@
+import { extractSizeFromInputName } from './product-variant-parsing';
+
 type SourceRecord = Record<string, unknown>;
 
 export interface CanonicalProductSourceRecord extends SourceRecord {
@@ -616,6 +618,7 @@ export function buildConsolidationSourcesPayload(
             'price',
             'description',
             'category',
+            'size',
 
             'weight',
             'search_keywords',
@@ -624,6 +627,13 @@ export function buildConsolidationSourcesPayload(
             'minimum_quantity',
             'is_special_order',
         ].forEach(copyScalarField);
+
+        if (!shopSiteInputSource.size && typeof rawInput.name === 'string') {
+            const extractedSize = extractSizeFromInputName(rawInput.name);
+            if (extractedSize) {
+                shopSiteInputSource.size = extractedSize;
+            }
+        }
 
         const productOnPages = (rawInput as Record<string, unknown>).product_on_pages;
         if (Array.isArray(productOnPages) && productOnPages.length > 0) {

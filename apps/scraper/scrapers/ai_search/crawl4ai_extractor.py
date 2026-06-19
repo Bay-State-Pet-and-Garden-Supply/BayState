@@ -38,6 +38,23 @@ from src.crawl4ai_engine.engine import Crawl4AIEngine
 
 logger = logging.getLogger(__name__)
 
+QUALITATIVE_SIZE_RE = re.compile(r"\b(xs|x-small|sm|small|md|med|medium|lg|lrg|large|xl|xxl)\b", re.IGNORECASE)
+QUALITATIVE_SIZE_ALIASES = {
+    "xs": "extra_small",
+    "xsmall": "extra_small",
+    "x-small": "extra_small",
+    "sm": "small",
+    "small": "small",
+    "md": "medium",
+    "med": "medium",
+    "medium": "medium",
+    "lg": "large",
+    "lrg": "large",
+    "large": "large",
+    "xl": "xl",
+    "xxl": "xxl",
+}
+
 # Log Crawl4AI version at module load for diagnostics
 try:
     logger.info("[AI Search] Crawl4AI version: %s", importlib_metadata.version("crawl4ai"))
@@ -2050,6 +2067,58 @@ class Crawl4AIExtractor:
             # Always try fallback — it can fetch via HTTP if we have no content
             return await self._extract_with_fallback(url, upc, product_name, brand, safe_html, safe_markdown)
 
+    def _qualitative_size_tokens(self, text: Optional[str]) -> set[str]:
+        tokens: set[str] = set()
+        for match in QUALITATIVE_SIZE_RE.finditer(text or ""):
+            raw = match.group(1).lower()
+            tokens.add(QUALITATIVE_SIZE_ALIASES.get(raw, raw))
+        return tokens
+
+    def _variant_hints_for_text(self, text: Optional[str]) -> set[str]:
+        hints = set(self._matching.extract_variant_tokens(text))
+        hints.update(self._qualitative_size_tokens(text))
+        return hints
+
+    def _has_variant_overlap(self, expected: Optional[str], actual: Optional[str]) -> bool:
+        expected_hints = self._variant_hints_for_text(expected)
+        if not expected_hints:
+            return False
+        return bool(expected_hints.intersection(self._variant_hints_for_text(actual)))
+
+    def _has_variant_conflict(self, expected: Optional[str], actual: Optional[str]) -> bool:
+        if not expected:
+            return False
+        if self._matching.has_conflicting_variant_tokens(expected, actual):
+            return True
+        expected_sizes = self._qualitative_size_tokens(expected)
+        actual_sizes = self._qualitative_size_tokens(actual)
+        return bool(expected_sizes and actual_sizes and expected_sizes.isdisjoint(actual_sizes))
+
+    @staticmethod
+    def _structured_variant_evidence_text(result: dict[str, Any]) -> str:
+        fields = [
+            "product_name",
+            "name",
+            "size_metrics",
+            "weight",
+            "package_weight",
+            "package_count",
+            "dimensions",
+        ]
+        return " ".join(str(result.get(field) or "") for field in fields)
+
+    def _family_page_variant_verified(self, result: dict[str, Any], expected_name: Optional[str]) -> bool:
+        """Verify that an unresolved family page extraction found the target variant."""
+        if not expected_name:
+            return True
+        if not self._variant_hints_for_text(expected_name):
+            return True
+
+        evidence_text = self._structured_variant_evidence_text(result)
+        if self._has_variant_conflict(expected_name, evidence_text):
+            return False
+        return self._has_variant_overlap(expected_name, evidence_text)
+
     async def extract(
         self,
         url: str,
@@ -2060,6 +2129,22 @@ class Crawl4AIExtractor:
         """Extract product data using centralized Crawl4AIEngine with variant resolution."""
         result = await self._extract_inner(url, upc, product_name, brand)
         
+        # Check if result is an unresolved family page and reject it unless
+        # the extracted structured fields identify the target Product Variant.
+        if isinstance(result, dict) and result.get("success"):
+            resolver_status = getattr(self, "_last_resolver_status", "ambiguous")
+            if resolver_status == "family_page_default" and not self._family_page_variant_verified(result, product_name):
+                logger.warning(
+                    "[AI Search] Rejecting unresolved family page extraction; target variant was not verified: url=%s target=%s",
+                    url,
+                    product_name,
+                )
+                return {
+                    "success": False,
+                    "error": "family page did not resolve exact product variant",
+                    "resolver_status": resolver_status,
+                }
+
         # Check if result is a category/collection page and reject it.
         if isinstance(result, dict) and result.get("success"):
             check_res = self._check_extraction_completeness(result, brand, url=url)

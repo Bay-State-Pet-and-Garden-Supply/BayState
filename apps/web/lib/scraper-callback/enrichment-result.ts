@@ -14,6 +14,7 @@
  */
 
 import type { PersistedPipelineStatus } from "@/lib/pipeline/types";
+import { extractSizeFromProductTitle } from "@/lib/product-variant-parsing";
 
 // =============================================================================
 // Zod schema for the runner's callback payload
@@ -254,6 +255,14 @@ export function buildCanonicalSourcePayload(
     if (p.color) payload.color = p.color;
     if (p.size) payload.size = p.size;
     if (p.packaging_type) payload.packaging_type = p.packaging_type;
+
+    if (!payload.size) {
+      const titleToParse = (p.name || p.title || payload.name) as string | undefined;
+      const extractedSize = extractSizeFromProductTitle(titleToParse);
+      if (extractedSize) {
+        payload.size = extractedSize;
+      }
+    }
   }
 
   return payload;

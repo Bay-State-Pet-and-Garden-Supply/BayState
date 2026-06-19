@@ -93,6 +93,10 @@ const RELEVANT_FIELDS = [
     'brand',
     'weight',
     'size',
+    'package_weight',
+    'package-weight',
+    'count',
+    'pack',
     'attributes',
     'description',
     'category',
@@ -153,6 +157,8 @@ function hasRelevantKeyName(key: string): boolean {
         'manufacturer_part',
         'case_pack',
         'uom',
+        'count',
+        'pack',
     ];
     return relevantFragments.some((fragment) => normalized.includes(fragment));
 }

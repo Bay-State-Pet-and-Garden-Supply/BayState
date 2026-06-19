@@ -221,7 +221,52 @@ describe("buildCanonicalSourcePayload", () => {
 
     const payload = buildCanonicalSourcePayload(sr);
     expect(payload._source_slug).toBe("orgill");
-    expect(payload.name).toBeUndefined();
+  });
+
+  it("extracts size from product name if size is missing", () => {
+    const sr = {
+      sourceSlug: "amazon",
+      sourceType: "marketplace",
+      confidence: 0.9,
+      outcome: "found",
+      product: {
+        name: "WOOF Pupsicle BBQ Calming Pops Large 10 Count",
+      },
+    } as any;
+
+    const payload = buildCanonicalSourcePayload(sr);
+    expect(payload.size).toBe("Large 10 ct");
+  });
+
+  it("extracts size/weight from product name if size is missing", () => {
+    const sr = {
+      sourceSlug: "amazon",
+      sourceType: "marketplace",
+      confidence: 0.9,
+      outcome: "found",
+      product: {
+        name: "Honest Kitchen Dog Food Chicken 10.5 Ounces",
+      },
+    } as any;
+
+    const payload = buildCanonicalSourcePayload(sr);
+    expect(payload.size).toBe("10.5 oz");
+  });
+
+  it("preserves explicitly provided size field", () => {
+    const sr = {
+      sourceSlug: "amazon",
+      sourceType: "marketplace",
+      confidence: 0.9,
+      outcome: "found",
+      product: {
+        name: "Honest Kitchen Dog Food Chicken 10.5 Ounces",
+        size: "Custom Size",
+      },
+    } as any;
+
+    const payload = buildCanonicalSourcePayload(sr);
+    expect(payload.size).toBe("Custom Size");
   });
 });
 

@@ -42,7 +42,7 @@ class ProductPageExtractor:
         llm_base_url: str | None = None,
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
-        prompt_version: str = "v5",
+        prompt_version: str = "v6",
     ):
         self.headless = headless
         self.cache_enabled = cache_enabled
