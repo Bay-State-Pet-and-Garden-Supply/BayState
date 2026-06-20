@@ -110,6 +110,41 @@ curl -s http://127.0.0.1:11434/v1/models | python3 -c "import sys,json; [print(m
 python daemon.py --env dev 2>&1 | grep -i packaging
 ```
 
+## Scrape-Time OCR (raw packaging text during enrichment)
+
+Extracts raw text from product images **during enrichment** (at scrape time),
+before consolidation ever runs. This is separate from the
+`PACKAGING_VISION_*` pipeline, which is a later high-quality structured extraction step.
+
+| Pipeline | When | What |
+|----------|------|------|
+| **Scrape-time OCR** | During enrichment | Raw text → `sources[].image_text` |
+| **Packaging vision** | During consolidation | Structured JSON → title suggestions |
+
+### Enable
+
+Requires a vision-capable OpenAI-compatible API key (not DeepSeek text-only).
+```env
+IMAGE_OCR_ENABLED=true
+IMAGE_OCR_MODEL=gpt-4o-mini
+IMAGE_OCR_API_KEY=sk-...
+IMAGE_OCR_BASE_URL=https://api.openai.com/v1
+IMAGE_OCR_MAX_IMAGES=1
+```
+
+If `IMAGE_OCR_API_KEY` is unset, falls back to `LLM_API_KEY`. If
+`IMAGE_OCR_BASE_URL` is unset, falls back to `LLM_BASE_URL`.
+
+### Behavior
+
+- Runs only on successful/partial enrichment results
+- Runs on images captured by the approved-source executor
+- Non-blocking: OCR failure never fails the enrichment job
+- Selects best image(s) per source, filters out logos/icons/thumbnails
+- Writes `image_text` into per-source evidence, which flows into
+  `products_ingestion.sources[*].image_text` and becomes prompt-visible
+  in consolidation
+
 ## Local Testing
 
 Test AI extraction (Enrichment) directly using `runner.py`:

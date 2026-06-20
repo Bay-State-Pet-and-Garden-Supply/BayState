@@ -230,6 +230,18 @@ export function buildCanonicalSourcePayload(
     // Evidence
     if (p.evidence && typeof p.evidence === "object") {
       payload.evidence = p.evidence;
+
+      // Flatten OCR image_text from nested evidence to top-level source payload
+      // so consolidation prompt evidence builders can access it directly.
+      const ev = p.evidence as Record<string, unknown>;
+      if (typeof ev.image_text === "string" && ev.image_text.trim()) {
+        payload.image_text = ev.image_text.trim();
+      }
+    }
+
+    // Also preserve top-level image_text if present (overrides nested)
+    if (typeof p.image_text === "string" && p.image_text.trim()) {
+      payload.image_text = p.image_text.trim();
     }
 
     // Size metrics

@@ -268,6 +268,107 @@ describe("buildCanonicalSourcePayload", () => {
     const payload = buildCanonicalSourcePayload(sr);
     expect(payload.size).toBe("Custom Size");
   });
+
+  describe("image_text flattening", () => {
+    it("flattens nested evidence.image_text to top-level payload", () => {
+      const sr = {
+        sourceSlug: "phillips",
+        sourceType: "distributor",
+        confidence: 0.85,
+        outcome: "found",
+        product: {
+          name: "Test Product",
+          evidence: { image_text: "Brand Product 24 oz" },
+        },
+      } as any;
+
+      const payload = buildCanonicalSourcePayload(sr);
+      expect(payload.image_text).toBe("Brand Product 24 oz");
+      expect(payload.evidence).toBeDefined();
+      expect((payload.evidence as any).image_text).toBe("Brand Product 24 oz");
+    });
+
+    it("preserves top-level product.image_text", () => {
+      const sr = {
+        sourceSlug: "phillips",
+        sourceType: "distributor",
+        confidence: 0.85,
+        outcome: "found",
+        product: {
+          name: "Test Product",
+          image_text: "Top Level OCR Text",
+        },
+      } as any;
+
+      const payload = buildCanonicalSourcePayload(sr);
+      expect(payload.image_text).toBe("Top Level OCR Text");
+    });
+
+    it("top-level image_text overrides nested evidence.image_text", () => {
+      const sr = {
+        sourceSlug: "phillips",
+        sourceType: "distributor",
+        confidence: 0.85,
+        outcome: "found",
+        product: {
+          name: "Test Product",
+          image_text: "Top Level",
+          evidence: { image_text: "Nested Evidence" },
+        },
+      } as any;
+
+      const payload = buildCanonicalSourcePayload(sr);
+      expect(payload.image_text).toBe("Top Level");
+    });
+
+    it("does not set image_text when evidence.image_text is empty", () => {
+      const sr = {
+        sourceSlug: "phillips",
+        sourceType: "distributor",
+        confidence: 0.85,
+        outcome: "found",
+        product: {
+          name: "Test Product",
+          evidence: { image_text: "" },
+        },
+      } as any;
+
+      const payload = buildCanonicalSourcePayload(sr);
+      expect(payload.image_text).toBeUndefined();
+    });
+
+    it("does not set image_text when evidence.image_text is null", () => {
+      const sr = {
+        sourceSlug: "phillips",
+        sourceType: "distributor",
+        confidence: 0.85,
+        outcome: "found",
+        product: {
+          name: "Test Product",
+          evidence: { image_text: null },
+        },
+      } as any;
+
+      const payload = buildCanonicalSourcePayload(sr);
+      expect(payload.image_text).toBeUndefined();
+    });
+
+    it("does not set image_text when evidence has no image_text key", () => {
+      const sr = {
+        sourceSlug: "phillips",
+        sourceType: "distributor",
+        confidence: 0.85,
+        outcome: "found",
+        product: {
+          name: "Test Product",
+          evidence: { source_urls: ["https://example.com"] },
+        },
+      } as any;
+
+      const payload = buildCanonicalSourcePayload(sr);
+      expect(payload.image_text).toBeUndefined();
+    });
+  });
 });
 
 // =============================================================================
