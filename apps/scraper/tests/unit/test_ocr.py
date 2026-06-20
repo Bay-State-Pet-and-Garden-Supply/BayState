@@ -51,8 +51,14 @@ class TestOcrVisionService(unittest.IsolatedAsyncioTestCase):
         # Setup mock client
         mock_client = MagicMock()
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.headers = {"content-type": "image/jpeg"}
-        mock_response.content = b"fake_jpeg_content"
+        
+        # Mock the streaming iter_bytes
+        async def mock_aiter_bytes():
+            yield b"fake_jpeg_content"
+        mock_response.aiter_bytes = mock_aiter_bytes
+        
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client_cls.return_value.__aenter__.return_value = mock_client
 

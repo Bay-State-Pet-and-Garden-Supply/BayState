@@ -229,6 +229,8 @@ function getPromptTextLimit(fieldName: string): number {
             return 80;
         case 'description':
             return 2000;
+        case 'image_text':
+            return 2000;
         case 'specifications':
             return 2000;
         case 'dimensions':
@@ -1080,13 +1082,55 @@ export async function submitProductLineClassificationBatch(
         const providerBatchId = `classify_${crypto.randomUUID()}`;
         const model = runtime.model;
 
-        // Load known product lines for the classification prompt
-        const knownProductLines = await loadKnownProductLines();
+        // Extract evidence for all products to find brand context and siblings
+        const productEvidences = products.map(p => ({
+            upc: p.upc,
+            evidence: extractClassificationEvidence(p.upc, p.sources, p.input),
+            sources: p.sources,
+            input: p.input,
+        }));
 
-        // Build the system prompt once (shared by all items)
-        const systemPrompt = buildClassificationSystemPrompt(
+        // Get unique brand names (non-empty)
+        const brandNames = Array.from(
+            new Set(
+                productEvidences
+                    .map(pe => pe.evidence.brand?.trim())
+                    .filter((b): b is string => !!b)
+            )
+        );
+
+        // Resolve brand IDs
+        const brandNameToId = new Map<string, string>();
+        const brandIds: string[] = [];
+        if (brandNames.length > 0) {
+            const { data: brandRows } = await supabase
+                .from('brands')
+                .select('id, name')
+                .in('name', brandNames);
+            if (brandRows) {
+                for (const r of brandRows) {
+                    brandNameToId.set(r.name, r.id);
+                    brandIds.push(r.id);
+                }
+            }
+        }
+
+        // Load known product lines for these brands
+        const knownProductLines = await loadKnownProductLines(brandIds);
+
+        // Build a general system prompt for metadata
+        const generalSystemPrompt = buildClassificationSystemPrompt(
             knownProductLines.map(pl => ({ id: pl.id, canonical_name: pl.canonical_name }))
         );
+
+        // Group products by brand name for sibling lookup
+        const productsByBrand = new Map<string, Array<{ upc: string; name: string }>>();
+        for (const pe of productEvidences) {
+            const bName = pe.evidence.brand?.trim().toLowerCase() || '__no_brand__';
+            const list = productsByBrand.get(bName) || [];
+            list.push({ upc: pe.upc, name: pe.evidence.name || pe.upc });
+            productsByBrand.set(bName, list);
+        }
 
         // Insert batch_jobs parent row
         const { error: insertError } = await supabase.from('batch_jobs').insert({
@@ -1106,7 +1150,7 @@ export async function submitProductLineClassificationBatch(
             estimated_cost: 0,
             metadata: {
                 ...metadata,
-                system_prompt: systemPrompt,
+                system_prompt: generalSystemPrompt,
                 llm_model: model,
                 llm_base_url: runtime.llm_base_url,
                 known_product_lines_count: knownProductLines.length,
@@ -1118,28 +1162,43 @@ export async function submitProductLineClassificationBatch(
             return { success: false, error: insertError.message };
         }
 
-        // Insert one batch_job_items row per product with classification evidence pre-built
-        const items = products.map(product => {
-            const evidence = extractClassificationEvidence(product.upc, product.sources, product.input);
-            const userPrompt = buildClassificationUserPrompt(evidence);
+        // Insert one batch_job_items row per product with dynamic system prompts and sibling user prompts
+        const items = productEvidences.map(pe => {
+            const bName = pe.evidence.brand?.trim();
+            const bId = bName ? brandNameToId.get(bName) : undefined;
+
+            // Filter known product lines to this brand (or null brand)
+            const brandLines = knownProductLines.filter(
+                pl => pl.brand_id === null || (bId && pl.brand_id === bId)
+            );
+
+            const systemPrompt = buildClassificationSystemPrompt(
+                brandLines.map(pl => ({ id: pl.id, canonical_name: pl.canonical_name }))
+            );
+
+            // Find siblings of the same brand in this batch (excluding self)
+            const bKey = pe.evidence.brand?.trim().toLowerCase() || '__no_brand__';
+            const siblings = (productsByBrand.get(bKey) || []).filter(sib => sib.upc !== pe.upc);
+
+            const userPrompt = buildClassificationUserPrompt(pe.evidence, siblings);
 
             return {
                 batch_job_id: batchId,
-                upc: product.upc,
-                status: 'pending',
-                item_kind: 'upc',
-                subject_key: product.upc,
+                upc: pe.upc,
+                status: 'pending' as const,
+                item_kind: 'upc' as const,
+                subject_key: pe.upc,
                 request_payload: {
                     model,
                     messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt },
+                        { role: 'system' as const, content: systemPrompt },
+                        { role: 'user' as const, content: userPrompt },
                     ],
                     max_tokens: 512,
                     temperature: 0.1,
-                    response_format: { type: 'json_object' },
+                    response_format: { type: 'json_object' as const },
                 },
-                product_source: product.sources,
+                product_source: pe.sources,
             };
         });
 

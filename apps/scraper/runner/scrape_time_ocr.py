@@ -31,20 +31,35 @@ def is_scrape_time_ocr_enabled() -> bool:
     return os.environ.get("IMAGE_OCR_ENABLED", "").lower() in ("true", "1", "yes")
 
 
-def get_scrape_time_ocr_config() -> dict[str, Any]:
+def get_scrape_time_ocr_config(attempt: Any = None) -> dict[str, Any]:
     """Resolve scrape-time OCR configuration from env with fallbacks.
 
-    If IMAGE_OCR_API_KEY is not set, falls back to LLM_API_KEY.
-    If IMAGE_OCR_BASE_URL is not set, falls back to LLM_BASE_URL.
+    If IMAGE_OCR_API_KEY is not set, falls back to attempt.ai_credentials
+    dict (if attempt provided), then LLM_API_KEY env.
+    Same for IMAGE_OCR_BASE_URL -> attempt.ai_credentials -> LLM_BASE_URL.
     """
+    api_key = os.environ.get("IMAGE_OCR_API_KEY")
+    if not api_key and attempt is not None:
+        creds = getattr(attempt, "ai_credentials", None)
+        if isinstance(creds, dict):
+            api_key = (creds.get("llm_api_key")
+                       or creds.get("openai_api_key")
+                       or creds.get("deepseek_api_key"))
+    if not api_key:
+        api_key = os.environ.get("LLM_API_KEY", "")
+
+    base_url = os.environ.get("IMAGE_OCR_BASE_URL")
+    if not base_url and attempt is not None:
+        creds = getattr(attempt, "ai_credentials", None)
+        if isinstance(creds, dict):
+            base_url = creds.get("llm_base_url")
+    if not base_url:
+        base_url = os.environ.get("LLM_BASE_URL") or None
+
     return {
         "model": os.environ.get("IMAGE_OCR_MODEL", "gpt-4o-mini"),
-        "api_key": os.environ.get("IMAGE_OCR_API_KEY")
-                   or os.environ.get("LLM_API_KEY")
-                   or "",
-        "base_url": os.environ.get("IMAGE_OCR_BASE_URL")
-                    or os.environ.get("LLM_BASE_URL")
-                    or None,
+        "api_key": api_key or "",
+        "base_url": base_url,
         "max_images": int(os.environ.get("IMAGE_OCR_MAX_IMAGES", "1")),
         "max_tokens": int(os.environ.get("IMAGE_OCR_MAX_TOKENS", "500")),
         "timeout": int(os.environ.get("IMAGE_OCR_TIMEOUT_SECONDS", "120")),
@@ -118,6 +133,7 @@ async def apply_scrape_time_ocr(
     enrichment_result: Any,
     *,
     upc: str,
+    attempt: Any = None,
 ) -> dict[str, Any]:
     """Run scrape-time OCR on enrichment result sources.
 
@@ -155,7 +171,7 @@ async def apply_scrape_time_ocr(
         summary["errors"].append("No enrichment result provided")
         return summary
 
-    config = get_scrape_time_ocr_config()
+    config = get_scrape_time_ocr_config(attempt)
     if not config["api_key"]:
         summary["errors"].append("No API key available for scrape-time OCR (set IMAGE_OCR_API_KEY or LLM_API_KEY)")
         logger.warning("[ScrapeOCRT] No API key available — skipping OCR")
@@ -197,6 +213,7 @@ async def apply_scrape_time_ocr(
                 base_url=config["base_url"],
                 model=config["model"],
                 max_tokens=config["max_tokens"],
+                timeout=config["timeout"],
             )
         except Exception as e:
             logger.warning(

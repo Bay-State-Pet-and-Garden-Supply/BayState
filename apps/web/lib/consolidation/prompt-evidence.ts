@@ -147,6 +147,8 @@ function getPromptTextLimit(fieldName: string): number {
       return 80;
     case 'description':
       return 2000;
+    case 'image_text':
+      return 2000;
     case 'specifications':
       return 2000;
     case 'dimensions':

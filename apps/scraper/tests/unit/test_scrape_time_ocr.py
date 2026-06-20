@@ -158,7 +158,17 @@ class TestCollectSourceImages(unittest.TestCase):
 class TestApplyScrapeTimeOcr(unittest.IsolatedAsyncioTestCase):
     """Tests for the main OCR application function."""
 
+    def setUp(self):
+        """Ensure IMAGE_OCR_API_KEY is set so tests are independent."""
+        os.environ["IMAGE_OCR_API_KEY"] = "test-key-fix"
+
+    def tearDown(self):
+        os.environ.pop("IMAGE_OCR_API_KEY", None)
+
     async def test_no_enrichment_result(self):
+        summary = await apply_scrape_time_ocr(None, upc="TEST")
+        self.assertIn("errors", summary)
+        self.assertEqual(summary["sources_scanned"], 0)
         summary = await apply_scrape_time_ocr(None, upc="TEST")
         self.assertIn("errors", summary)
         self.assertEqual(summary["sources_scanned"], 0)

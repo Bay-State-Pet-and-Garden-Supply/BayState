@@ -355,7 +355,10 @@ async def _run_approved_source_extraction(
 
     # Hook: scrape-time OCR on enrichment result before callback
     # Non-blocking — failure never blocks enrichment
-    if enrichment_result and is_scrape_time_ocr_enabled():
+    # Only runs on successful/partial results per plan
+    if (enrichment_result
+            and enrichment_result.status in ("success", "partial")
+            and is_scrape_time_ocr_enabled()):
         try:
             ocr_summary = await apply_scrape_time_ocr(
                 enrichment_result,
@@ -376,9 +379,16 @@ async def _run_approved_source_extraction(
                 phase="ocr",
             )
         except Exception as ocr_err:
-            logger.exception(
-                "[%s] Scrape-time OCR failed for SKU=%s — enrichment continues: %s",
-                job_id, target_upc, ocr_err,
+            _emit_runner_log(
+                job_id=job_id,
+                runner_name=runner_name,
+                job_logging=job_logging,
+                log_buffer=log_buffer,
+                level="warning",
+                message=f"Scrape-time OCR failed for SKU={target_upc} — enrichment continues: {ocr_err}",
+                details={"error": str(ocr_err)},
+                upc=target_upc,
+                phase="ocr",
             )
 
     if enrichment_result and enrichment_result.status in ("success", "partial"):

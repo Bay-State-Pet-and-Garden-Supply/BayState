@@ -6,7 +6,9 @@ import base64
 import io
 import logging
 import os
+import re
 from typing import Any
+from urllib.parse import urlparse
 import httpx
 from openai import AsyncOpenAI
 
@@ -19,6 +21,66 @@ try:
 except ImportError:
     logger.warning("Pillow not installed — image resizing for OCR will be unavailable")
     HAS_PIL = False
+
+
+def _redact_url(url: str, max_query_len: int = 4) -> str:
+    """Redact query strings/fragments from URLs for safe logging."""
+    try:
+        parsed = urlparse(url)
+        query = parsed.query
+        if len(query) > max_query_len:
+            query = query[:max_query_len] + "..."
+        fragment = parsed.fragment
+        if fragment:
+            fragment = "..."
+        rebuilt = parsed._replace(query=query, fragment=fragment).geturl()
+        return rebuilt
+    except Exception:
+        return url[:100]
+
+
+_PRIVATE_IP_PATTERNS = (
+    re.compile(r"^127\."),
+    re.compile(r"^10\."),
+    re.compile(r"^172\.(1[6-9]|2\d|3[01])\."),
+    re.compile(r"^192\.168\."),
+    re.compile(r"^0\."),
+    re.compile(r"^169\.254\."),
+    re.compile(r"^::1$", re.I),
+    re.compile(r"^fc00:", re.I),
+    re.compile(r"^fe80:", re.I),
+)
+
+
+async def _validate_image_url(url: str) -> str | None:
+    """Validate an image URL for SSRF safety and content type.
+    
+    Returns normalized URL string on success, None on failure.
+    """
+    if not isinstance(url, str) or not url.strip():
+        return None
+
+    # Allow data URLs directly
+    if url.startswith("data:image/"):
+        return url
+
+    # Only http/https allowed
+    if not url.startswith(("http://", "https://")):
+        return None
+
+    # Reject private/reserved hostnames
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"):
+            return None
+        for pattern in _PRIVATE_IP_PATTERNS:
+            if pattern.search(hostname):
+                return None
+    except Exception:
+        return None
+
+    return url
 
 
 def resize_image_bytes(image_bytes: bytes, max_dim: int = 1024) -> bytes:
@@ -51,40 +113,88 @@ def resize_image_bytes(image_bytes: bytes, max_dim: int = 1024) -> bytes:
     return image_bytes
 
 
+MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 async def fetch_image_as_data_url(url: str) -> str | None:
-    """Fetch image and return a base64-encoded data URL."""
-    if not isinstance(url, str) or not url.strip():
+    """Fetch image and return a base64-encoded data URL.
+    
+    Performs SSRF-safe validation, size limits, and redirect revalidation.
+    """
+    # Validate URL for SSRF safety
+    validated = await _validate_image_url(url)
+    if not validated:
+        redacted = _redact_url(url)
+        logger.warning("OCR fetch: blocked invalid URL: %s", redacted)
         return None
 
-    if url.startswith("data:image/"):
-        return url
+    if validated.startswith("data:image/"):
+        return validated
 
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "")
-            if not content_type.lower().startswith("image/"):
-                import mimetypes
-                guess, _ = mimetypes.guess_type(url)
-                if guess and guess.startswith("image/"):
-                    content_type = guess
-                else:
-                    logger.warning("OCR fetch: URL %s is not a recognized image: %s", url, content_type)
-                    return None
-            
-            image_bytes = response.content
-            # Resize image to save tokens
-            resized_bytes = resize_image_bytes(image_bytes)
-            
-            # Ensure proper content type for data url
-            if not content_type.startswith("image/"):
-                content_type = "image/jpeg"
-                
-            base64_data = base64.b64encode(resized_bytes).decode("utf-8")
-            return f"data:{content_type};base64,{base64_data}"
+        async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+            current_url = validated
+            for _ in range(5):  # max 5 redirects
+                response = await client.get(current_url)
+                response.raise_for_status()
+
+                # Handle redirect
+                if 300 <= response.status_code < 400:
+                    location = response.headers.get("location")
+                    if not location:
+                        break
+                    # Validate redirect target
+                    next_url = location if location.startswith(("http://", "https://")) else str(urlparse(current_url)._replace(path=location))
+                    next_valid = await _validate_image_url(next_url)
+                    if not next_valid:
+                        redacted = _redact_url(next_url)
+                        logger.warning("OCR fetch: redirect blocked at %s", redacted)
+                        return None
+                    current_url = next_valid
+                    continue
+
+                # Check content type
+                content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+                if not content_type.startswith("image/"):
+                    import mimetypes
+                    guess, _ = mimetypes.guess_type(current_url)
+                    if guess and guess.startswith("image/"):
+                        content_type = guess
+                    else:
+                        redacted = _redact_url(current_url)
+                        logger.warning("OCR fetch: %s is not a recognized image: %s", redacted, content_type)
+                        return None
+
+                # Read with size cap
+                reader = response.aiter_bytes()
+                chunks = []
+                total = 0
+                async for chunk in reader:
+                    total += len(chunk)
+                    if total > MAX_IMAGE_BYTES:
+                        redacted = _redact_url(current_url)
+                        logger.warning("OCR fetch: image too large at %s (%d bytes)", redacted, total)
+                        return None
+                    chunks.append(chunk)
+
+                image_bytes = b"".join(chunks)
+
+                # Resize to save tokens
+                resized_bytes = resize_image_bytes(image_bytes)
+
+                # Ensure proper content type
+                if not content_type.startswith("image/"):
+                    content_type = "image/jpeg"
+
+                base64_data = base64.b64encode(resized_bytes).decode("utf-8")
+                return f"data:{content_type};base64,{base64_data}"
+
+            redacted = _redact_url(current_url)
+            logger.warning("OCR fetch: too many redirects for %s", redacted)
+            return None
     except Exception as e:
-        logger.warning("OCR fetch: failed to download/process %s: %s", url, e)
+        redacted = _redact_url(url)
+        logger.warning("OCR fetch: failed to download/process %s: %s", redacted, e)
         return None
 
 
@@ -96,6 +206,7 @@ async def extract_text_from_image_urls(
     model: str = "gpt-4o-mini",
     prompt: str | None = None,
     max_tokens: int = 500,
+    timeout: int = 120,
 ) -> str:
     """Extract packaging text from product images using a Vision LLM."""
     if not image_urls:
@@ -145,7 +256,7 @@ async def extract_text_from_image_urls(
     user_prompt = prompt or default_prompt
 
     # Create AsyncOpenAI client
-    client_kwargs: dict[str, Any] = {"api_key": resolved_api_key}
+    client_kwargs: dict[str, Any] = {"api_key": resolved_api_key, "timeout": timeout}
     if resolved_base_url:
         client_kwargs["base_url"] = resolved_base_url
         
