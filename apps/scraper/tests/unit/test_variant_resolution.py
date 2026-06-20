@@ -156,6 +156,52 @@ async def test_woocommerce_variant_resolver_success(mock_scoring_utils, mock_mat
 
 
 @pytest.mark.asyncio
+async def test_woocommerce_variant_resolver_matches_upc_in_image_metadata(
+    mock_scoring_utils, mock_matching_utils, mock_extraction_utils
+):
+    resolver = WooCommerceVariantResolver(
+        scoring_utils=mock_scoring_utils,
+        matching_utils=mock_matching_utils,
+        extraction_utils=mock_extraction_utils,
+    )
+
+    url = "https://earthanimal.com/product/no-hide-seasonal-collection-strawberries-cream-rolls"
+    upc = "850068922000"
+
+    variations_json = json.dumps([
+        {
+            "variation_id": 254027,
+            "sku": "11357",
+            "display_price": 5.24,
+            "attributes": {"attribute_pa_size": "small", "attribute_packing": "1 ct."},
+            "image": {"title": "850068922024_MAIN", "src": "https://example.com/850068922024_MAIN.png"},
+        },
+        {
+            "variation_id": 254030,
+            "sku": "11358",
+            "display_price": 10.49,
+            "attributes": {"attribute_pa_size": "medium", "attribute_packing": "1 ct."},
+            "image": {"title": "850068922000_MAIN", "src": "https://example.com/850068922000_MAIN.png"},
+        },
+    ])
+    escaped_variations = html_module.escape(variations_json)
+    html = f'<html><body><form class="variations_form" data-product_variations="{escaped_variations}"></form></body></html>'
+
+    res_url, res_html, res_md, status = await resolver.resolve(
+        url=url,
+        upc=upc,
+        product_name="EARTH ANIMAL NO HIDE STRWB CHEW MD",
+        brand="Earth Animal",
+        html=html,
+    )
+
+    assert status == "exact_variant"
+    assert res_url == f"{url}?variation_id=254030"
+    assert "850068922000_MAIN" in res_html
+    assert "size: medium" in res_html
+
+
+@pytest.mark.asyncio
 async def test_woocommerce_variant_resolver_sku_matching(mock_scoring_utils, mock_matching_utils, mock_extraction_utils):
     resolver = WooCommerceVariantResolver(
         scoring_utils=mock_scoring_utils,

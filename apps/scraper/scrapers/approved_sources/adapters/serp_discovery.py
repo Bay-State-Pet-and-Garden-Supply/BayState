@@ -264,6 +264,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
                     e,
                 )
 
+        consolidated_name = self._preserve_register_variant_hint(register_name, consolidated_name)
         self._last_consolidated_name = consolidated_name
         self._last_variant_hints = self._variant_hints_for_name(consolidated_name)
 
@@ -930,6 +931,50 @@ Return JSON:
         hints = set(self._matching.extract_variant_tokens(name))
         hints.update(self._qualitative_size_tokens(name))
         return sorted(hints)
+
+    def _preserve_register_variant_hint(self, register_name: str | None, consolidated_name: str | None) -> str | None:
+        """Do not let LLM name cleanup drop the POS size/variant hint.
+
+        SERP snippets and brand pages often name the product line while the POS
+        name carries the target variant (SM/MD, 12 lb, etc.). If the LLM returns
+        a clean product-line name without that hint, append the missing hint so
+        downstream Crawl4AI verification targets the exact Product Variant.
+        """
+        if not register_name or not consolidated_name:
+            return consolidated_name
+
+        consolidated_hints = set(self._variant_hints_for_name(consolidated_name))
+        missing_labels: list[str] = []
+
+        size_label_by_token = {
+            "extra_small": "Extra Small",
+            "small": "Small",
+            "medium": "Medium",
+            "large": "Large",
+            "xl": "XL",
+            "xxl": "XXL",
+        }
+        for token in self._qualitative_size_tokens(register_name):
+            if token not in consolidated_hints:
+                missing_labels.append(size_label_by_token.get(token, token.title()))
+
+        numeric_pattern = re.compile(
+            r"\b(\d+(?:\.\d+)?)\s*(ct|count|pack|packs|pk|lb|lbs|oz|qt|quart|quarts|gal|gallon|gallons)\b",
+            re.IGNORECASE,
+        )
+        for match in numeric_pattern.finditer(register_name):
+            normalized = self._matching.extract_variant_tokens(match.group(0))
+            if normalized and normalized.isdisjoint(consolidated_hints):
+                missing_labels.append(match.group(0))
+
+        if not missing_labels:
+            return consolidated_name
+
+        deduped: list[str] = []
+        for label in missing_labels:
+            if label.lower() not in {item.lower() for item in deduped}:
+                deduped.append(label)
+        return f"{consolidated_name} {' '.join(deduped)}".strip()
 
     @staticmethod
     def _candidate_text(candidate: dict[str, Any]) -> str:

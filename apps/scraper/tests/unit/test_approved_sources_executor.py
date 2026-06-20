@@ -1037,6 +1037,30 @@ class TestExecutor:
 
         assert scored[0]["url"].endswith("small")
 
+    def test_serp_discovery_preserves_register_size_hint_after_name_cleanup(self):
+        """LLM-cleaned names must retain POS SM/MD size hints for variant targeting."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+
+        plan = _make_plan(entries=[])
+        entry = ApprovedSourcePlanEntry(
+            sourceType="official_brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
+            domains=["earthanimal.com"],
+            adapterSlug="serp_discovery",
+            priority=100,
+        )
+        adapter = SerpDiscoveryAdapter(entry, plan)
+
+        assert adapter._preserve_register_variant_hint(
+            "EARTH ANIMAL NO HIDE STRWB CHEW MD",
+            "Earth Animal No-Hide Strawberries & Cream Roll",
+        ).endswith("Medium")
+        assert adapter._preserve_register_variant_hint(
+            "EARTH ANIMAL NO HIDE STRWB CHEW SM",
+            "Earth Animal No-Hide Strawberries & Cream Roll",
+        ).endswith("Small")
+
     def test_serp_discovery_no_llm_fallback_skips_conflicting_variant(self):
         """Without an LLM, fallback selection should not choose a known wrong size variant."""
         from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter

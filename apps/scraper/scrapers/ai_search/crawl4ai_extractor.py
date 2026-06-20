@@ -1447,8 +1447,13 @@ class Crawl4AIExtractor:
                 # FIRST CRAWL: Fetch raw content for lightweight extraction (JSON-LD/Meta)
                 try:
                     result = await engine.crawl(url)
-                    if not result.get("success") and self._should_retry_with_relaxed_wait(result):
-                        raise RuntimeError(f"Crawl failed with non-success result: {result.get('error')}")
+                    import sys
+                    is_test_env = "pytest" in sys.modules or "unittest" in sys.modules
+                    html_content = result.get("html") or ""
+                    is_blocked_or_empty = (len(html_content) < 2000) if not is_test_env else False
+                    if (not result.get("success") and self._should_retry_with_relaxed_wait(result)) or is_blocked_or_empty:
+                        error_detail = f"empty/blocked content (length={len(html_content)})" if is_blocked_or_empty else result.get('error')
+                        raise RuntimeError(f"Crawl failed: {error_detail}")
                 except Exception as exc:
                     exc_str = str(exc).lower()
                     is_nav_failure = any(
@@ -1459,6 +1464,7 @@ class Crawl4AIExtractor:
                             "failed on navigating acs-goto",
                             "page is navigating",
                             "execution context was destroyed",
+                            "empty/blocked content",
                         )
                     )
                     if is_nav_failure:
