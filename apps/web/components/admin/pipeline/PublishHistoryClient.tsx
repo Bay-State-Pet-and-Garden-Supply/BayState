@@ -75,6 +75,20 @@ const formatTime = (isoString: string) => {
   });
 };
 
+const formatDateTime = (isoString: string) => {
+  const date = new Date(isoString);
+  return date.toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+
 export function PublishHistoryClient({
   initialProducts,
   brands,
@@ -369,7 +383,7 @@ export function PublishHistoryClient({
                 <table className="w-full text-left text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-white/5 bg-white/[0.01] text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      <th className="px-4 py-3 sm:px-6">Time (ET)</th>
+                      <th className="px-4 py-3 sm:px-6">Date/Time (ET)</th>
                       <th className="px-4 py-3">Brand</th>
                       <th className="px-4 py-3">Product Name</th>
                       <th className="px-4 py-3">UPC / SKU</th>
@@ -380,7 +394,7 @@ export function PublishHistoryClient({
                     {group.products.map((p) => (
                       <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-4 py-3 sm:px-6 text-muted-foreground whitespace-nowrap tabular-nums">
-                          {formatTime(p.published_at)}
+                          {formatDateTime(p.published_at)}
                         </td>
                         <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                           {p.brandName}

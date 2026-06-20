@@ -140,6 +140,7 @@ Examples of BAD product line names (too generic — these are categories, not pr
 
 Rules:
 - Extract the core manufacturer product line from the product name, stripping marketing fluff.
+- Strip package size, count, flavor, color, scent, and form factors/formats (like "Rolls", "Stix", "Chews", "Bone", "Braid", "Strips", "Bites", "Pate", "Stew") from the product line name if they represent variants of the same line. For example, "Earth Animal No-Hide Chicken Rolls" and "Earth Animal No-Hide Beef Stix" both belong to the "No-Hide" product line. "Nylabone Power Chew Infinity Braid Bone" and "Nylabone Power Chew Frenzy Bone" both belong to the "Power Chew" product line.
 - Marketplace sources (Amazon, eBay, Walmart) often pad names with SEO keywords like "human grade," "grain free," "natural," "premium." IGNORE these padding words — focus on the actual product line name.
 - If multiple sources show different names for the same product, prefer the distributor/manufacturer source over marketplace sources.
 - Look at the product name from the TRUSTED source (listed first) — it's cleaner and closer to the manufacturer's actual naming.
@@ -161,7 +162,10 @@ Output contract — respond with valid JSON matching this structure:
  * Build the user prompt for a single product classification.
  * Includes source names from all sources for cross-referencing.
  */
-export function buildClassificationUserPrompt(evidence: ProductLineClassificationInput['evidence'] & { allSourceNames?: string[] }): string {
+export function buildClassificationUserPrompt(
+    evidence: ProductLineClassificationInput['evidence'] & { allSourceNames?: string[] },
+    siblings?: Array<{ upc: string; name: string }>
+): string {
     const parts: string[] = [];
     if (evidence.brand) parts.push(`Brand: ${evidence.brand}`);
     if (evidence.name) parts.push(`Trusted Source Name: ${evidence.name}`);
@@ -173,6 +177,14 @@ export function buildClassificationUserPrompt(evidence: ProductLineClassificatio
         parts.push(`\nAll source names for cross-reference:`);
         for (const sn of evidence.allSourceNames.slice(0, 6)) {
             parts.push(`  ${sn}`);
+        }
+    }
+
+    // Include batch siblings
+    if (siblings && siblings.length > 0) {
+        parts.push(`\nOther products of the same brand in this batch (use to ensure consistent product line naming):`);
+        for (const sib of siblings.slice(0, 10)) {
+            parts.push(`  - ${sib.name} (UPC: ${sib.upc})`);
         }
     }
 

@@ -20,12 +20,17 @@ export function normalizeProductLineKey(label: string): string {
 }
 
 /** Load all known product lines from the database as classification vocabulary. */
-export async function loadKnownProductLines(): Promise<ProductLineRecord[]> {
+export async function loadKnownProductLines(brandIds?: string[]): Promise<ProductLineRecord[]> {
     const supabase = await createAdminClient();
-    const { data } = await supabase
+    let query = supabase
         .from('product_lines')
-        .select('id, canonical_name, normalized_key, brand_id, created_at, updated_at')
-        .order('canonical_name');
+        .select('id, canonical_name, normalized_key, brand_id, created_at, updated_at');
+
+    if (brandIds && brandIds.length > 0) {
+        query = query.or(`brand_id.in.(${brandIds.join(',')}),brand_id.is.null`);
+    }
+
+    const { data } = await query.order('canonical_name');
     return (data || []) as ProductLineRecord[];
 }
 

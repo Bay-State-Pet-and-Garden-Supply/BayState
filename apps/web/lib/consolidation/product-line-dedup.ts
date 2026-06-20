@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/lib/supabase/server';
 import { normalizeProductLineKey, upsertProductLine, type ProductLineRecord } from './product-lines';
 
 export interface DedupResult {
@@ -31,15 +32,66 @@ function similarity(a: string, b: string): number {
     return 1 - levenshtein(a, b) / maxLen;
 }
 
-const AUTO_MERGE_THRESHOLD = 0.95;
-const AMBIGUOUS_THRESHOLD = 0.85;
+/** Strip common trailing format words recursively. */
+function getCoreNormalizedKey(key: string): string {
+    let core = key;
+    const suffixes = [
+        'rolls', 'roll', 'stix', 'chews', 'chew', 'bones', 'bone',
+        'braids', 'braid', 'strips', 'strip', 'bites', 'bite',
+        'pates', 'pate', 'stews', 'stew', 'treats', 'treat',
+        'foods', 'food', 'formulas', 'formula', 'recipes', 'recipe',
+        'toys', 'toy', 'wholesome', 'natural', 'organic', 'puffs', 'puff'
+    ];
+    
+    let stripped = true;
+    while (stripped) {
+        stripped = false;
+        for (const suffix of suffixes) {
+            if (core.endsWith(suffix) && core.length > suffix.length) {
+                core = core.slice(0, -suffix.length);
+                stripped = true;
+                break;
+            }
+        }
+    }
+    return core;
+}
+
+/** Check if two normalized keys match (fuzzy, substring, or exact). */
+function checkFuzzyMatch(keyA: string, keyB: string): { similarity: number; autoMerge: boolean } {
+    if (keyA === keyB) {
+        return { similarity: 1.0, autoMerge: true };
+    }
+
+    const coreA = getCoreNormalizedKey(keyA);
+    const coreB = getCoreNormalizedKey(keyB);
+
+    if (coreA === coreB && coreA.length >= 3) {
+        return { similarity: 0.96, autoMerge: true };
+    }
+
+    const simFull = similarity(keyA, keyB);
+    const simCore = similarity(coreA, coreB);
+    const maxSim = Math.max(simFull, simCore);
+
+    // Check if one is a core substring of the other (with min length to prevent overly broad matches)
+    const isCoreSubstring = (coreA.length >= 6 && coreB.length >= 6) && 
+        (coreA.includes(coreB) || coreB.includes(coreA));
+
+    if (maxSim >= 0.92 || (isCoreSubstring && maxSim >= 0.85)) {
+        return { similarity: maxSim, autoMerge: true };
+    }
+
+    if (maxSim >= 0.80 || isCoreSubstring) {
+        return { similarity: maxSim, autoMerge: false };
+    }
+
+    return { similarity: maxSim, autoMerge: false };
+}
 
 /**
- * Run post-classification fuzzy dedup on a set of raw labels.
- * Returns canonical labels (upserted to product_lines) and any ambiguous UPCs.
- *
- * @param rawAssignments - Map of UPC to raw label string from classification
- * @param brandId - Optional brand ID to scope product lines
+ * Run post-classification fuzzy dedup on a set of raw assignments.
+ * Compares new raw labels against each other and against existing product lines in the DB.
  */
 export async function deduplicateProductLines(
     rawAssignments: Map<string, string>,
@@ -65,65 +117,116 @@ export async function deduplicateProductLines(
 
     const distinctKeys = Array.from(groups.keys());
 
-    // Auto-merge: for each pair of distinct keys, if similarity > 0.95, merge them
-    const merged = new Map<string, string>(); // normalized_key -> canonical_key
-    const processed = new Set<string>();
+    // 1. Load existing product lines from the database for this brand (or all if brandId is null)
+    const supabase = await createAdminClient();
+    let dbQuery = supabase.from('product_lines').select('*');
+    if (brandId) {
+        dbQuery = dbQuery.or(`brand_id.eq.${brandId},brand_id.is.null`);
+    }
+    const { data: dbLines } = await dbQuery;
+    const existingProductLines = (dbLines || []) as ProductLineRecord[];
 
-    for (const key of distinctKeys) {
-        if (processed.has(key)) continue;
+    // 2. Map new keys to existing DB product lines if a close match exists
+    const mergedToDb = new Map<string, ProductLineRecord>(); // new_normalized_key -> existing_record
 
-        let bestMatch: string | null = null;
+    for (const newKey of distinctKeys) {
+        let bestMatch: ProductLineRecord | null = null;
         let bestSimilarity = 0;
+        let bestAutoMerge = false;
 
-        for (const other of distinctKeys) {
-            if (other === key || processed.has(other)) continue;
-            const sim = similarity(key, other);
-            if (sim > AUTO_MERGE_THRESHOLD && sim > bestSimilarity) {
-                bestSimilarity = sim;
-                bestMatch = other;
+        for (const existingLine of existingProductLines) {
+            const existingKey = existingLine.normalized_key;
+            const match = checkFuzzyMatch(newKey, existingKey);
+
+            if (match.autoMerge) {
+                if (!bestAutoMerge || match.similarity > bestSimilarity) {
+                    bestSimilarity = match.similarity;
+                    bestMatch = existingLine;
+                    bestAutoMerge = true;
+                }
+            } else if (match.similarity >= 0.80 && !bestAutoMerge) {
+                if (match.similarity > bestSimilarity) {
+                    bestSimilarity = match.similarity;
+                    bestMatch = existingLine;
+                }
             }
         }
 
         if (bestMatch) {
-            // Merge: both keys use the longest label's key
-            const canonical = key.length >= bestMatch.length ? key : bestMatch;
-            merged.set(key, canonical);
-            merged.set(bestMatch, canonical);
-            processed.add(key);
-            processed.add(bestMatch);
-        } else {
-            merged.set(key, key);
-            processed.add(key);
-        }
-    }
-
-    // Flag ambiguous: high similarity but not auto-merged (second pass after merges settled)
-    const resolvedKeys = Array.from(new Set(merged.values()));
-
-    for (let i = 0; i < resolvedKeys.length; i++) {
-        for (let j = i + 1; j < resolvedKeys.length; j++) {
-            const sim = similarity(resolvedKeys[i], resolvedKeys[j]);
-            if (sim > AMBIGUOUS_THRESHOLD && sim <= AUTO_MERGE_THRESHOLD) {
-                // Find all UPCs associated with either key
-                for (const [upc, nk] of normalizedKeys) {
-                    const assignedTo = merged.get(nk);
-                    if (assignedTo === resolvedKeys[i] || assignedTo === resolvedKeys[j]) {
-                        ambiguousUpcs.add(upc);
-                    }
+            if (bestAutoMerge) {
+                mergedToDb.set(newKey, bestMatch);
+                canonicalLabels.set(newKey, bestMatch);
+            } else {
+                // Flag all UPCs for this key as ambiguous
+                const upcs = groups.get(newKey) || [];
+                for (const upc of upcs) {
+                    ambiguousUpcs.add(upc);
                 }
+                // Still register them under the match as fallback
+                mergedToDb.set(newKey, bestMatch);
+                canonicalLabels.set(newKey, bestMatch);
             }
         }
     }
 
-    // Upsert canonical product lines
-    for (const [key, canonicalKey] of merged) {
-        if (!canonicalLabels.has(canonicalKey)) {
-            const upcs = groups.get(key) || [];
-            const displayName = upcs.length > 0
-                ? rawAssignments.get(upcs[0]) || key
-                : key;
-            const record = await upsertProductLine(displayName, brandId);
-            canonicalLabels.set(canonicalKey, record);
+    // 3. For any keys NOT merged to DB, perform batch-local deduplication
+    const unmergedKeys = distinctKeys.filter(k => !mergedToDb.has(k));
+    const clusters: Array<{ representative: string; keys: string[]; isAmbiguous: boolean }> = [];
+
+    for (const key of unmergedKeys) {
+        let matchedCluster: typeof clusters[0] | null = null;
+        let bestSimilarity = 0;
+        let bestAutoMerge = false;
+
+        for (const cluster of clusters) {
+            const match = checkFuzzyMatch(key, cluster.representative);
+            if (match.autoMerge) {
+                if (!bestAutoMerge || match.similarity > bestSimilarity) {
+                    bestSimilarity = match.similarity;
+                    matchedCluster = cluster;
+                    bestAutoMerge = true;
+                }
+            } else if (match.similarity >= 0.80 && !bestAutoMerge) {
+                if (match.similarity > bestSimilarity) {
+                    bestSimilarity = match.similarity;
+                    matchedCluster = cluster;
+                }
+            }
+        }
+
+        if (matchedCluster) {
+            matchedCluster.keys.push(key);
+            if (!bestAutoMerge) {
+                matchedCluster.isAmbiguous = true;
+            }
+        } else {
+            clusters.push({
+                representative: key,
+                keys: [key],
+                isAmbiguous: false,
+            });
+        }
+    }
+
+    // 4. Upsert any brand new canonical product lines and map all keys in clusters
+    for (const cluster of clusters) {
+        const canonicalKey = cluster.representative;
+        const upcs = groups.get(canonicalKey) || [];
+        const displayName = upcs.length > 0
+            ? rawAssignments.get(upcs[0]) || canonicalKey
+            : canonicalKey;
+
+        const record = await upsertProductLine(displayName, brandId);
+
+        for (const key of cluster.keys) {
+            canonicalLabels.set(key, record);
+            
+            if (cluster.isAmbiguous) {
+                const keyUpcs = groups.get(key) || [];
+                for (const upc of keyUpcs) {
+                    ambiguousUpcs.add(upc);
+                }
+            }
         }
     }
 
