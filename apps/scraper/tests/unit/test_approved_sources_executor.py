@@ -1075,6 +1075,118 @@ class TestExecutor:
 
         assert selected == "https://mywoof.com/products/pupsicle-refill-small"
 
+    @patch("scrapers.ai_search.variant_resolvers.resolve_family_variant", new_callable=AsyncMock)
+    @patch("src.crawl4ai_engine.engine.Crawl4AIEngine")
+    def test_serp_discovery_crawl_verification_switches_to_resolved_variant_url(
+        self,
+        mock_engine_class,
+        mock_resolve_variant,
+    ):
+        """Candidate verification should switch sibling URLs to the exact variant URL when resolvable."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+        import asyncio
+
+        plan = _make_plan(entries=[])
+        entry = ApprovedSourcePlanEntry(
+            sourceType="official_brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
+            domains=["example.com"],
+            adapterSlug="serp_discovery",
+            priority=100,
+        )
+        adapter = SerpDiscoveryAdapter(entry, plan)
+
+        mock_engine = MagicMock()
+        mock_engine.__aenter__ = AsyncMock(return_value=mock_engine)
+        mock_engine.__aexit__ = AsyncMock(return_value=None)
+        mock_engine.crawl_many = AsyncMock(return_value=[{
+            "success": True,
+            "url": "https://example.com/products/dog-food-40-lb",
+            "html": "<html>Dog Food 40 lb <a href='/products/dog-food-12-lb'>12 lb</a></html>",
+            "markdown": "Dog Food variants: 12 lb, 40 lb",
+            "metadata": {"title": "Dog Food 40 lb"},
+        }])
+        mock_engine_class.return_value = mock_engine
+        mock_resolve_variant.return_value = (
+            "https://example.com/products/dog-food-12-lb",
+            None,
+            None,
+            "exact_variant",
+        )
+
+        verified = asyncio.run(adapter._verify_candidates_with_crawl4ai(
+            candidates=[{
+                "url": "https://example.com/products/dog-food-40-lb",
+                "title": "Dog Food 40 lb",
+                "description": "Sibling variant page",
+            }],
+            upc="123456789012",
+            consolidated_name="Dog Food 12 lb",
+            brand_name="Example",
+        ))
+
+        assert verified[0]["url"] == "https://example.com/products/dog-food-12-lb"
+        assert verified[0]["_variant_verification"] == "resolved_exact_variant"
+        assert adapter._fallback_url_from_candidates(
+            verified,
+            upc="123456789012",
+            target_name="Dog Food 12 lb",
+        ) == "https://example.com/products/dog-food-12-lb"
+
+    @patch("scrapers.ai_search.variant_resolvers.resolve_family_variant", new_callable=AsyncMock)
+    @patch("src.crawl4ai_engine.engine.Crawl4AIEngine")
+    def test_serp_discovery_crawl_verification_rejects_unresolved_wrong_variant(
+        self,
+        mock_engine_class,
+        mock_resolve_variant,
+    ):
+        """A crawled sibling page with no target variant evidence should be removed."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+        import asyncio
+
+        plan = _make_plan(entries=[])
+        entry = ApprovedSourcePlanEntry(
+            sourceType="official_brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
+            domains=["example.com"],
+            adapterSlug="serp_discovery",
+            priority=100,
+        )
+        adapter = SerpDiscoveryAdapter(entry, plan)
+
+        mock_engine = MagicMock()
+        mock_engine.__aenter__ = AsyncMock(return_value=mock_engine)
+        mock_engine.__aexit__ = AsyncMock(return_value=None)
+        mock_engine.crawl_many = AsyncMock(return_value=[{
+            "success": True,
+            "url": "https://example.com/products/dog-food-40-lb",
+            "html": "<html>Dog Food 40 lb only</html>",
+            "markdown": "Dog Food 40 lb",
+            "metadata": {"title": "Dog Food 40 lb"},
+        }])
+        mock_engine_class.return_value = mock_engine
+        mock_resolve_variant.return_value = (
+            "https://example.com/products/dog-food-40-lb",
+            None,
+            None,
+            "family_page_default",
+        )
+
+        verified = asyncio.run(adapter._verify_candidates_with_crawl4ai(
+            candidates=[{
+                "url": "https://example.com/products/dog-food-40-lb",
+                "title": "Dog Food 40 lb",
+                "description": "Sibling variant page",
+            }],
+            upc="123456789012",
+            consolidated_name="Dog Food 12 lb",
+            brand_name="Example",
+        ))
+
+        assert verified == []
+
     @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
     def test_serp_discovery_adapter_bypasses_unsafe_direct_matches_in_phase_1(self, mock_search_client_class):
         """SerpDiscoveryAdapter should not return unsafe URLs in Phase 1 even if they match the official domain."""

@@ -17,7 +17,7 @@ import logging
 import os
 import re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from scrapers.approved_sources.adapters.base import ApprovedSourceAdapter
 from scrapers.ai_search.enrichment_models import (
@@ -135,7 +135,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
         if not brand_domain and self.plan.brand:
             brand_domain = f"{self.plan.brand.slug}.com"
 
-        # 1. Resolve URL via SERP + LLM discovery
+        # 1. Resolve URL via SERP + LLM discovery + Crawl4AI candidate verification
         url = await self._resolve_approved_url(upc, register_name, brand_name, brand_domain)
         if not url:
             logger.info(
@@ -463,6 +463,316 @@ Return JSON in this format:
 
         return register_name
 
+    def _verification_enabled(self) -> bool:
+        return os.getenv("SERP_DISCOVERY_CRAWL_VERIFY", "1").strip().lower() not in {"0", "false", "no"}
+
+    def _verification_limit(self) -> int:
+        raw_limit = os.getenv("SERP_DISCOVERY_VERIFY_LIMIT", "4")
+        try:
+            return max(0, min(8, int(raw_limit)))
+        except ValueError:
+            return 4
+
+    def _build_verification_engine_config(self, upc: str, brand_name: str | None, target_name: str) -> dict[str, Any]:
+        from scrapers.utils.ai_utils import get_scroll_javascript
+
+        bm25_query = " ".join(filter(None, [upc, brand_name, target_name]))
+        return {
+            "browser": {
+                "headless": True,
+                "viewport": {"width": 1600, "height": 1000},
+                "enable_stealth": True,
+            },
+            "crawler": {
+                "magic": True,
+                "simulate_user": True,
+                "override_navigator": True,
+                "remove_overlay_elements": True,
+                "cache_mode": "ENABLED",
+                "js_code": get_scroll_javascript(),
+                "wait_until": "domcontentloaded",
+                "delay_before_return_html": 1.0,
+                "wait_for_images": False,
+                "scan_full_page": True,
+                "scroll_delay": 0.25,
+                "timeout": 22000,
+                "max_retries": 1,
+                "pruning_enabled": True,
+                "pruning_user_query": bm25_query,
+                "excluded_tags": ["nav", "footer", "header", "aside"],
+            },
+        }
+
+    @staticmethod
+    def _crawl_text_for_variant_check(crawl_result: dict[str, Any], candidate: dict[str, Any]) -> str:
+        metadata = crawl_result.get("metadata") if isinstance(crawl_result.get("metadata"), dict) else {}
+        parts = [
+            SerpDiscoveryAdapter._candidate_text(candidate),
+            str(metadata.get("title") or ""),
+            str(metadata.get("description") or ""),
+            str(crawl_result.get("markdown") or "")[:8000],
+            str(crawl_result.get("fit_markdown") or "")[:8000],
+            str(crawl_result.get("html") or "")[:12000],
+        ]
+        return "\n".join(part for part in parts if part)
+
+    @staticmethod
+    def _extract_productish_links(html: str, page_url: str, limit: int = 30) -> list[dict[str, str]]:
+        if not html:
+            return []
+
+        links: list[dict[str, str]] = []
+        seen: set[str] = set()
+        pattern = re.compile(
+            r"<a\b[^>]*href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        for match in pattern.finditer(html):
+            href = match.group(1).strip()
+            text = re.sub(r"<[^>]+>", " ", match.group(2))
+            text = " ".join(text.split())[:160]
+            if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+                continue
+            absolute = urljoin(page_url, href)
+            lower = f"{absolute} {text}".lower()
+            if not any(marker in lower for marker in ("product", "variant", "size", "lb", "oz", "count", "pack")):
+                continue
+            if absolute in seen:
+                continue
+            seen.add(absolute)
+            links.append({"url": absolute, "text": text})
+            if len(links) >= limit:
+                break
+        return links
+
+    async def _llm_resolve_variant_url_from_page(
+        self,
+        *,
+        page_url: str,
+        html: str,
+        markdown: str,
+        upc: str,
+        target_name: str,
+        brand_name: str | None,
+    ) -> str | None:
+        """Ask the LLM to find an explicit target-variant URL from crawled page evidence.
+
+        This is intentionally constrained: the model may only return a URL that
+        appears in the crawled page evidence or the current page URL. It cannot
+        invent query params or guess a selector click.
+        """
+        llm = self._get_llm_provider()
+        if not llm:
+            return None
+
+        links = self._extract_productish_links(html, page_url)
+        link_evidence = "\n".join(
+            f"[{idx + 1}] {link['text']} -> {link['url']}"
+            for idx, link in enumerate(links)
+        ) or "(No product-like links found.)"
+        page_excerpt = "\n".join(
+            [
+                (markdown or "")[:5000],
+                re.sub(r"\s+", " ", html or "")[:5000],
+            ]
+        )
+        variant_hints = ", ".join(self._variant_hints_for_name(target_name)) or "None"
+
+        system_prompt = (
+            "You resolve ecommerce product variant URLs from already-crawled page evidence. "
+            "Return JSON only. Never invent URLs or query parameters."
+        )
+        user_prompt = f"""Current page URL: {page_url}
+Target UPC: {upc}
+Target Product Variant: {target_name}
+Target Variant Hints: {variant_hints}
+Brand: {brand_name or 'Unknown'}
+
+Product-like links found on the page:
+{link_evidence}
+
+Page excerpt:
+{page_excerpt}
+
+Instructions:
+1. Determine whether the current page itself is the exact target variant, a sibling/wrong variant page, or a product-family page listing variants.
+2. If the target variant has an explicit URL in the page evidence, return that exact URL.
+3. If the current page is already clearly the target variant, return the current page URL.
+4. If the page mentions the target variant but no explicit URL is available, return null.
+5. If the page is a different variant and does not expose the target variant, return null.
+
+Return JSON:
+{{
+  "selected_url": "https://example.com/exact-target-variant-or-null",
+  "reason": "brief evidence-based reason"
+}}
+"""
+        schema = {
+            "type": "object",
+            "properties": {
+                "selected_url": {"type": ["string", "null"]},
+                "reason": {"type": "string"},
+            },
+            "required": ["selected_url", "reason"],
+        }
+
+        try:
+            response = await llm.generate_text(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.0,
+                response_schema=schema,
+            )
+            self._llm_used_in_discovery = True
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:-3].strip()
+            elif raw_text.startswith("```"):
+                raw_text = raw_text[3:-3].strip()
+            data = json.loads(raw_text)
+            selected_url = data.get("selected_url")
+            reason = data.get("reason", "")
+            logger.info("[SerpDiscoveryAdapter] LLM page variant resolver: %s", reason)
+            if not selected_url:
+                return None
+
+            selected_url = urljoin(page_url, str(selected_url).strip())
+            allowed_urls = {page_url, *(link["url"] for link in links)}
+            normalized_allowed = {allowed.rstrip("/") for allowed in allowed_urls}
+            if selected_url.rstrip("/") not in normalized_allowed:
+                logger.warning(
+                    "[SerpDiscoveryAdapter] LLM returned URL not present in page evidence; rejecting: %s",
+                    selected_url,
+                )
+                return None
+            return selected_url
+        except Exception as exc:
+            logger.warning("[SerpDiscoveryAdapter] LLM page variant URL resolution failed: %s", exc)
+            return None
+
+    async def _verify_candidates_with_crawl4ai(
+        self,
+        *,
+        candidates: list[dict[str, Any]],
+        upc: str,
+        consolidated_name: str,
+        brand_name: str | None,
+    ) -> list[dict[str, Any]]:
+        """Crawl top SERP candidates and verify/switch exact product variants.
+
+        SERP snippets often point at a sibling variant (for example 40 lb) while
+        the page exposes the target variant (for example 12 lb). This pass uses
+        Crawl4AI-rendered HTML plus platform variant resolvers before LLM URL
+        selection, so the final URL decision is based on page evidence rather
+        than snippets alone.
+        """
+        if not self._verification_enabled() or not candidates:
+            return candidates
+
+        limit = self._verification_limit()
+        if limit <= 0:
+            return candidates
+
+        verify_candidates = [
+            dict(candidate)
+            for candidate in candidates[:limit]
+            if str(candidate.get("url") or "").strip()
+        ]
+        untouched_candidates = candidates[limit:]
+        urls = [str(candidate.get("url") or "") for candidate in verify_candidates]
+        if not urls:
+            return candidates
+
+        from scrapers.ai_search.extraction import ExtractionUtils
+        from scrapers.ai_search.scoring import SearchScorer
+        from scrapers.ai_search.variant_resolvers import resolve_family_variant
+        from src.crawl4ai_engine.engine import Crawl4AIEngine
+
+        scoring = SearchScorer()
+        extraction = ExtractionUtils(scoring)
+        engine_config = self._build_verification_engine_config(upc, brand_name, consolidated_name)
+
+        try:
+            async with Crawl4AIEngine(engine_config) as engine:
+                crawl_results = await engine.crawl_many(urls)
+        except Exception as exc:
+            logger.warning("[SerpDiscoveryAdapter] Crawl4AI candidate verification failed: %s", exc)
+            return candidates
+
+        verified: list[dict[str, Any]] = []
+        for candidate, crawl_result in zip(verify_candidates, crawl_results):
+            page_url = str(crawl_result.get("url") or candidate.get("url") or "")
+            if not crawl_result.get("success"):
+                candidate["_variant_verification"] = "crawl_failed"
+                verified.append(candidate)
+                continue
+
+            html = str(crawl_result.get("html") or "")
+            markdown = str(crawl_result.get("markdown") or crawl_result.get("fit_markdown") or "")
+            resolved_url, _resolved_html, _resolved_md, resolver_status = await resolve_family_variant(
+                url=page_url,
+                upc=upc,
+                product_name=consolidated_name,
+                brand=brand_name,
+                html=html,
+                scoring_utils=scoring,
+                matching_utils=self._matching,
+                extraction_utils=extraction,
+            )
+
+            evidence_text = self._crawl_text_for_variant_check(crawl_result, candidate)
+            has_identifier = self._candidate_has_identifier(evidence_text, upc)
+            has_target_variant = self._candidate_has_variant_overlap(consolidated_name, evidence_text)
+            has_variant_conflict = self._candidate_has_conflicting_variant(consolidated_name, evidence_text)
+
+            if resolver_status == "exact_variant" and resolved_url:
+                candidate["_source_url"] = candidate.get("url")
+                candidate["url"] = resolved_url
+                candidate["_verified_url"] = resolved_url
+                candidate["_variant_verification"] = "resolved_exact_variant"
+                candidate["_verification_score"] = 4.0
+            elif has_identifier:
+                candidate["_verified_url"] = page_url
+                candidate["_variant_verification"] = "identifier_match"
+                candidate["_verification_score"] = 3.0
+            elif has_target_variant and has_variant_conflict:
+                selected_url = await self._llm_resolve_variant_url_from_page(
+                    page_url=page_url,
+                    html=html,
+                    markdown=markdown,
+                    upc=upc,
+                    target_name=consolidated_name,
+                    brand_name=brand_name,
+                )
+                if selected_url:
+                    candidate["_source_url"] = candidate.get("url")
+                    candidate["url"] = selected_url
+                    candidate["_verified_url"] = selected_url
+                    candidate["_variant_verification"] = "llm_resolved_variant_url"
+                    candidate["_verification_score"] = 3.5
+                else:
+                    candidate["_variant_verification"] = "target_variant_visible_unresolved"
+                    candidate["_verification_score"] = 1.0
+            elif has_target_variant:
+                candidate["_verified_url"] = page_url
+                candidate["_variant_verification"] = "target_variant_match"
+                candidate["_verification_score"] = 2.0
+            elif has_variant_conflict:
+                candidate["_variant_verification"] = "rejected_conflicting_variant"
+                candidate["_verification_score"] = -5.0
+            else:
+                candidate["_variant_verification"] = "no_variant_evidence"
+                candidate["_verification_score"] = 0.0
+
+            verified.append(candidate)
+
+        allowed_verified = [
+            candidate for candidate in verified
+            if candidate.get("_variant_verification") != "rejected_conflicting_variant"
+        ]
+        allowed_verified.sort(key=lambda item: float(item.get("_verification_score") or 0.0), reverse=True)
+        return allowed_verified + untouched_candidates
+
     async def _phase3_brand_site_search(
         self,
         upc: str,
@@ -510,6 +820,15 @@ Return JSON in this format:
             deduped_results.append(r_copy)
 
         candidates = self._score_candidates(deduped_results, upc, consolidated_name, brand_domain)
+        if not candidates:
+            return None
+
+        candidates = await self._verify_candidates_with_crawl4ai(
+            candidates=candidates,
+            upc=upc,
+            consolidated_name=consolidated_name,
+            brand_name=brand_name,
+        )
         if not candidates:
             return None
 
@@ -581,6 +900,15 @@ Return JSON in this format:
         if not candidates:
             return None
 
+        candidates = await self._verify_candidates_with_crawl4ai(
+            candidates=candidates,
+            upc=upc,
+            consolidated_name=consolidated_name,
+            brand_name=brand_name,
+        )
+        if not candidates:
+            return None
+
         return await self._llm_select_url(
             upc=upc,
             consolidated_name=consolidated_name,
@@ -641,6 +969,13 @@ Return JSON in this format:
     ) -> str | None:
         """Pick a deterministic fallback URL without accepting known wrong variants."""
         for candidate in candidates:
+            verification = str(candidate.get("_variant_verification") or "")
+            if verification == "rejected_conflicting_variant":
+                continue
+            verified_url = candidate.get("_verified_url")
+            if verified_url:
+                return str(verified_url)
+
             candidate_text = self._candidate_text(candidate)
             has_identifier = self._candidate_has_identifier(candidate_text, upc)
             if self._candidate_has_conflicting_variant(target_name, candidate_text) and not has_identifier:
@@ -760,18 +1095,20 @@ Return JSON in this format:
             desc = c.get("description", "")
             url = c.get("url", "")
             candidate_text = self._candidate_text(c)
-            variant_status = "unknown"
-            if self._candidate_has_identifier(candidate_text, upc):
-                variant_status = "identifier_match"
-            elif self._candidate_has_conflicting_variant(consolidated_name, candidate_text):
-                variant_status = "conflicts_target_variant"
-            elif self._candidate_has_variant_overlap(consolidated_name, candidate_text):
-                variant_status = "matches_target_variant_hint"
+            variant_status = str(c.get("_variant_verification") or "unknown")
+            if variant_status == "unknown":
+                if self._candidate_has_identifier(candidate_text, upc):
+                    variant_status = "identifier_match"
+                elif self._candidate_has_conflicting_variant(consolidated_name, candidate_text):
+                    variant_status = "conflicts_target_variant"
+                elif self._candidate_has_variant_overlap(consolidated_name, candidate_text):
+                    variant_status = "matches_target_variant_hint"
             candidates_evidence += (
                 f"[{i+1}] Title: {title}\n"
                 f"    Description: {desc}\n"
                 f"    URL: {url}\n"
-                f"    Variant Status: {variant_status}\n\n"
+                f"    Crawl4AI Verification: {variant_status}\n"
+                f"    Resolved URL: {c.get('_verified_url') or url}\n\n"
             )
 
         system_prompt = (
@@ -793,9 +1130,10 @@ Instructions:
 1. Review the candidate search results.
 2. Select the single candidate URL that best matches the exact UPC-level Product Variant for '{consolidated_name}'.
 3. Size, weight, count, flavor, color, material, and package-count conflicts are hard conflicts unless the candidate explicitly contains the target UPC.
-4. Avoid selecting index/collection/category pages, blogs, homepages, store locators, reviews, or generic product-line pages unless the candidate evidence identifies the exact variant.
-5. If a candidate appears to be the same Product Line but a different size/count/weight/flavor, return null.
-6. If none of the candidates match this exact variant or are all generic/unrelated, return null for the 'selected_url'.
+4. Prefer candidates with Crawl4AI Verification of resolved_exact_variant, llm_resolved_variant_url, identifier_match, or target_variant_match.
+5. Avoid selecting index/collection/category pages, blogs, homepages, store locators, reviews, or generic product-line pages unless Crawl4AI verification identifies or resolves the exact variant.
+6. If a candidate appears to be the same Product Line but a different size/count/weight/flavor, return null unless it has a resolved URL for the target variant.
+7. If none of the candidates match this exact variant or are all generic/unrelated, return null for the 'selected_url'.
 
 Return JSON in this format:
 {{
@@ -842,8 +1180,16 @@ Return JSON in this format:
                     {"url": selected_url},
                 )
                 selected_text = self._candidate_text(selected_candidate)
+                verification = str(selected_candidate.get("_variant_verification") or "")
+                is_verified_resolution = verification in {
+                    "resolved_exact_variant",
+                    "llm_resolved_variant_url",
+                    "identifier_match",
+                    "target_variant_match",
+                }
                 if (
-                    self._candidate_has_conflicting_variant(consolidated_name, selected_text)
+                    not is_verified_resolution
+                    and self._candidate_has_conflicting_variant(consolidated_name, selected_text)
                     and not self._candidate_has_identifier(selected_text, upc)
                 ):
                     logger.warning(
