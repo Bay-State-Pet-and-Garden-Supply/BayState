@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { submitBatch, processBatchQueue, getBatchStatus } from '@/lib/consolidation/batch-service';
+import { applyResults } from '@/lib/consolidation/apply-service';
 import type { ProductSource } from '@/lib/consolidation/types';
 
 export async function POST(request: NextRequest) {
@@ -114,6 +115,20 @@ export async function POST(request: NextRequest) {
 
         const status = await getBatchStatus(result.batch_id);
 
+        // Auto-apply results for direct_chat_chunks
+        let appliedCount: number | undefined;
+        try {
+            const applyResult = await applyResults(result.batch_id);
+            if (applyResult && typeof applyResult === 'object' && 'success_count' in applyResult) {
+                appliedCount = applyResult.success_count as number;
+            }
+            if ('success' in applyResult && !applyResult.success) {
+                console.warn('[Grouping Consolidate] Auto-apply warning:', applyResult.error);
+            }
+        } catch (applyError) {
+            console.warn('[Grouping Consolidate] Auto-apply failed (non-fatal):', applyError);
+        }
+
         return NextResponse.json({
             success: true,
             batch_id: result.batch_id,
@@ -121,6 +136,8 @@ export async function POST(request: NextRequest) {
             warnings: warnings.length > 0 ? warnings : undefined,
             completed_requests: 'completed_requests' in status ? status.completed_requests : 0,
             failed_requests: 'failed_requests' in status ? status.failed_requests : 0,
+            applied_count: appliedCount ?? 0,
+            auto_applied: true,
         });
     } catch (error) {
         console.error('[Grouping Consolidate] Error:', error);
