@@ -90,4 +90,27 @@ describe('resolveProductMedia', () => {
         expect(result.media[1].url).toBe('http://example.com/img-0.jpg');
         expect(result.media[11].url).toBe('http://example.com/img-10.jpg');
     });
+
+    it('defaults to the source with the most images when no existing media, selectedImages, or imageCandidates are present', () => {
+        const result = resolveProductMedia([], {}, {
+            selectedImages: [],
+            imageCandidates: [],
+            sources: {
+                amazon: {
+                    images: ['http://example.com/amazon1.jpg']
+                },
+                bci: {
+                    images: ['http://example.com/bci1.jpg', 'http://example.com/bci2.jpg']
+                }
+            }
+        });
+
+        expect(result.media).toHaveLength(2);
+        expect(result.media[0].url).toBe('http://example.com/bci1.jpg');
+        expect(result.media[1].url).toBe('http://example.com/bci2.jpg');
+        expect(result.selectedImages).toEqual([
+            'http://example.com/bci1.jpg',
+            'http://example.com/bci2.jpg'
+        ]);
+    });
 });

@@ -14,6 +14,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import type { PackagingFacts } from './title-composer';
+import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 
 // =============================================================================
 // Constants
@@ -81,6 +82,9 @@ function extractImageUrls(product: { imageUrls?: string[]; sources?: Record<stri
   // Prefer explicit imageUrls field, fall back to extracting from sources
   if (product.imageUrls && product.imageUrls.length > 0) {
     return product.imageUrls.slice(0, 2);
+  }
+  if (product.sources && Object.keys(product.sources).length > 0) {
+    return extractImageCandidatesFromSources(product.sources, 2);
   }
   return [];
 }

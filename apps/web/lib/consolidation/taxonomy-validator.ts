@@ -189,7 +189,7 @@ export function buildResponseSchema(
             },
             weight: {
                 type: ['string', 'null'],
-                description: 'Primary package size/weight/count as a numeric string with up to 2 decimal places and no units. Use null when no trustworthy weight is available.',
+                description: 'Numeric shipping weight in decimal pounds (no units), e.g. "1.56" for a 25 oz bag. Used for shipping calculations. Use null when no trustworthy weight is available.',
             },
             confidence_score: {
                 type: 'number',

@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 interface ImageCarouselProps {
   selectedImages: string[];
-  onToggleImage: (url: string) => void;
+  onToggleImage?: (url: string) => void;
   onReorderImages?: (images: string[]) => void;
 }
 
@@ -139,13 +139,15 @@ export function ImageCarousel({
                           </div>
                         </DialogContent>
                       </Dialog>
-                      <button
-                        onClick={() => onToggleImage(url)}
-                        className="absolute top-4 right-4 bg-card text-foreground border border-border rounded-none p-1.5 hover:bg-muted transition-all z-20"
-                        title="Remove this image"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      {onToggleImage && (
+                        <button
+                          onClick={() => onToggleImage(url)}
+                          className="absolute top-4 right-4 bg-card text-foreground border border-border rounded-none p-1.5 hover:bg-muted transition-all z-20"
+                          title="Remove this image"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </CarouselItem>
                 ))}

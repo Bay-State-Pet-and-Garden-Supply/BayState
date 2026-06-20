@@ -507,7 +507,7 @@ export function ReviewingResultsView({
 
   // Determine which source currently matches selectedImages
   const currentImageSource = useMemo(() => {
-    if (!selectedProduct || !formData.selectedImages) return "custom";
+    if (!selectedProduct || !formData.selectedImages) return "";
 
     const sortedSelected = [...formData.selectedImages].sort().join(",");
 
@@ -518,26 +518,27 @@ export function ReviewingResultsView({
       }
     }
 
-    return "custom";
+    // Default to the source with the most images if not exactly matched
+    let bestOptKey = "";
+    let maxCount = -1;
+    for (const opt of imageSourceOptions) {
+      if (opt.images.length > maxCount) {
+        maxCount = opt.images.length;
+        bestOptKey = opt.key;
+      }
+    }
+    return bestOptKey || imageSourceOptions[0]?.key || "";
   }, [formData.selectedImages, imageSourceOptions, selectedProduct]);
 
   // Determine active select dropdown value (preferring manual selection if set)
   const activeImageSource = useMemo(() => {
-    if (!selectedUpc) return "custom";
+    if (!selectedUpc) return "";
     return selectedSourceByUpc[selectedUpc] || currentImageSource;
   }, [selectedUpc, selectedSourceByUpc, currentImageSource]);
 
   const selectOptions = useMemo(() => {
-    const opts = [...imageSourceOptions];
-    if (activeImageSource === "custom" && formData.selectedImages?.length > 0) {
-      opts.push({
-        key: "custom",
-        label: "Custom Selection (Modified)",
-        images: formData.selectedImages,
-      });
-    }
-    return opts;
-  }, [imageSourceOptions, activeImageSource, formData.selectedImages]);
+    return [...imageSourceOptions];
+  }, [imageSourceOptions]);
 
   const handleImageSourceChange = (val: string) => {
     if (selectedUpc) {
@@ -637,51 +638,7 @@ export function ReviewingResultsView({
     updateDraftForUpc(selectedUpc, (prev) => ({ ...prev, name: newName }));
   };
 
-  const toggleImage = (url: string) => {
-    if (!selectedUpc) {
-      return;
-    }
 
-    setSelectedSourceByUpc((prev) => ({ ...prev, [selectedUpc]: "custom" }));
-
-    updateDraftForUpc(selectedUpc, (prev) => {
-      const isSelected = prev.selectedImages.includes(url);
-      if (isSelected) {
-        return {
-          ...prev,
-          selectedImages: prev.selectedImages.filter((img) => img !== url),
-        };
-      } else {
-        return { ...prev, selectedImages: [...prev.selectedImages, url] };
-      }
-    });
-  };
-
-  const addCustomImage = () => {
-    if (!selectedUpc) return;
-    if (!formData.customImageUrl.trim()) return;
-    const url = formData.customImageUrl.trim();
-
-    if (!isValidCustomImageUrl(url)) {
-      toast.error("Enter a valid image URL");
-      return;
-    }
-
-    setSelectedSourceByUpc((prev) => ({ ...prev, [selectedUpc]: "custom" }));
-
-    if (!formData.selectedImages.includes(url)) {
-      updateDraftForUpc(selectedUpc, (prev) => ({
-        ...prev,
-        selectedImages: [...prev.selectedImages, url],
-        customImageUrl: "",
-      }));
-    } else {
-      updateDraftForUpc(selectedUpc, (prev) => ({
-        ...prev,
-        customImageUrl: "",
-      }));
-    }
-  };
 
   const addCustomSource = () => {
     if (!selectedUpc) return;
@@ -1781,13 +1738,6 @@ export function ReviewingResultsView({
                   <div className="space-y-2">
                     <ImageCarousel
                       selectedImages={formData.selectedImages}
-                      onToggleImage={toggleImage}
-                      onReorderImages={(newImages) => {
-                        handleInputChange("selectedImages", newImages);
-                        if (selectedUpc) {
-                          setSelectedSourceByUpc((prev) => ({ ...prev, [selectedUpc]: "custom" }));
-                        }
-                      }}
                     />
 
                     {imageSourceOptions.length > 0 && (
@@ -1812,30 +1762,6 @@ export function ReviewingResultsView({
                         </Select>
                       </div>
                     )}
-
-                    <div className="flex gap-2">
-                      <Input
-                        value={formData.customImageUrl}
-                        onChange={(e) =>
-                          handleInputChange("customImageUrl", e.target.value)
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addCustomImage();
-                          }
-                        }}
-                        placeholder="Paste custom product image URL..."
-                        className="h-8 border border-border rounded-none focus-visible:ring-border font-bold text-xs"
-                      />
-                      <Button
-                        onClick={addCustomImage}
-                        size="sm"
-                        className="h-8 bg-foreground text-background rounded-none hover:bg-foreground/90 font-semibold text-[10px]"
-                      >
-                        Add
-                      </Button>
-                    </div>
                   </div>
 
                   <div className="space-y-4">

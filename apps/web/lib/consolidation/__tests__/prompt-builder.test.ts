@@ -123,6 +123,15 @@ describe('brand placement in prompt-builder', () => {
             expect(prompt).toMatch(/without inventing details/i);
         });
 
+        it('includes strict weight and unit naming conventions', () => {
+            const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
+
+            expect(prompt).toMatch(/Size\/Weight Unit in Names/i);
+            expect(prompt).toMatch(/Never convert ounces to pounds in the product name/i);
+            expect(prompt).toMatch(/Ignore Shipping Weights for Names/i);
+            expect(prompt).toMatch(/strictly for shipping calculations/i);
+        });
+
         it('builds compact sibling product context when available', () => {
             const payload = buildUserPromptPayload(
                 {

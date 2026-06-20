@@ -335,6 +335,8 @@ Product-name rules:
 - Expand common abbreviations like Sm, Md, Lg, Blk, Wht, Brn, Grn, Rd, Bl, Yl, Org, Pnk, Prpl, Gry, Asst, Asstd, Med, Lrg, Sml.
 - Preserve source-supported decimal size, weight, and count values in names. Do not round or truncate 1.06 oz. to 1 oz. or 4.5 lb. to 4 lb.
 - Use uppercase X with spaces for dimensions, for example 3 X 25 ft. or 11 X 17 in.
+- **Size/Weight Unit in Names**: The size/weight portion in the product name MUST match the advertised weight/size exactly as shown on the packaging or in the primary source data (such as the register input name or scraping URLs), preserving the original unit (e.g., "25 oz.", "7 oz.", "12 ct.", "30 lb."). Never convert ounces to pounds in the product name (e.g., do NOT write "1.56 lb." or "3 lb." for a "25 oz." bag).
+- **Ignore Shipping Weights for Names**: Distributor sources may list gross/shipping weights in pounds (e.g., listing a 25 oz. product as 3 lb., or a 7 oz. product as 0.7 lb.). Do NOT use these shipping weights in the product name. Always use the actual net advertised weight/size.
 
 Description rules:
 - ALWAYS write a custom product description following the exact template pattern below. Never copy description text verbatim from the source data.
@@ -345,7 +347,7 @@ Description rules:
 - Use only plain ASCII characters (avoid curly quotes, en/em-dashes, or special Unicode characters; use standard single/double quotes and hyphens instead).
 
 Field rules:
-- weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
+- weight: numeric string representing shipping/gross weight in decimal pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null. Note: This field is strictly for shipping calculations and must NOT influence the size/weight unit or value used in the product name.
 - confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain. Set below 0.80 if packaging images are expected but missing or unreadable/illegible.
 
 Facet Profile Field Matrix:
@@ -356,7 +358,7 @@ Output contract — respond with valid JSON matching this structure:
 {
   "name": "string (required) — product name with brand as first token",
   "brand": "string (required) — brand name exactly as in highest-trust source",
-  "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
+  "weight": "string (required) — numeric shipping weight in decimal pounds, no units (e.g. 1.56 or 0.44). null if no trustworthy weight. Note: This is for shipping only; do NOT copy this value or unit to the product name if the product is advertised in ounces/count.",
   "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready. set below 0.80 if images are missing or unreadable",
   "category": "string (required) — best-fit taxonomy category from allowed list",
   "description": "string (required) — custom product description written according to the Description rules, using the template pattern: [Full product name] is a [product type] for [target animal/use]. [1-2 sentences on key features/benefits]. [Size/weight/count].",
@@ -427,7 +429,7 @@ Group consolidation output contract — respond with valid JSON matching this st
     "UPC123": {
       "name": "string (required) — product name with brand as first token",
       "brand": "string (required) — must be IDENTICAL across all products in this group",
-      "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
+      "weight": "string (required) — numeric shipping weight in decimal pounds, no units (e.g. 1.56 or 0.44). null if no trustworthy weight. Note: This is for shipping only; do NOT copy this value or unit to the product name if the product is advertised in ounces/count.",
       "confidence_score": "number (required) — 0.0 to 1.0",
       "category": "string (required) — must be IDENTICAL across all products in this group",
       "description": "string (required) — custom product description following the Description rules",

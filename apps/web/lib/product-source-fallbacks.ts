@@ -867,9 +867,24 @@ export function collectSourceBackedFallbacks(
   // --- Fallback to image candidates if no media/images from traverse ---
   let finalSelectedImages = dedupedSelectedImages;
   if (finalSelectedImages.length === 0) {
-    // Use global image extraction
-    const candidates = extractImageCandidatesFromSources(sources, 12);
-    finalSelectedImages = [...candidates];
+    // Find the source with the most images
+    let bestSourceImages: string[] = [];
+    for (const [sourceKey, sourcePayload] of Object.entries(sources)) {
+      if (sourceKey.startsWith('_')) continue;
+      if (!isRecord(sourcePayload)) continue;
+      const images = extractImageCandidatesFromSourcePayload(sourcePayload);
+      if (images.length > bestSourceImages.length) {
+        bestSourceImages = images;
+      }
+    }
+
+    if (bestSourceImages.length > 0) {
+      finalSelectedImages = bestSourceImages.slice(0, 12);
+    } else {
+      // Use global image extraction as absolute fallback
+      const candidates = extractImageCandidatesFromSources(sources, 12);
+      finalSelectedImages = [...candidates];
+    }
   }
 
   // If still no images and media is empty, create media from selected_images

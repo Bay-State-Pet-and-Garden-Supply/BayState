@@ -31,7 +31,7 @@ import {
 import { parseStructuredConsolidationText } from './result-parsing';
 import { calculateAICost } from '@/lib/ai-scraping/pricing';
 import { getAIScrapingProviderSecret } from '@/lib/ai-scraping/credentials';
-import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
+import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl, buildConsolidationSourcesPayload } from '@/lib/product-sources';
 import { buildFacetSlug, canonicalizeBrandName, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
 import { parseTaxonomyValues } from '@/lib/taxonomy';
@@ -1316,8 +1316,8 @@ export async function submitGroupConsolidationBatch(
 
             // Build source evidence for each product in the group
             const productEvidence = groupProducts.map(p => {
-                // No require() -- inline data extraction from sources
-                const sourceEntries = Object.entries(p.sources || {});
+                const normalizedSources = buildConsolidationSourcesPayload(p.sources, p.input);
+                const sourceEntries = Object.entries(normalizedSources);
                 const filteredSources: Record<string, unknown> = {};
 
                 for (const [sourceName, sourceData] of sourceEntries) {
@@ -1427,6 +1427,13 @@ export async function submitGroupConsolidationBatch(
                                     if (imageUrls.length >= 2) break;
                                     if (typeof url === 'string' && url.trim() && !imageUrls.includes(url.trim())) imageUrls.push(url.trim());
                                 }
+                            }
+                        }
+                        if (imageUrls.length < 2 && gp.sources) {
+                            const sourceCandidates = extractImageCandidatesFromSources(gp.sources, 10);
+                            for (const url of sourceCandidates) {
+                                if (imageUrls.length >= 2) break;
+                                if (typeof url === 'string' && url.trim() && !imageUrls.includes(url.trim())) imageUrls.push(url.trim());
                             }
                         }
                         if (imageUrls.length > 0) {

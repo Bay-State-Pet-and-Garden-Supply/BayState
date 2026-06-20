@@ -57,6 +57,14 @@ describe('validateConsolidationTaxonomy', () => {
         expect(facets.additionalProperties).toEqual({ type: 'string' });
     });
 
+    it('buildResponseSchema includes correct weight description', () => {
+        const schema = buildResponseSchema([]) as any;
+        const weight = schema.properties.weight;
+
+        expect(weight.description).toContain('Numeric shipping weight in decimal pounds');
+        expect(weight.description).toContain('e.g. "1.56" for a 25 oz bag');
+    });
+
     it('validateRequiredConsolidationFields rejects blank required strings', () => {
         const validBase = {
             name: 'Valid Name',

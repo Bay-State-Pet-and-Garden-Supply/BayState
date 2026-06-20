@@ -2,7 +2,7 @@
  * Media Resolver for Product Consolidation
  */
 
-import { extractImageCandidatesFromSources, normalizeImageUrl } from '@/lib/product-sources';
+import { extractImageCandidatesFromSources, extractImageCandidatesFromSourcePayload, normalizeImageUrl } from '@/lib/product-sources';
 
 /**
  * Normalizes an array of unknown values to a deduplicated array of clean URL strings.
@@ -139,12 +139,31 @@ export function resolveProductMedia(
         }
     } else {
         // Fallback when there is no existing media
-        const fallbackImages =
-            selectedImages.length > 0
-                ? selectedImages
-                : imageCandidates.length > 0
-                ? imageCandidates.slice(0, 10)
-                : sourceCandidates.slice(0, 10);
+        let fallbackImages = selectedImages.length > 0 ? selectedImages : [];
+
+        if (fallbackImages.length === 0) {
+            if (imageCandidates.length > 0) {
+                fallbackImages = imageCandidates.slice(0, 10);
+            } else {
+                // Find the source with the most images
+                let bestSourceImages: string[] = [];
+                if (existingRecord?.sources) {
+                    for (const [sourceKey, sourcePayload] of Object.entries(existingRecord.sources)) {
+                        if (sourceKey.startsWith('_')) continue;
+                        const images = extractImageCandidatesFromSourcePayload(sourcePayload);
+                        if (images.length > bestSourceImages.length) {
+                            bestSourceImages = images;
+                        }
+                    }
+                }
+                
+                if (bestSourceImages.length > 0) {
+                    fallbackImages = bestSourceImages.slice(0, 10);
+                } else {
+                    fallbackImages = sourceCandidates.slice(0, 10);
+                }
+            }
+        }
 
         if (fallbackImages.length > 0) {
             nextMedia = fallbackImages.map((url, idx) => ({
