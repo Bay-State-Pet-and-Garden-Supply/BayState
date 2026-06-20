@@ -33,6 +33,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
     base_url = "https://www.bradleycaldwell.com"
     search_url_template = "https://www.bradleycaldwell.com/search?term={upc}"
     requires_auth = False
+    bot_sensitive = True
 
     def __init__(self, entry: ApprovedSourcePlanEntry, plan: ApprovedSourcePlan):
         super().__init__(entry, plan)

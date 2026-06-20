@@ -693,20 +693,39 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             # Check if we can extract from static HTML first
             if html:
                 temp_result = self.extract_from_html(html, upc, search_url)
-                if not temp_result.success and self._needs_js_rendering(html):
-                    logger.info(
-                        "[%s] Static HTML extraction failed and page appears JS-rendered, trying browser fallback for %s",
-                        self.adapter_slug, search_url,
-                    )
-                    wait_for = getattr(self, "browser_wait_for", None)
-                    browser_html = await self._fetch_html_with_browser(search_url, wait_for=wait_for)
-                    if browser_html:
-                        html = browser_html
-                    else:
-                        logger.warning(
-                            "[%s] Browser fallback failed, using httpx result",
-                            self.adapter_slug,
+                if not temp_result.success:
+                    if self._needs_js_rendering(html):
+                        logger.info(
+                            "[%s] Static HTML extraction failed and page appears JS-rendered, trying browser fallback for %s",
+                            self.adapter_slug, search_url,
                         )
+                        wait_for = getattr(self, "browser_wait_for", None)
+                        browser_html = await self._fetch_html_with_browser(search_url, wait_for=wait_for)
+                        if browser_html:
+                            html = browser_html
+                        else:
+                            logger.warning(
+                                "[%s] Browser fallback failed, using httpx result",
+                                self.adapter_slug,
+                            )
+                    else:
+                        logger.info(
+                            "[%s] Static HTML extraction failed but page does not appear JS-rendered, trying browser fallback as safety net for %s",
+                            self.adapter_slug, search_url,
+                        )
+                        wait_for = getattr(self, "browser_wait_for", None)
+                        browser_html = await self._fetch_html_with_browser(search_url, wait_for=wait_for)
+                        if browser_html:
+                            html = browser_html
+            else:
+                logger.info(
+                    "[%s] Static HTML fetch failed (returned None), trying browser fallback for %s",
+                    self.adapter_slug, search_url,
+                )
+                wait_for = getattr(self, "browser_wait_for", None)
+                browser_html = await self._fetch_html_with_browser(search_url, wait_for=wait_for)
+                if browser_html:
+                    html = browser_html
 
         if not html:
             logger.warning(
@@ -915,12 +934,12 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                                 continue
                             return None
                         return html
-                    elif response.status_code == 429 and attempt < max_attempts - 1:
+                    elif response.status_code in (403, 429) and attempt < max_attempts - 1:
                         import random as _rand
                         delay = 2.0 * (2 ** attempt) * _rand.uniform(0.5, 1.5)
                         logger.info(
-                            "[%s] HTTP 429 (rate limited), retrying in %.1fs (attempt %d/%d)",
-                            self.adapter_slug, delay, attempt + 1, max_attempts,
+                            "[%s] HTTP %d (possible block/rate limit), retrying in %.1fs (attempt %d/%d)",
+                            self.adapter_slug, response.status_code, delay, attempt + 1, max_attempts,
                         )
                         await asyncio.sleep(delay)
                         continue
