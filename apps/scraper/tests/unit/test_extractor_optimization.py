@@ -1,7 +1,7 @@
 """Tests for Crawl4AIExtractor and fallback extraction behavior."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, ANY
 from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor, FallbackExtractor
 
 
@@ -103,6 +103,10 @@ class TestCrawl4AIExtractorOptimization:
 
         assert mock_engine.crawl.await_count == 2
         assert mock_engine.config["crawler"]["wait_until"] == "domcontentloaded"
+        assert mock_engine.config["browser"]["enable_stealth"] is True
+        assert mock_engine.config["crawler"]["magic"] is True
+        assert mock_engine.config["crawler"]["simulate_user"] is True
+        assert mock_engine.config["crawler"]["override_navigator"] is True
 
     @pytest.mark.asyncio
     async def test_extract_reuses_fit_markdown_for_fallback_when_html_missing(self, extractor):
@@ -134,6 +138,8 @@ class TestCrawl4AIExtractorOptimization:
                 "Test Brand",
                 "",
                 "fit markdown content",
+                crawl_media={},
+                fetch_time_ms=ANY,
             )
             assert result == {"success": False, "error": "fallback"}
 

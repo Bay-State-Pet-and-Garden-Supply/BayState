@@ -47,7 +47,7 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<MoreInfoImage1>feathered-friend/feathered-friend-favorite-20-lb-2.jpg</MoreInfoImage1>');
         expect(xml).toContain('<ProductOnPages></ProductOnPages>');
         expect(xml).toContain('<ProductField16>Feathered Friend</ProductField16>');
-        expect(xml).toContain('<ProductField24>Wild Bird Food</ProductField24>');
+        expect(xml).not.toContain('<ProductField24>');
         expect(xml).toContain('<ProductField25>Seeds &amp; Seed Mixes</ProductField25>');
         expect(xml).toContain('<ProductField11>yes</ProductField11>');
         expect(xml).toContain('<ProductField15>checked</ProductField15>');

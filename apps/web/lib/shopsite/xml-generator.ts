@@ -189,9 +189,6 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         lines.push(xmlElement('ProductField16', product.brand_name));
     }
 
-    if (product.category) {
-        lines.push(xmlElement('ProductField24', product.category));
-    }
 
     if (product.product_type) {
         lines.push(xmlElement('ProductField25', product.product_type));
