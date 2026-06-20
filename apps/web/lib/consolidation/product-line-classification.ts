@@ -124,28 +124,33 @@ export function buildClassificationSystemPrompt(
 
     return `You classify retail products into manufacturer product lines.
 
-A "product line" is the SPECIFIC name a manufacturer uses for a family of SKU variants. It is NOT a generic category description. Think of it as what the manufacturer prints on the packaging.
+A "product line" represents a specific product flavor/formula and format (i.e. what represents a separate product page in a storefront).
+- Products with different flavors (e.g. Chicken, Beef, Salmon) or different formats (e.g. Chewy Sticks, Chewy Bites) MUST belong to separate product lines.
+- Different bag/can/package sizes, weights, and pack counts are quantity/size variants of the SAME product line, so they MUST be grouped under the exact same product line name.
 
-Examples of GOOD product line names:
-- "Blue Buffalo Life Protection Formula" (not "Dry Dog Food" — that's a category)
-- "Butcher Block Pate" (not "Wet Dog Food" or "Human Grade Wet Dog Food")
-- "Purina Pro Plan Sensitive Skin & Stomach" (not "Salmon Dog Food")
-- "Greenies Dental Chews" (not "Dog Treats")
-- "SPOT BAMBONE Coffee Wood" (not "Dog Chew Toy")
+Examples of GOOD product line names (flavor/format kept, size/pack stripped):
+- "Earth Animal No-Hide Chew - Chicken" (not "Earth Animal No-Hide" — that combines multiple flavors like beef and chicken)
+- "The Honest Kitchen Butcher Block Pate - Turkey" (not "The Honest Kitchen Butcher Block Pate" — that combines beef, chicken, and turkey)
+- "Wholesomes Rewards Chewy Sticks - Beef" (not "Wholesomes Rewards Chewy Sticks" — that combines beef and salmon; and not "Wholesomes Rewards Chewy Sticks Beef 25oz" — that contains the bag size)
+- "Purina Pro Plan Sensitive Skin & Stomach - Salmon" (not "Purina Pro Plan Sensitive Skin & Stomach")
+- "Greenies Dental Chews - Blueberry" (not "Greenies Dental Chews" or "Dog Treats")
 
-Examples of BAD product line names (too generic — these are categories, not product lines):
-- "Dry Dog Food" — this describes the product type, not the manufacturer's line
-- "Human Grade Wet Dog Food" — this is a category + marketing claim, not a product line
-- "Dog Treats" — far too broad
+Examples of BAD product line names:
+- "Dry Dog Food" — this is a category, not a product line
+- "Wholesomes Rewards Chewy Sticks Beef 25oz" — this includes the package size/weight (25oz), which prevents it from grouping with the 7oz size variant
+- "Earth Animal No-Hide" — too broad, lumps Chicken, Beef, Cheese, and Strawberry flavors together
+- "The Honest Kitchen Crunchy Dog Treats" — too broad, lumps Cheddar, Gouda, and other flavors together
 
 Rules:
-- Extract the core manufacturer product line from the product name, stripping marketing fluff.
-- Strip package size, count, flavor, color, scent, and form factors/formats (like "Rolls", "Stix", "Chews", "Bone", "Braid", "Strips", "Bites", "Pate", "Stew") from the product line name if they represent variants of the same line. For example, "Earth Animal No-Hide Chicken Rolls" and "Earth Animal No-Hide Beef Stix" both belong to the "No-Hide" product line. "Nylabone Power Chew Infinity Braid Bone" and "Nylabone Power Chew Frenzy Bone" both belong to the "Power Chew" product line.
-- Marketplace sources (Amazon, eBay, Walmart) often pad names with SEO keywords like "human grade," "grain free," "natural," "premium." IGNORE these padding words — focus on the actual product line name.
+- Extract the core manufacturer product line name, retaining the brand, product line family, format, and flavor/formula.
+- DO NOT strip flavor, formula, scent, color, or primary form factors/formats (like "Sticks", "Bites", "Chews", "Pate", "Stew", "Rolls", "Stix", "Strips"). These distinguish distinct products.
+- DO strip package size (e.g., "25oz", "7oz", "10.5oz", "4LB", "30 ML"), count/pack (e.g., "3PK", "6PK", "20PK", "2CT"), physical size terms (e.g., "Small", "Medium", "Large", "SM", "MD", "LG", "XL"), and container details (e.g., "Tube", "Can", "Bag").
+- If the product clearly belongs to an existing product line in the taxonomy AND that line is flavor-specific, use that EXACT name.
+- If the existing product line in the taxonomy is too broad (e.g. lumps multiple flavors/formats together like "The Honest Kitchen Crunchy Dog Treats"), do NOT use it. Instead, invent/refine a flavor-specific product line (e.g. "The Honest Kitchen Crunchy Dog Treats - Gouda").
+- Marketplace sources (Amazon, eBay, Walmart) often pad names with SEO keywords like "human grade," "grain free," "natural," "premium." IGNORE these padding words.
 - If multiple sources show different names for the same product, prefer the distributor/manufacturer source over marketplace sources.
 - Look at the product name from the TRUSTED source (listed first) — it's cleaner and closer to the manufacturer's actual naming.
 - If you see a pattern across multiple source names, use the common core as the product line.
-- If the product clearly belongs to an existing product line in the taxonomy, use that EXACT name.
 - Return a confidence score. Low confidence (<0.80) means the product may be a one-off.
 
 ${taxonomySection}

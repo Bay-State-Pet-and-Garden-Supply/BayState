@@ -87,7 +87,6 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
 
   // Middle column state
   const [productSearch, setProductSearch] = useState('');
-  const [poolStatusFilter, setPoolStatusFilter] = useState<'all' | 'ungrouped' | 'in_group'>('all');
   const [selectedUpcs, setSelectedUpcs] = useState<Set<string>>(new Set());
 
   // Right column editing state
@@ -180,7 +179,7 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
     return list;
   }, [data, groupSearch, needsReviewOnly]);
 
-  // Filter products for middle column pool
+  // Filter products for middle column pool (strictly ungrouped/unassigned products)
   const filteredPoolProducts = useMemo(() => {
     if (!data) return [];
     let list: Array<ProductInfo & { type: 'grouped' | 'ungrouped'; current_group_name?: string }> = [];
@@ -197,24 +196,6 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
         type: 'ungrouped'
       });
     });
-
-    // Add grouped items
-    data.groups.forEach(g => {
-      g.products.forEach(p => {
-        list.push({
-          ...p,
-          type: 'grouped',
-          current_group_name: g.product_line_name
-        });
-      });
-    });
-
-    // Apply status filter
-    if (poolStatusFilter === 'ungrouped') {
-      list = list.filter(p => p.type === 'ungrouped');
-    } else if (poolStatusFilter === 'in_group') {
-      list = list.filter(p => p.type === 'grouped');
-    }
 
     // Apply review-only filter
     if (needsReviewOnly) {
@@ -233,7 +214,7 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
     }
 
     return list;
-  }, [data, productSearch, poolStatusFilter, needsReviewOnly]);
+  }, [data, productSearch, needsReviewOnly]);
 
   // Inline group creation (Splits checked items into a new group)
   const handleCreateGroupInline = async (e: React.FormEvent) => {
@@ -642,26 +623,14 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
         <div className="flex-1 flex flex-col border-b border-border/80 lg:border-b-0 lg:border-r border-border/80 min-h-0 bg-muted/[0.02]">
           <div className="p-3 border-b border-border/50 space-y-3 shrink-0">
             {/* Search pool controls */}
-            <div className="grid gap-2 sm:grid-cols-[1fr_160px] items-center">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search Pool by name, brand, or UPC..."
-                  className="pl-8 text-xs rounded-xl bg-background"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                />
-              </div>
-
-              <select
-                className="rounded-xl border border-input bg-background px-3 py-1.5 text-xs hover:border-border cursor-pointer transition-all"
-                value={poolStatusFilter}
-                onChange={(e) => setPoolStatusFilter(e.target.value as any)}
-              >
-                <option value="all">Show All Pool</option>
-                <option value="ungrouped">Ungrouped only</option>
-                <option value="in_group">In other groups</option>
-              </select>
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search Pool by name, brand, or UPC..."
+                className="pl-8 text-xs rounded-xl bg-background w-full"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+              />
             </div>
 
             {/* Bulk pool actions bar */}
@@ -683,24 +652,13 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
                       Assign to Group
                     </button>
                   )}
-                  {poolStatusFilter !== 'ungrouped' && (
-                    <button
-                      onClick={handleBulkUngroup}
-                      disabled={actionLoading}
-                      className="px-2.5 py-1 text-[11px] bg-orange-100 text-orange-700 font-semibold rounded-lg hover:bg-orange-200 disabled:opacity-50 cursor-pointer"
-                    >
-                      Ungroup
-                    </button>
-                  )}
-                  {poolStatusFilter === 'ungrouped' && (
-                    <button
-                      onClick={handleBulkAcceptSingletons}
-                      disabled={actionLoading}
-                      className="px-2.5 py-1 text-[11px] bg-emerald-100 text-emerald-700 font-semibold rounded-lg hover:bg-emerald-200 disabled:opacity-50 cursor-pointer"
-                    >
-                      Accept Singletons
-                    </button>
-                  )}
+                  <button
+                    onClick={handleBulkAcceptSingletons}
+                    disabled={actionLoading}
+                    className="px-2.5 py-1 text-[11px] bg-emerald-100 text-emerald-700 font-semibold rounded-lg hover:bg-emerald-200 disabled:opacity-50 cursor-pointer"
+                  >
+                    Accept Singletons
+                  </button>
                   <button
                     onClick={() => setSelectedUpcs(new Set())}
                     className="px-2 py-1 border rounded-lg hover:bg-muted text-muted-foreground cursor-pointer"
@@ -726,7 +684,6 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
               <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
                 {filteredPoolProducts.map((p) => {
                   const isChecked = selectedUpcs.has(p.upc);
-                  const inSelectedGroup = p.type === 'grouped' && p.current_group_name === activeGroup?.product_line_name;
 
                   return (
                     <div
@@ -752,7 +709,7 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
                           />
                           
                           <div className="flex gap-1">
-                            {p.type === 'ungrouped' && p.product_line_review_required && (
+                            {p.product_line_review_required && (
                               <button
                                 onClick={() => handleAcceptSingleton(p.upc)}
                                 disabled={actionLoading}
@@ -762,7 +719,7 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
                               </button>
                             )}
                             
-                            {selectedGroupId && selectedGroupId !== 'ungrouped' && !inSelectedGroup && (
+                            {selectedGroupId && selectedGroupId !== 'ungrouped' && (
                               <button
                                 onClick={() => handleAssignToActiveGroup(p.upc)}
                                 disabled={actionLoading}
@@ -771,26 +728,9 @@ export default function GroupingResultsView({ onStageChange, onConsolidateGroups
                                 ⇌ Assign
                               </button>
                             )}
-
-                            {p.type === 'grouped' && (
-                              <button
-                                onClick={() => handleUngroup(p.upc)}
-                                disabled={actionLoading}
-                                className="text-[10px] px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 disabled:opacity-50 cursor-pointer"
-                              >
-                                Ungroup
-                              </button>
-                            )}
                           </div>
                         </div>
                       </GroupingProductTile>
-                      
-                      {/* Badge showing current group assignment */}
-                      {p.type === 'grouped' && p.current_group_name && (
-                        <div className="absolute top-1 left-24 bg-purple-50 border border-purple-200 text-purple-700 text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.2 rounded-full max-w-[120px] truncate select-none pointer-events-none">
-                          Line: {p.current_group_name}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
