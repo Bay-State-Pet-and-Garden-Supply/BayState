@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { normalizeProductLineKey, upsertProductLine, type ProductLineRecord } from './product-lines';
+import { normalizeProductLineKey, upsertProductLine, type ProductLineRecord, FLAVOR_WORDS, FORMAT_WORDS } from './product-lines';
 
 export interface DedupResult {
     /** Canonical labels after dedup (one per distinct product line). */
@@ -57,10 +57,43 @@ function getCoreNormalizedKey(key: string): string {
     return core;
 }
 
+/** Detect if there is a mismatch in flavor or format terms. */
+function hasTermMismatch(keyA: string, keyB: string): boolean {
+    const checkMismatch = (wordList: string[]): boolean => {
+        const hasA = wordList.some(word => keyA.includes(word));
+        const hasB = wordList.some(word => keyB.includes(word));
+        
+        // If one has a term and the other doesn't, it's a mismatch
+        if (hasA !== hasB) {
+            return true;
+        }
+        
+        // If both have terms, check if they have different terms
+        if (hasA && hasB) {
+            const termsA = wordList.filter(word => keyA.includes(word));
+            const termsB = wordList.filter(word => keyB.includes(word));
+            
+            // If they do not share any terms in common, it's a mismatch
+            const hasIntersection = termsA.some(term => termsB.includes(term));
+            if (!hasIntersection) {
+                return true;
+            }
+        }
+        
+        return false;
+    };
+
+    return checkMismatch(FLAVOR_WORDS) || checkMismatch(FORMAT_WORDS);
+}
+
 /** Check if two normalized keys match (fuzzy, substring, or exact). */
 function checkFuzzyMatch(keyA: string, keyB: string): { similarity: number; autoMerge: boolean } {
     if (keyA === keyB) {
         return { similarity: 1.0, autoMerge: true };
+    }
+
+    if (hasTermMismatch(keyA, keyB)) {
+        return { similarity: 0, autoMerge: false };
     }
 
     const coreA = getCoreNormalizedKey(keyA);

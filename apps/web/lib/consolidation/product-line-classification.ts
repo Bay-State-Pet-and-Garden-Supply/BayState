@@ -14,7 +14,7 @@
  */
 
 import { getConsolidationConfig } from './openai-client';
-import { loadKnownProductLines } from './product-lines';
+import { loadKnownProductLines, FLAVOR_WORDS, FORMAT_WORDS } from './product-lines';
 import { normalizeProductSources } from '@/lib/product-sources';
 import type { ProductLineClassificationInput, ProductLineClassificationResult } from './types';
 
@@ -94,9 +94,26 @@ export function extractClassificationEvidence(
     const inputRecord = input as Record<string, unknown> | null | undefined;
     if (inputRecord?.name && typeof inputRecord.name === 'string' && inputRecord.name.trim()) {
         const inputName = inputRecord.name.trim();
+        
+        // Helper to check if input name contains flavor/format signal that trusted name is missing
+        const hasAdditionalSignal = (inName: string, trName: string): boolean => {
+            const lowerIn = inName.toLowerCase();
+            const lowerTr = trName.toLowerCase();
+            
+            const hasInFlavor = FLAVOR_WORDS.some(w => lowerIn.includes(w));
+            const hasTrFlavor = FLAVOR_WORDS.some(w => lowerTr.includes(w));
+            if (hasInFlavor && !hasTrFlavor) return true;
+
+            const hasInFormat = FORMAT_WORDS.some(w => lowerIn.includes(w));
+            const hasTrFormat = FORMAT_WORDS.some(w => lowerTr.includes(w));
+            if (hasInFormat && !hasTrFormat) return true;
+
+            return false;
+        };
+
         // Only use input name if no trusted source name was found, or if the trusted source
-        // name looks generic/SEO-padded. Input names from ShopSite are typically cleaner.
-        if (!trustedName) {
+        // name lacks key flavor/format signals that the input name provides.
+        if (!trustedName || hasAdditionalSignal(inputName, trustedName)) {
             trustedName = inputName;
         }
         // Always add input name to the cross-reference list (prefixed for visibility)
@@ -147,6 +164,8 @@ Rules:
 - DO strip package size (e.g., "25oz", "7oz", "10.5oz", "4LB", "30 ML"), count/pack (e.g., "3PK", "6PK", "20PK", "2CT"), physical size terms (e.g., "Small", "Medium", "Large", "SM", "MD", "LG", "XL"), and container details (e.g., "Tube", "Can", "Bag").
 - If the product clearly belongs to an existing product line in the taxonomy AND that line is flavor-specific, use that EXACT name.
 - If the existing product line in the taxonomy is too broad (e.g. lumps multiple flavors/formats together like "The Honest Kitchen Crunchy Dog Treats"), do NOT use it. Instead, invent/refine a flavor-specific product line (e.g. "The Honest Kitchen Crunchy Dog Treats - Gouda").
+- If some source names contain flavor, formula, format, or product line details (e.g. "Beef", "Whitefish", "Bites", "Mini Sticks") but the trusted source name is generic (e.g. "Chewy Sticks"), you MUST incorporate the specific flavor/formula/format from the other source names to build the canonical product line. Do NOT use the generic name if a more specific flavor/formula exists in the inputs.
+- Always prioritize flavor-specific product lines over generic ones when a flavor is present in any of the source names. If you see both a generic product line (e.g., "Wholesomes Rewards Chewy Sticks") and a flavor-specific product line (e.g., "Wholesomes Rewards Chewy Sticks Beef Dog Treats") in the known product lines list, and the product contains a flavor, you MUST choose or match to the flavor-specific product line (or invent a new flavor-specific one if it matches a different flavor).
 - Marketplace sources (Amazon, eBay, Walmart) often pad names with SEO keywords like "human grade," "grain free," "natural," "premium." IGNORE these padding words.
 - If multiple sources show different names for the same product, prefer the distributor/manufacturer source over marketplace sources.
 - Look at the product name from the TRUSTED source (listed first) — it's cleaner and closer to the manufacturer's actual naming.

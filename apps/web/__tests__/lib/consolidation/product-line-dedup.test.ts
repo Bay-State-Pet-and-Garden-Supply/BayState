@@ -59,7 +59,7 @@ describe('product-line-dedup', () => {
     });
 
     describe('deduplicateProductLines', () => {
-        it('auto-merges new product lines with matching format suffixes in the same batch', async () => {
+        it('keeps new product lines with different format suffixes separate in the same batch', async () => {
             const rawAssignments = new Map<string, string>([
                 ['UPC-A', 'Earth Animal No-Hide Rolls'],
                 ['UPC-B', 'Earth Animal No-Hide Stix'],
@@ -69,14 +69,19 @@ describe('product-line-dedup', () => {
             const result = await deduplicateProductLines(rawAssignments, 'brand-123');
 
             expect(result.canonicalLabels.size).toBe(3);
-            const record = result.canonicalLabels.get('earthanimalnohiderolls');
-            expect(record).toBeDefined();
-            expect(result.canonicalLabels.get('earthanimalnohidestix')?.id).toBe(record?.id);
-            expect(result.canonicalLabels.get('earthanimalnohidechews')?.id).toBe(record?.id);
+            const rollRec = result.canonicalLabels.get('earthanimalnohiderolls');
+            const stixRec = result.canonicalLabels.get('earthanimalnohidestix');
+            const chewRec = result.canonicalLabels.get('earthanimalnohidechews');
+            expect(rollRec).toBeDefined();
+            expect(stixRec).toBeDefined();
+            expect(chewRec).toBeDefined();
+            expect(stixRec?.id).not.toBe(rollRec?.id);
+            expect(chewRec?.id).not.toBe(rollRec?.id);
+            expect(chewRec?.id).not.toBe(stixRec?.id);
             expect(result.ambiguousUpcs.size).toBe(0);
         });
 
-        it('auto-merges new product lines with existing matching core keys in the DB', async () => {
+        it('auto-merges new product lines with existing matching core keys in the DB (with matching formats/flavors)', async () => {
             mockDbLines = [
                 {
                     id: 'existing-no-hide-id',
@@ -87,17 +92,57 @@ describe('product-line-dedup', () => {
             ];
 
             const rawAssignments = new Map<string, string>([
-                ['UPC-A', 'Earth Animal No-Hide Rolls'],
-                ['UPC-B', 'Earth Animal No-Hide Stix'],
+                ['UPC-A', 'Earth Animal No-Hide Chew'],
             ]);
 
             const result = await deduplicateProductLines(rawAssignments, 'brand-123');
 
-            expect(result.canonicalLabels.size).toBe(2);
-            expect(result.canonicalLabels.get('earthanimalnohiderolls')?.id).toBe('existing-no-hide-id');
-            expect(result.canonicalLabels.get('earthanimalnohidestix')?.id).toBe('existing-no-hide-id');
+            expect(result.canonicalLabels.size).toBe(1);
+            expect(result.canonicalLabels.get('earthanimalnohidechew')?.id).toBe('existing-no-hide-id');
             expect(result.ambiguousUpcs.size).toBe(0);
             expect(upsertProductLine).not.toHaveBeenCalled();
+        });
+
+        it('prevents merging product lines with different flavors', async () => {
+            mockDbLines = [
+                {
+                    id: 'existing-beef-id',
+                    canonical_name: 'Wholesomes Rewards Chewy Sticks Beef',
+                    normalized_key: 'wholesomesrewardschewysticksbeef',
+                    brand_id: 'brand-123',
+                },
+            ];
+
+            const rawAssignments = new Map<string, string>([
+                ['UPC-A', 'Wholesomes Rewards Chewy Sticks Lamb'],
+            ]);
+
+            const result = await deduplicateProductLines(rawAssignments, 'brand-123');
+
+            // Lamb should not merge into existing Beef, but instead get its own line upserted
+            expect(result.canonicalLabels.get('wholesomesrewardschewystickslamb')?.id).not.toBe('existing-beef-id');
+            expect(result.canonicalLabels.get('wholesomesrewardschewystickslamb')?.id).toBe('id_wholesomesrewardschewystickslamb');
+        });
+
+        it('prevents merging generic product line with flavor-specific product line', async () => {
+            mockDbLines = [
+                {
+                    id: 'existing-generic-id',
+                    canonical_name: 'Wholesomes Rewards Chewy Sticks',
+                    normalized_key: 'wholesomesrewardschewysticks',
+                    brand_id: 'brand-123',
+                },
+            ];
+
+            const rawAssignments = new Map<string, string>([
+                ['UPC-A', 'Wholesomes Rewards Chewy Sticks Beef'],
+            ]);
+
+            const result = await deduplicateProductLines(rawAssignments, 'brand-123');
+
+            // Beef should not merge into generic, but instead get its own line upserted
+            expect(result.canonicalLabels.get('wholesomesrewardschewysticksbeef')?.id).not.toBe('existing-generic-id');
+            expect(result.canonicalLabels.get('wholesomesrewardschewysticksbeef')?.id).toBe('id_wholesomesrewardschewysticksbeef');
         });
 
         it('auto-merges prefix/suffix-aware substrings (e.g. Infinity Braid Bone vs Infinity Braid)', async () => {

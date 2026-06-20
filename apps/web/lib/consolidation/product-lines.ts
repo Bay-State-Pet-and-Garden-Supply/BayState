@@ -9,6 +9,19 @@ export interface ProductLineRecord {
     updated_at: string;
 }
 
+export const FLAVOR_WORDS = [
+    'beef', 'chicken', 'chkn', 'lamb', 'whitefish', 'fish', 'salmon', 'tuna', 'cod', 'trout',
+    'turkey', 'trky', 'duck', 'venison', 'pork', 'rabbit', 'bison', 'boar',
+    'strawberry', 'strwb', 'blueberry', 'blubry', 'apple', 'banana', 'peanut', 'pumpkin', 'cheese'
+];
+
+export const FORMAT_WORDS = [
+    'sticks', 'stick', 'stix', 'bites', 'bite', 'strips', 'strip', 'rolls', 'roll',
+    'chews', 'chew', 'bones', 'bone', 'braids', 'braid', 'pates', 'pate', 'stews', 'stew',
+    'puffs', 'puff', 'shreds', 'shredded'
+];
+
+
 /** Normalize a label for dedup matching: lowercase, strip non-alphanumeric, collapse whitespace. */
 export function normalizeProductLineKey(label: string): string {
     return label
