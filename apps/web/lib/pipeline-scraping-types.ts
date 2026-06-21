@@ -23,6 +23,12 @@ export interface ScrapeOptions {
      * Controls which products are eligible for status transition.
      */
     requestedFromStatus?: "imported" | "processed" | "needs_attention" | "extracting";
+    /**
+     * Enable SERP Discovery as a fallback when distributors don't find the product.
+     * When false, only distributor sources are used — no Serper.dev / AI-powered
+     * SERP fallback. Default: true (SERP Discovery enabled).
+     */
+    serpDiscoveryEnabled?: boolean;
 }
 
 export interface ScrapeResult {

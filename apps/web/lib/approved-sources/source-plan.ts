@@ -146,6 +146,13 @@ export interface BuildSourcePlanOptions {
    *   never attempted (incremental re-extraction)
    */
   retryMode?: "all" | "failed_or_untried";
+  /**
+   * Enable SERP Discovery as a terminal fallback when all distributors
+   * are clean not_stocked. When false, the official_brand SERP fallback
+   * entry is not synthesized and only explicit distributor sources run.
+   * Default: true (SERP Discovery enabled).
+   */
+  serpDiscoveryEnabled?: boolean;
 }
 
 // =============================================================================
@@ -178,6 +185,7 @@ export async function buildApprovedSourcePlans(
 ): Promise<Record<string, SourcePlanResult>> {
   const results: Record<string, SourcePlanResult> = {};
   const retryMode = options?.retryMode ?? "all";
+  const serpDiscoveryEnabled = options?.serpDiscoveryEnabled ?? true;
 
   if (!upcs.length) {
     return results;
@@ -414,8 +422,11 @@ export async function buildApprovedSourcePlans(
       // Per CONTEXT.md: "Run all, keep all — every enabled source is attempted
       // regardless of early successes." The official brand SERP always runs as
       // the terminal source even if distributors found the product.
+      // When serpDiscoveryEnabled is false, official_brand entries are skipped entirely.
       if (source.source_type === "official_brand") {
-        entries.push(entry);
+        if (serpDiscoveryEnabled) {
+          entries.push(entry);
+        }
       } else {
         distributorEntries.push(entry);
       }
@@ -424,10 +435,12 @@ export async function buildApprovedSourcePlans(
     // ---- Add official brand as terminal SERP fallback ----
     // If the brand has official domains but no official_brand brand_source entry
     // appeared from the sources query, synthesize one as terminal fallback.
+    // Skipped when serpDiscoveryEnabled is false.
     const hasOfficialBrand = entries.some((e) => e.sourceType === "official_brand") ||
       distributorEntries.some((e) => e.sourceType === "official_brand");
 
     if (
+      serpDiscoveryEnabled &&
       !hasOfficialBrand &&
       brand.official_domains &&
       brand.official_domains.length > 0

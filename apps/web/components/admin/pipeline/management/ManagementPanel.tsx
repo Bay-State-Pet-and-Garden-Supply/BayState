@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, Save, Loader2, CheckCircle2, AlertCircle, Settings2 } from 'lucide-react';
+import { Package, Save, Loader2, CheckCircle2, AlertCircle, Settings2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
@@ -24,6 +25,7 @@ export function ManagementPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [cascadeConfigured, setCascadeConfigured] = useState<boolean | null>(null);
   const [checkingCascade, setCheckingCascade] = useState(false);
+  const [serpDiscoveryEnabled, setSerpDiscoveryEnabled] = useState(true);
 
   useEffect(() => {
     if (!brand?.id) {
@@ -77,6 +79,7 @@ export function ManagementPanel({
         body: JSON.stringify({
           upcs,
           retryMode: 'all',
+          serpDiscoveryEnabled,
         }),
       });
 
@@ -203,6 +206,26 @@ export function ManagementPanel({
           {isBrandAssigned
             ? `Brand: ${brandName} — ${cascadeConfigured ? 'Cascade ready' : 'Cascade not configured'}`
             : 'Assign a brand to enable extraction'}
+        </div>
+
+        {/* SERP Discovery toggle */}
+        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-foreground truncate">SERP Discovery</span>
+              <span className="text-[10px] text-muted-foreground truncate">
+                {serpDiscoveryEnabled
+                  ? 'AI-powered search fallback enabled'
+                  : 'Distributor-only extraction'}
+              </span>
+            </div>
+          </div>
+          <Switch
+            checked={serpDiscoveryEnabled}
+            onCheckedChange={setSerpDiscoveryEnabled}
+            disabled={isSaving}
+          />
         </div>
 
         <Button

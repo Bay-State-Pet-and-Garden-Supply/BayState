@@ -21,10 +21,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { upcs, retryMode, testMode } = body as {
+    const { upcs, retryMode, testMode, serpDiscoveryEnabled } = body as {
       upcs?: string[];
       retryMode?: "all" | "failed_or_untried";
       testMode?: boolean;
+      serpDiscoveryEnabled?: boolean;
     };
 
     if (!Array.isArray(upcs) || upcs.length === 0) {
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
     const options: ScrapeOptions = {
       retryMode: retryMode ?? "all",
       testMode: testMode ?? false,
+      serpDiscoveryEnabled: serpDiscoveryEnabled ?? true,
     };
 
     const result = await scrapeProducts(upcs, options);

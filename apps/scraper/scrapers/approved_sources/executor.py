@@ -143,11 +143,19 @@ class ApprovedSourceExecutor:
 
         # ---- Phase 3: Conditionally run SERP/official brand ----
         # SERP runs when:
+        #   - serp_fallback_policy is not "disabled" in job_config
         #   - Distributors exist, all clean not_stocked, none found (standard cascade)
         #   - No distributors in plan (run non-distributor entries directly)
+        serp_policy_disabled = (
+            self.job_config
+            and self.job_config.get("serp_fallback_policy") == "disabled"
+        )
         run_serp = (
-            (not has_source_error and not has_found and len(distributor_entries) > 0)
-            or len(distributor_entries) == 0
+            not serp_policy_disabled
+            and (
+                (not has_source_error and not has_found and len(distributor_entries) > 0)
+                or len(distributor_entries) == 0
+            )
         )
 
         if run_serp:

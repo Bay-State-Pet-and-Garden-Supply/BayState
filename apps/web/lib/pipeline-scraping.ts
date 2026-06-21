@@ -534,6 +534,7 @@ export async function scrapeProducts(
 
     const testMode = options?.testMode ?? false;
     const retryMode = options?.retryMode ?? 'all';
+    const serpDiscoveryEnabled = options?.serpDiscoveryEnabled ?? true;
 
     const supabase = await createClient();
 
@@ -543,6 +544,7 @@ export async function scrapeProducts(
     try {
         const plans = await buildApprovedSourcePlans(supabase, upcs, {
             retryMode,
+            serpDiscoveryEnabled,
         });
 
         for (const [upc, result] of Object.entries(plans)) {
@@ -587,7 +589,9 @@ export async function scrapeProducts(
         cascade_version: 'v1',
         retry_mode: retryMode,
         job_label: `Source Cascade${retryModeLabel}`,
-        serp_fallback_policy: 'run_when_all_distributors_clean_not_stocked',
+        serp_fallback_policy: serpDiscoveryEnabled
+          ? 'run_when_all_distributors_clean_not_stocked'
+          : 'disabled',
     };
 
     const { data: job, error: insertError } = await supabase
