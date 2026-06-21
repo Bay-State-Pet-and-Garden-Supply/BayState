@@ -23,6 +23,14 @@ import { PipelineSearchField } from "./PipelineSearchField";
 import { ManagementPanel } from "./management/ManagementPanel";
 import { BulkAssignBrandDialog } from "./BulkAssignBrandDialog";
 import { adminFetch } from "@/lib/admin/api-client";
+import { BrandSourceCascadeEditor } from "@/components/admin/brands/BrandSourceCascadeEditor";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const NO_BRAND_GROUP_ID = "no_brand";
 
@@ -80,6 +88,8 @@ export function ImportedResultsView({
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [selectedProductUpcs, setSelectedProductUpcs] = useState<Set<string>>(new Set());
   const [isAssignBrandOpen, setIsAssignBrandOpen] = useState(false);
+  const [isCascadeDialogOpen, setIsCascadeDialogOpen] = useState(false);
+  const [readinessNonce, setReadinessNonce] = useState(0);
   const [readiness, setReadiness] = useState<Record<string, CascadeReadiness>>({});
 
   const groups = useMemo<BrandProductGroup[]>(() => {
@@ -174,7 +184,7 @@ export function ImportedResultsView({
       active = false;
       window.clearTimeout(id);
     };
-  }, [groups]);
+  }, [groups, readinessNonce]);
 
   const activeGroup = useMemo(() => {
     return groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null;
@@ -364,12 +374,13 @@ export function ImportedResultsView({
                         </Link>
                       ) : null}
                       {activeGroup.brand?.id && effectiveReadiness[activeGroup.id] === "not_configured" ? (
-                        <Link
-                          href="/admin/brands"
-                          className="inline-flex items-center gap-1 text-[10px] text-brand-burgundy hover:underline font-bold bg-muted/30 px-2 py-0.5 border border-border"
+                        <button
+                          type="button"
+                          onClick={() => setIsCascadeDialogOpen(true)}
+                          className="inline-flex items-center gap-1 text-[10px] text-brand-burgundy hover:underline font-bold bg-muted/30 px-2 py-0.5 border border-border cursor-pointer"
                         >
                           <Settings2 className="h-3 w-3" /> Configure cascade
-                        </Link>
+                        </button>
                       ) : null}
                     </div>
                     <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
@@ -492,6 +503,28 @@ export function ImportedResultsView({
         selectedCount={selectedProductUpcs.size}
         onConfirm={handleAssignBrand}
       />
+
+      {activeGroup?.brand && (
+        <Dialog open={isCascadeDialogOpen} onOpenChange={setIsCascadeDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border border-border rounded-lg shadow-sm rounded-none p-0 bg-card">
+            <DialogHeader className="p-6 border-b-4 border-border bg-muted">
+              <DialogTitle className="text-xl font-bold uppercase tracking-tight">
+                Configure Source Cascade: {activeGroup.brand.name}
+              </DialogTitle>
+              <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                Configure distributor priorities and enable/disable them for this brand.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-6">
+              <BrandSourceCascadeEditor
+                brandId={activeGroup.brand.id}
+                brandSlug={activeGroup.brand.slug}
+                onSave={() => setReadinessNonce((n) => n + 1)}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

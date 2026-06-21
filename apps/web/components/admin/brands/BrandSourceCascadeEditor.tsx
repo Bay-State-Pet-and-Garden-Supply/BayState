@@ -116,11 +116,13 @@ function buildInitialEntries(
 interface BrandSourceCascadeEditorProps {
   brandId: string;
   brandSlug: string;
+  onSave?: () => void;
 }
 
 export function BrandSourceCascadeEditor({
   brandId,
   brandSlug,
+  onSave,
 }: BrandSourceCascadeEditorProps) {
   const [entries, setEntries] = useState<EditorEntry[]>([]);
   const [configured, setConfigured] = useState(false);
@@ -319,13 +321,14 @@ export function BrandSourceCascadeEditor({
       setEntries(buildInitialEntries(data.entries));
       setHasChanges(false);
       toast.success('Source cascade saved');
+      if (onSave) onSave();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save cascade';
       toast.error(msg);
     } finally {
       setSaving(false);
     }
-  }, [brandId, entries]);
+  }, [brandId, entries, onSave]);
 
   if (loading) {
     return (
