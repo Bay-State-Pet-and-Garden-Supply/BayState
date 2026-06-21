@@ -36,6 +36,64 @@ import {
 } from "@/lib/scraper-callback/enrichment-result";
 import { persistProductsIngestionSourcesPartial } from "@/lib/scraper-callback/products-ingestion";
 
+async function triggerPostScrapeOcr(supabase: any, upc: string) {
+  try {
+    const { data: product } = await supabase
+      .from('products_ingestion')
+      .select('sources, image_candidates, selected_images')
+      .eq('upc', upc)
+      .single();
+
+    if (!product) return;
+
+    // Collect image URLs from selected_images, image_candidates, or sources
+    const imageUrls: string[] = [];
+    const selectedImgs = product.selected_images as unknown[] | null;
+    if (Array.isArray(selectedImgs)) {
+      for (const item of selectedImgs) {
+        if (imageUrls.length >= 2) break;
+        if (typeof item === 'string' && item.trim()) {
+          imageUrls.push(item.trim());
+        } else if (item && typeof item === 'object' && 'url' in item) {
+          const url = (item as { url: unknown }).url;
+          if (typeof url === 'string' && url.trim()) imageUrls.push(url.trim());
+        }
+      }
+    }
+    if (imageUrls.length < 2) {
+      const candidates = product.image_candidates as string[] | null;
+      if (Array.isArray(candidates)) {
+        for (const url of candidates) {
+          if (imageUrls.length >= 2) break;
+          if (typeof url === 'string' && url.trim() && !imageUrls.includes(url.trim())) {
+            imageUrls.push(url.trim());
+          }
+        }
+      }
+    }
+    if (imageUrls.length < 2 && product.sources && typeof product.sources === 'object') {
+      const { extractImageCandidatesFromSources } = await import('@/lib/product-sources');
+      const candidateUrls = extractImageCandidatesFromSources(product.sources, 2);
+      for (const url of candidateUrls) {
+        if (imageUrls.length >= 2) break;
+        if (!imageUrls.includes(url)) imageUrls.push(url);
+      }
+    }
+
+    if (imageUrls.length > 0) {
+      const { createPackagingExtractionJobs } = await import('@/lib/packaging/workflow');
+      const { getPackagingTitleMode } = await import('@/lib/packaging-settings');
+      const mode = await getPackagingTitleMode().catch(() => 'disabled');
+      if (mode !== 'disabled') {
+        await createPackagingExtractionJobs([upc], { [upc]: imageUrls }, { trigger: 'consolidation' });
+        console.log(`[Enrichment Callback] Triggered post-scrape OCR for UPC: ${upc} with ${imageUrls.length} images`);
+      }
+    }
+  } catch (err) {
+    console.error(`[Enrichment Callback] Failed to trigger post-scrape OCR for ${upc}:`, err);
+  }
+}
+
 export async function POST(request: NextRequest) {
   // 1. Validate runner authentication
   const apiKey = request.headers.get("X-API-Key");
@@ -333,6 +391,10 @@ export async function POST(request: NextRequest) {
             : `${payload.status.charAt(0).toUpperCase() + payload.status.slice(1)} enrichment for ${upc}`,
       })
       .eq("id", jobId);
+
+    if (finalStatus === "processed") {
+      await triggerPostScrapeOcr(supabase, upc);
+    }
 
     return NextResponse.json({
       success: true,

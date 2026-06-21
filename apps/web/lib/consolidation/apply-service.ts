@@ -37,6 +37,8 @@ type AnimalSignal = 'dog' | 'cat' | 'horse' | 'bird' | 'small-pet';
 
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller', 'ai_search', 'shop'];
 const TRUSTED_SOURCE_FRAGMENTS = [
+    'vlm_ocr',
+    'vlm-ocr',
     'shopsite_input',
     'bradley',
     'central-pet',
@@ -76,8 +78,6 @@ interface PendingConsolidationRow {
     outcome: 'finalized' | 'rejected';
     name_key?: string;
     existing_consolidated?: Record<string, unknown>;
-    /** Set true when packaging auto-apply has updated the name */
-    _packaging_overlay?: boolean;
 }
 
 // =============================================================================
@@ -704,168 +704,7 @@ export async function applyConsolidationResults(
     }
 
     // =========================================================================
-    // Packaging Title Integration
-    // =========================================================================
-    //
-    // For each finalized UPC, load the latest packaging extraction facts,
-    // compose a title suggestion, store it, and (in auto mode) overlay the
-    // draft title when confidence gates pass.
-    //
-    const { getPackagingTitleMode } = await import('@/lib/packaging-settings');
-    const packagingMode = await getPackagingTitleMode().catch(() => 'disabled' as const);
 
-    if (packagingMode !== 'disabled') {
-        const {
-            getLatestExtractionFacts,
-            storeTitleSuggestion,
-            composePackagingTitle,
-            shouldAutoApplyTitle,
-        } = await import('@/lib/packaging');
-
-        for (const row of updateRows) {
-            if (row.outcome !== 'finalized') continue;
-
-            const upc = row.upc;
-            const nextFields = row.next_fields as any;
-            const existingConsolidated = row.existing_consolidated || {};
-
-            try {
-                const latestExtraction = await getLatestExtractionFacts(upc);
-                if (!latestExtraction) continue;
-
-                const context = {
-                    consolidationDraftCore: nextFields.core ?? {},
-                    consolidationCategory:
-                        nextFields.core?.canonical_category_breadcrumb ?? null,
-                    productLineExpectedBrand:
-                        nextFields.core?.brand_name ?? null,
-                };
-
-                const suggestion = composePackagingTitle(
-                    latestExtraction.facts,
-                    latestExtraction.fieldConfidence,
-                    context,
-                );
-
-                // Store the suggestion (always — even when not auto-applying)
-                const suggestionId = await storeTitleSuggestion({
-                    upc,
-                    extractionId: latestExtraction.extractionId,
-                    title: suggestion.title,
-                    confidenceScore: suggestion.overall_confidence,
-                    fieldConfidence: suggestion.field_confidence,
-                    composerVersion: 'packaging-title-v1',
-                    mode: packagingMode,
-                    reasons: suggestion.reasons,
-                    conflicts: suggestion.conflicts,
-                    status: 'created',
-                });
-
-                // Check auto-apply for auto_draft_high_confidence mode
-                if (packagingMode === 'auto_draft_high_confidence') {
-                    const gateResult = shouldAutoApplyTitle(suggestion, packagingMode);
-
-                    if (gateResult.apply && nextFields.core) {
-                        // Overlay title only
-                        nextFields.core.name = suggestion.title;
-
-                        if (suggestionId) {
-                            await supabase
-                                .from('product_title_suggestions')
-                                .update({
-                                    status: 'applied',
-                                    applied_at: new Date().toISOString(),
-                                    updated_at: new Date().toISOString(),
-                                })
-                                .eq('id', suggestionId);
-                        }
-
-                        // Recompute name_key and register for post-overlay duplicate recheck
-                        row.name_key = normalizeLookupKey(suggestion.title);
-                        row._packaging_overlay = true;
-
-                        console.log(
-                            `[PackagingApply] Auto-applied packaging title for ${upc}: "${suggestion.title}"` +
-                            ` (conf=${suggestion.overall_confidence.toFixed(2)})`,
-                        );
-                    }
-                }
-
-                // In auto mode, if no extraction exists yet but extractions are pending,
-                // flag the product for later re-evaluation
-                if (packagingMode === 'auto_draft_high_confidence' && !latestExtraction) {
-                    const { count: pendingCount } = await supabase
-                        .from('product_packaging_extractions')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('upc', upc)
-                        .in('status', ['queued', 'claimed', 'running']);
-
-                    if ((pendingCount ?? 0) > 0) {
-                        if (nextFields.evidence) {
-                            (nextFields.evidence as Record<string, unknown>).packaging_pending = true;
-                        }
-                    }
-                }
-
-                // Add packaging evidence to the consolidated record
-                if (nextFields.evidence) {
-                    nextFields.evidence.packaging_extraction_id = latestExtraction.extractionId;
-                    nextFields.evidence.packaging_summary = {
-                        title: suggestion.title,
-                        confidence: suggestion.overall_confidence,
-                        mode: packagingMode,
-                    };
-                }
-            } catch (pkgError) {
-                // Packaging integration is best-effort — never block the apply
-                console.warn(`[PackagingApply] Failed to process packaging for ${upc}:`, pkgError);
-            }
-        }
-    }
-
-    // =========================================================================
-    // Post-overlay duplicate check for packaging auto-applied titles
-    // The initial duplicate detection ran before packaging overlays, so we need
-    // to re-check for any new naming collisions introduced by packaging.
-    // =========================================================================
-    const overlayRows = updateRows.filter((r) => r.outcome === 'finalized' && (r as any)._packaging_overlay);
-    if (overlayRows.length > 0) {
-        const overlayNameGroups = new Map<string, PendingConsolidationRow[]>();
-        for (const row of overlayRows) {
-            if (!row.name_key) continue;
-            const group = overlayNameGroups.get(row.name_key) || [];
-            group.push(row);
-            overlayNameGroups.set(row.name_key, group);
-        }
-
-        for (const [, group] of overlayNameGroups) {
-            if (group.length < 2) continue;
-            // Conflict: packaging overlay created a duplicate for these UPCs
-            const dupSuggestion = (group[0].next_fields as any)?.core?.name || group[0].name_key || 'unknown';
-            const upcs = group.map((r) => r.upc).join(', ');
-            const msg = `packaging auto-apply created duplicate name "${dupSuggestion}" across UPCs ${upcs} — blocking auto-apply for all but first`;
-            console.warn('[PackagingApply] %s', msg);
-            if (warnings.length < 10) warnings.push(msg);
-
-            // Block auto-apply for duplicates: revert core.name to the pre-overlay value
-            // (which is the original consolidation name before packaging overlay)
-            for (let i = 1; i < group.length; i++) {
-                const row = group[i];
-                const existingConsolidated = row.existing_consolidated ?? {};
-                const existingCore = (existingConsolidated as Record<string, unknown>).core as Record<string, unknown> | undefined;
-                const origName = existingCore?.name as string | undefined
-                    ?? (existingConsolidated as Record<string, unknown>).name as string | undefined
-                    ?? null;
-                if (origName) {
-                    const nextFields = row.next_fields as Record<string, unknown>;
-                    const core = nextFields.core as Record<string, unknown> | undefined;
-                    if (core) {
-                        core.name = origName;
-                    }
-                }
-            }
-        }
-    }
 
     for (const row of updateRows) {
         if (row.outcome !== 'finalized') {

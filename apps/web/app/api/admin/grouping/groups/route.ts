@@ -112,7 +112,7 @@ function buildProductPreview(product: Record<string, unknown>): {
     let sourceProductName: string | null = null;
     let packagingText: string | null = null;
     
-    const TRUSTED = ['shopsite_input', 'bradley', 'central-pet', 'central_pet', 'orgill', 'doitbest', 'do_it_best', 'manufacturer', 'catalog', 'distributor', 'official_brand', 'official-brand'];
+    const TRUSTED = ['vlm_ocr', 'vlm-ocr', 'shopsite_input', 'bradley', 'central-pet', 'central_pet', 'orgill', 'doitbest', 'do_it_best', 'manufacturer', 'catalog', 'distributor', 'official_brand', 'official-brand'];
     
     if (sources && typeof sources === 'object') {
         for (const [sourceName, srcData] of Object.entries(sources)) {

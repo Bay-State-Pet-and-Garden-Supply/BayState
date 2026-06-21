@@ -173,6 +173,67 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Failed to save extraction result' }, { status: 500 });
     }
 
+    // 9b. Write the VLM/OCR structured facts and raw text to the product's sources under 'vlm_ocr'
+    if (body.status === 'succeeded' && body.structured_facts) {
+      try {
+        const { data: product, error: productFetchError } = await supabase
+          .from('products_ingestion')
+          .select('sources')
+          .eq('upc', extraction.upc)
+          .single();
+
+        if (productFetchError) {
+          console.warn('[PackagingResult] Failed to load product to append vlm_ocr:', productFetchError.message);
+        } else {
+          const currentSources = (product.sources || {}) as Record<string, unknown>;
+          const vlmOcrSource = {
+            image_text: body.raw_text || null,
+            packaging_title: body.structured_facts.packaging_title || null,
+            brand: body.structured_facts.brand || null,
+            product_line: body.structured_facts.product_line || null,
+            variant: body.structured_facts.variant || null,
+            flavor: body.structured_facts.flavor || null,
+            color: body.structured_facts.color || null,
+            scent: body.structured_facts.scent || null,
+            material: body.structured_facts.material || null,
+            product_type: body.structured_facts.product_type || null,
+            size: body.structured_facts.size || null,
+            weight: body.structured_facts.weight || null,
+            count: body.structured_facts.count || null,
+            packaging_type: body.structured_facts.packaging_type || null,
+            claims: body.structured_facts.claims || [],
+            _provenance: {
+              source_kind: 'enrichment',
+              provider: body.provider || null,
+              model: body.model || null,
+              timestamp: nowIso,
+            }
+          };
+
+          const updatedSources = {
+            ...currentSources,
+            vlm_ocr: vlmOcrSource,
+          };
+
+          const { error: productUpdateError } = await supabase
+            .from('products_ingestion')
+            .update({
+              sources: updatedSources,
+              updated_at: nowIso,
+            })
+            .eq('upc', extraction.upc);
+
+          if (productUpdateError) {
+            console.error('[PackagingResult] Failed to update products_ingestion sources with vlm_ocr:', productUpdateError.message);
+          } else {
+            console.log(`[PackagingResult] Persisted vlm_ocr source for UPC ${extraction.upc}`);
+          }
+        }
+      } catch (e) {
+        console.error('[PackagingResult] Error saving vlm_ocr source (non-fatal):', e);
+      }
+    }
+
     // 10. Determine the effective packaging_title_mode
     let effectiveMode = 'shadow';
     if (body.status === 'succeeded') {

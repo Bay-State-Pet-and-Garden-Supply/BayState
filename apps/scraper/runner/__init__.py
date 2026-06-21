@@ -25,8 +25,6 @@ PACKAGING_EXTRACTION_JOB_TYPE = "packaging_extraction"
 # Re-export packaging extraction runner
 from runner.packaging_extraction import _run_packaging_extraction_job  # noqa: E402, F401
 
-# Scrape-time OCR — raw text extraction during enrichment
-from runner.scrape_time_ocr import is_scrape_time_ocr_enabled, apply_scrape_time_ocr  # noqa: E402
 
 
 class ConfigurationError(Exception):
@@ -353,43 +351,6 @@ async def _run_approved_source_extraction(
             requested_extraction_mode=requested_mode,
         )
 
-    # Hook: scrape-time OCR on enrichment result before callback
-    # Non-blocking — failure never blocks enrichment
-    # Only runs on successful/partial results per plan
-    if (enrichment_result
-            and enrichment_result.status in ("success", "partial")
-            and is_scrape_time_ocr_enabled()):
-        try:
-            ocr_summary = await apply_scrape_time_ocr(
-                enrichment_result,
-                upc=target_upc,
-            )
-            _emit_runner_log(
-                job_id=job_id,
-                runner_name=runner_name,
-                job_logging=job_logging,
-                log_buffer=log_buffer,
-                level="info",
-                message=f"Scrape-time OCR for SKU={target_upc}: "
-                        f"{ocr_summary.get('sources_ocr_succeeded', 0)} succeeded, "
-                        f"{ocr_summary.get('sources_ocr_failed', 0)} failed "
-                        f"({ocr_summary.get('sources_with_images', 0)} with images)",
-                details=ocr_summary,
-                upc=target_upc,
-                phase="ocr",
-            )
-        except Exception as ocr_err:
-            _emit_runner_log(
-                job_id=job_id,
-                runner_name=runner_name,
-                job_logging=job_logging,
-                log_buffer=log_buffer,
-                level="warning",
-                message=f"Scrape-time OCR failed for SKU={target_upc} — enrichment continues: {ocr_err}",
-                details={"error": str(ocr_err)},
-                upc=target_upc,
-                phase="ocr",
-            )
 
     if enrichment_result and enrichment_result.status in ("success", "partial"):
         results["upcs_processed"] = 1

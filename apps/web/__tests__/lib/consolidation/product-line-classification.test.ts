@@ -1,7 +1,8 @@
 import {
     extractClassificationEvidence,
     buildClassificationSystemPrompt,
-    parseClassificationResponse
+    parseClassificationResponse,
+    buildClassificationUserPrompt
 } from '@/lib/consolidation/product-line-classification';
 
 describe('Product Line Classification', () => {
@@ -33,6 +34,40 @@ describe('Product Line Classification', () => {
             expect(evidence.allSourceNames).toContain('[bradley] EARTH ANIMAL NO HIDE STRWB CHEW SM 6PK');
             expect(evidence.allSourceNames).toContain('[amazon] Amazon SEO Padded Earth Animal No-Hide Chew SM 6PK');
             expect(evidence.allSourceNames[0]).toBe('[shopsite_input] EARTH ANIMAL NO HIDE CHEW 6PK');
+        });
+
+        it('should extract flavor and format from source facets or name tokens', () => {
+            const sources = {
+                bradley: {
+                    name: 'Wholesomes Rewards Chewy Sticks Beef 25oz',
+                    brand: 'Wholesomes',
+                    category: 'Dog Treats',
+                    extracted: {
+                        facets: [
+                            { definition_slug: 'flavor', value: 'Beef' }
+                        ]
+                    }
+                }
+            };
+            const evidence = extractClassificationEvidence('034846727043', sources, null);
+            expect(evidence.detected_flavor).toBe('Beef');
+            expect(evidence.detected_format).toBe('Sticks'); // from name token fallback
+        });
+    });
+
+    describe('buildClassificationUserPrompt', () => {
+        it('should append detected flavor and format to prompt parts', () => {
+            const evidence = {
+                brand: 'Wholesomes',
+                name: 'Wholesomes Rewards Chewy Sticks Beef 25oz',
+                category: 'Dog Treats',
+                detected_flavor: 'Beef',
+                detected_format: 'Sticks'
+            };
+            const prompt = buildClassificationUserPrompt(evidence);
+            expect(prompt).toContain('Brand: Wholesomes');
+            expect(prompt).toContain('Detected Flavor: Beef');
+            expect(prompt).toContain('Detected Format: Sticks');
         });
     });
 

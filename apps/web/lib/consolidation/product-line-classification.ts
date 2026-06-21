@@ -14,7 +14,7 @@
  */
 
 import { getConsolidationConfig } from './openai-client';
-import { loadKnownProductLines, FLAVOR_WORDS, FORMAT_WORDS } from './product-lines';
+import { loadKnownProductLines, FLAVOR_WORDS, FORMAT_WORDS, FLAVOR_CLASSES, FORMAT_CLASSES } from './product-lines';
 import { normalizeProductSources } from '@/lib/product-sources';
 import type { ProductLineClassificationInput, ProductLineClassificationResult } from './types';
 
@@ -123,7 +123,83 @@ export function extractClassificationEvidence(
         trustedBrand = inputRecord.brand.trim();
     }
 
-    return { name: trustedName, brand: trustedBrand, category, product_family: productFamily, allSourceNames };
+    // Scan sources for explicit flavor and format fields / facets
+    let detectedFlavor: string | undefined;
+    let detectedFormat: string | undefined;
+
+    for (const [, sourceData] of sourceEntries) {
+        if (!sourceData || typeof sourceData !== 'object') continue;
+        const s = sourceData as Record<string, unknown>;
+
+        // Check direct fields
+        let fVal = s.flavor || s.flavour;
+        let fmtVal = s.format || s.style || s.variant;
+
+        // Check extracted.core/facets
+        if (s.extracted && typeof s.extracted === 'object') {
+            const ext = s.extracted as any;
+            if (ext.core && typeof ext.core === 'object') {
+                if (!fVal) fVal = ext.core.flavor || ext.core.flavour;
+                if (!fmtVal) fmtVal = ext.core.format || ext.core.style || ext.core.variant;
+            }
+            if (Array.isArray(ext.facets)) {
+                if (!fVal) {
+                    const fFacet = ext.facets.find((f: any) => f && (f.definition_slug === 'flavor' || f.definition_slug === 'flavour'));
+                    if (fFacet) fVal = fFacet.value;
+                }
+                if (!fmtVal) {
+                    const fmtFacet = ext.facets.find((f: any) => f && (f.definition_slug === 'format' || f.definition_slug === 'style' || f.definition_slug === 'variant'));
+                    if (fmtFacet) fmtVal = fmtFacet.value;
+                }
+            }
+        }
+
+        // Fallback: scan features array/string or other custom fields
+        if (!fVal && typeof s.features === 'string' && s.features.toLowerCase().includes('flavor:')) {
+            const match = s.features.match(/flavor:\s*([^;,\n]+)/i);
+            if (match) fVal = match[1].trim();
+        }
+
+        if (typeof fVal === 'string' && fVal.trim().length > 0) {
+            detectedFlavor = fVal.trim();
+        }
+        if (typeof fmtVal === 'string' && fmtVal.trim().length > 0) {
+            detectedFormat = fmtVal.trim();
+        }
+    }
+
+    // Fallback: Scan trustedName using token matching against classes
+    if (trustedName) {
+        const tokens = trustedName.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+        if (!detectedFlavor) {
+            for (const flavorClass of FLAVOR_CLASSES) {
+                const match = flavorClass.find(w => tokens.includes(w));
+                if (match) {
+                    detectedFlavor = match.charAt(0).toUpperCase() + match.slice(1);
+                    break;
+                }
+            }
+        }
+        if (!detectedFormat) {
+            for (const formatClass of FORMAT_CLASSES) {
+                const match = formatClass.find(w => tokens.includes(w));
+                if (match) {
+                    detectedFormat = match.charAt(0).toUpperCase() + match.slice(1);
+                    break;
+                }
+            }
+        }
+    }
+
+    return {
+        name: trustedName,
+        brand: trustedBrand,
+        category,
+        product_family: productFamily,
+        allSourceNames,
+        detected_flavor: detectedFlavor,
+        detected_format: detectedFormat
+    };
 }
 
 /**
@@ -162,6 +238,7 @@ Rules:
 - Extract the core manufacturer product line name, retaining the brand, product line family, format, and flavor/formula.
 - DO NOT strip flavor, formula, scent, color, or primary form factors/formats (like "Sticks", "Bites", "Chews", "Pate", "Stew", "Rolls", "Stix", "Strips"). These distinguish distinct products.
 - DO strip package size (e.g., "25oz", "7oz", "10.5oz", "4LB", "30 ML"), count/pack (e.g., "3PK", "6PK", "20PK", "2CT"), physical size terms (e.g., "Small", "Medium", "Large", "SM", "MD", "LG", "XL"), and container details (e.g., "Tube", "Can", "Bag").
+- Use the "Detected Flavor" and "Detected Format" from the evidence when available. If present, your classified product line MUST incorporate them (e.g. "Wholesomes Rewards Chewy Sticks - Beef"). Products with different flavors or different formats MUST belong to separate product lines.
 - If the product clearly belongs to an existing product line in the taxonomy AND that line is flavor-specific, use that EXACT name.
 - If the existing product line in the taxonomy is too broad (e.g. lumps multiple flavors/formats together like "The Honest Kitchen Crunchy Dog Treats"), do NOT use it. Instead, invent/refine a flavor-specific product line (e.g. "The Honest Kitchen Crunchy Dog Treats - Gouda").
 - If some source names contain flavor, formula, format, or product line details (e.g. "Beef", "Whitefish", "Bites", "Mini Sticks") but the trusted source name is generic (e.g. "Chewy Sticks"), you MUST incorporate the specific flavor/formula/format from the other source names to build the canonical product line. Do NOT use the generic name if a more specific flavor/formula exists in the inputs.
@@ -195,6 +272,8 @@ export function buildClassificationUserPrompt(
     if (evidence.name) parts.push(`Trusted Source Name: ${evidence.name}`);
     if (evidence.category) parts.push(`Category: ${evidence.category}`);
     if (evidence.product_family) parts.push(`Source Product Family: ${evidence.product_family}`);
+    if (evidence.detected_flavor) parts.push(`Detected Flavor: ${evidence.detected_flavor}`);
+    if (evidence.detected_format) parts.push(`Detected Format: ${evidence.detected_format}`);
 
     // Include all source names for cross-referencing
     if (evidence.allSourceNames && evidence.allSourceNames.length > 0) {

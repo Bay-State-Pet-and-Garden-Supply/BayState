@@ -145,6 +145,27 @@ describe('product-line-dedup', () => {
             expect(result.canonicalLabels.get('wholesomesrewardschewysticksbeef')?.id).toBe('id_wholesomesrewardschewysticksbeef');
         });
 
+        it('prevents merging Chewy Sticks with Chewy Bites (fixes chew/chewy substring bug)', async () => {
+            mockDbLines = [
+                {
+                    id: 'existing-sticks-id',
+                    canonical_name: 'Wholesomes Rewards Chewy Sticks',
+                    normalized_key: 'wholesomesrewardschewysticks',
+                    brand_id: 'brand-123',
+                },
+            ];
+
+            const rawAssignments = new Map<string, string>([
+                ['UPC-A', 'Wholesomes Rewards Chewy Bites'],
+            ]);
+
+            const result = await deduplicateProductLines(rawAssignments, 'brand-123');
+
+            // Bites should not merge into Chewy Sticks, but instead get its own line upserted
+            expect(result.canonicalLabels.get('wholesomesrewardschewybites')?.id).not.toBe('existing-sticks-id');
+            expect(result.canonicalLabels.get('wholesomesrewardschewybites')?.id).toBe('id_wholesomesrewardschewybites');
+        });
+
         it('auto-merges prefix/suffix-aware substrings (e.g. Infinity Braid Bone vs Infinity Braid)', async () => {
             mockDbLines = [
                 {

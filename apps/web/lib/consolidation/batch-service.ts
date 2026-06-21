@@ -31,7 +31,7 @@ import {
 import { parseStructuredConsolidationText } from './result-parsing';
 import { calculateAICost } from '@/lib/ai-scraping/pricing';
 import { getAIScrapingProviderSecret } from '@/lib/ai-scraping/credentials';
-import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl, buildConsolidationSourcesPayload } from '@/lib/product-sources';
+import { normalizeProductSources, normalizeImageUrl, buildConsolidationSourcesPayload } from '@/lib/product-sources';
 import { buildFacetSlug, canonicalizeBrandName, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
 import { parseTaxonomyValues } from '@/lib/taxonomy';
@@ -57,14 +57,6 @@ import {
     retrieveDirectChatResults,
     cancelDirectChatBatch,
 } from './direct-chat-service';
-
-import { getPackagingVisionSettings } from '@/lib/packaging-settings';
-import {
-    createPackagingExtractionJobs,
-    createWorkflowRun,
-    updateWorkflowRun,
-    buildImageUrlsByUpc,
-} from '@/lib/packaging';
 
 import {
     createGeminiBatchJob,
@@ -561,6 +553,8 @@ type AnimalSignal = 'dog' | 'cat' | 'horse' | 'bird' | 'small-pet';
 
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller', 'ai_search', 'shop'];
 const TRUSTED_SOURCE_FRAGMENTS = [
+    'vlm_ocr',
+    'vlm-ocr',
     'shopsite_input',
     'bradley',
     'central-pet',
@@ -935,9 +929,6 @@ export async function submitBatch(
                 }
             );
 
-            // Fire packaging extraction jobs (async — don't block Gemini)
-            await runPackagingWorkflow(products, geminiResult);
-
             return geminiResult;
         }
 
@@ -958,9 +949,6 @@ export async function submitBatch(
             preflight.models.map((model) => model.id)
         );
 
-        // Fire packaging extraction jobs (async — don't block for shadow/suggestion)
-        await runPackagingWorkflow(products, directChatResult);
-
         return directChatResult;
     } catch (error: unknown) {
         console.error('[Consolidation] Failed to submit batch:', error);
@@ -968,91 +956,6 @@ export async function submitBatch(
             success: false,
             error: error instanceof Error ? error.message : 'Failed to submit batch',
         };
-    }
-}
-
-// =============================================================================
-// Packaging Workflow Integration
-// =============================================================================
-
-/**
- * Run the packaging extraction workflow after consolidation submission.
- *
- * For shadow/suggestion modes: fire extraction jobs asynchronously.
- * For auto mode: fire extraction jobs (non-blocking) — consolidation proceeds
- * immediately and packaging-backed title overlay happens during apply.
- *
- * Always best-effort — failures never block the consolidation pipeline.
- */
-async function runPackagingWorkflow(
-    products: ProductSource[],
-    batchResult: SubmitBatchResponse | BatchErrorResponse,
-): Promise<void> {
-    if (!('success' in batchResult) || !batchResult.success) {
-        return; // Batch failed — nothing to attach packaging to
-    }
-
-    try {
-        const settings = await getPackagingVisionSettings();
-
-        if (settings.packaging_title_mode === 'disabled') {
-            return;
-        }
-
-        // Build image URLs per UPC from products
-        const imageUrlsByUpc = buildImageUrlsByUpc(products);
-        const upcs = products.map((p) => p.upc);
-
-        if (Object.keys(imageUrlsByUpc).length === 0) {
-            console.log('[PackagingWorkflow] No products with usable images; skipping packaging extraction');
-            return;
-        }
-
-        // Create workflow run
-        const workflowRunId = await createWorkflowRun({
-            upcs,
-            packagingTitleMode: settings.packaging_title_mode,
-            fallbackPolicy: settings.fallback_policy,
-            packagingTimeoutSeconds: settings.packaging_timeout_seconds,
-            batchJobId: batchResult.batch_id,
-        });
-
-        if (!workflowRunId) {
-            console.warn('[PackagingWorkflow] Failed to create workflow run; extraction jobs will not be created');
-            return;
-        }
-
-        // Create queued extraction jobs for products with images
-        const extractionResult = await createPackagingExtractionJobs(
-            Object.keys(imageUrlsByUpc),
-            imageUrlsByUpc,
-            {
-                trigger: 'consolidation',
-                workflowRunId,
-            },
-        );
-
-        if (extractionResult.extractionIds.length > 0) {
-            await updateWorkflowRun(workflowRunId, {
-                status: 'waiting_on_packaging',
-                extractionIds: extractionResult.extractionIds,
-            });
-
-            console.log(
-                `[PackagingWorkflow] Created ${extractionResult.extractionIds.length} extraction jobs for workflow ${workflowRunId}` +
-                (extractionResult.skippedUpcs.length > 0
-                    ? ` (${extractionResult.skippedUpcs.length} UPCs skipped — no images)`
-                    : ''),
-            );
-        } else {
-            // All UPCs skipped — mark workflow as completed
-            await updateWorkflowRun(workflowRunId, {
-                status: 'completed',
-            });
-        }
-    } catch (error) {
-        // Packaging extraction is best-effort — never block consolidation
-        console.warn('[PackagingWorkflow] Failed to run packaging workflow (non-fatal):', error);
     }
 }
 
@@ -1338,7 +1241,7 @@ export async function submitGroupConsolidationBatch(
                 const sources = Object.keys(filteredSources).map(sourceName => ({
                     source: sourceName,
                     trust: sourceName === 'shopsite_input' ? 'canonical' as const :
-                           /bradley|central-pet|orgill|doitbest|manufacturer|distributor|official-brand|catalog/i.test(sourceName) ? 'trusted' as const :
+                           /vlm_ocr|vlm-ocr|bradley|central-pet|orgill|doitbest|manufacturer|distributor|official-brand|catalog/i.test(sourceName) ? 'trusted' as const :
                            /amazon|ebay|walmart|marketplace|seller/i.test(sourceName) ? 'marketplace' as const :
                            'standard' as const,
                     fields: filteredSources[sourceName] as Record<string, unknown>,
@@ -1392,62 +1295,7 @@ export async function submitGroupConsolidationBatch(
 
         console.log('[GroupConsolidation] Created batch %s with %d groups (%d products)', batchId, groups.length, totalProducts);
 
-        // Enqueue packaging extractions if packaging mode is not disabled
-        try {
-            const { getPackagingTitleMode } = await import('@/lib/packaging-settings');
-            const packagingMode = await getPackagingTitleMode().catch(() => 'disabled' as const);
-            if (packagingMode !== 'disabled') {
-                const { createPackagingExtractionJobs } = await import('@/lib/packaging/workflow');
-                // Load image URLs for each UPC in the group
-                const { data: groupProducts } = await supabase
-                    .from('products_ingestion')
-                    .select('upc, selected_images, image_candidates, sources')
-                    .in('upc', allUpcs);
 
-                if (groupProducts) {
-                    // Derive image URLs per UPC
-                    for (const gp of groupProducts) {
-                        const imageUrls: string[] = [];
-                        const selectedImgs = gp.selected_images as unknown[] | null;
-                        if (Array.isArray(selectedImgs)) {
-                            for (const item of selectedImgs) {
-                                if (imageUrls.length >= 2) break;
-                                if (typeof item === 'string' && item.trim()) {
-                                    imageUrls.push(item.trim());
-                                } else if (item && typeof item === 'object' && 'url' in item) {
-                                    const url = (item as { url: unknown }).url;
-                                    if (typeof url === 'string' && url.trim()) imageUrls.push(url.trim());
-                                }
-                            }
-                        }
-                        if (imageUrls.length < 2) {
-                            const candidates = gp.image_candidates as string[] | null;
-                            if (Array.isArray(candidates)) {
-                                for (const url of candidates) {
-                                    if (imageUrls.length >= 2) break;
-                                    if (typeof url === 'string' && url.trim() && !imageUrls.includes(url.trim())) imageUrls.push(url.trim());
-                                }
-                            }
-                        }
-                        if (imageUrls.length < 2 && gp.sources) {
-                            const sourceCandidates = extractImageCandidatesFromSources(gp.sources, 10);
-                            for (const url of sourceCandidates) {
-                                if (imageUrls.length >= 2) break;
-                                if (typeof url === 'string' && url.trim() && !imageUrls.includes(url.trim())) imageUrls.push(url.trim());
-                            }
-                        }
-                        if (imageUrls.length > 0) {
-                            await createPackagingExtractionJobs(
-                                [gp.upc],
-                                { [gp.upc]: imageUrls },
-                            );
-                        }
-                    }
-                }
-            }
-        } catch (pkgErr) {
-            console.warn('[GroupConsolidation] Failed to enqueue packaging extractions:', pkgErr);
-        }
 
         return {
             success: true,

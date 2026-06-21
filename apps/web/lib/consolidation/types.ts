@@ -291,6 +291,8 @@ export interface ProductLineClassificationInput {
         category?: string;
         product_family?: string;
         allSourceNames?: string[];
+        detected_flavor?: string;
+        detected_format?: string;
     };
     /** Known product lines taxonomy to pick from. */
     knownProductLines: Array<{
