@@ -45,6 +45,16 @@ export async function persistScrapeJobLogs(
     return null;
   }
 
+  const { data: jobExists } = await supabase
+    .from('enrichment_jobs')
+    .select('id')
+    .eq('id', jobId)
+    .maybeSingle();
+
+  if (!jobExists) {
+    return getLatestScrapeJobLog(normalizedLogs);
+  }
+
   const logRows = normalizedLogs.map((log) => toScrapeJobLogRow(log));
   const { error } = await supabase
     .from('enrichment_job_logs')
@@ -55,6 +65,7 @@ export async function persistScrapeJobLogs(
   }
 
   return getLatestScrapeJobLog(normalizedLogs);
+
 }
 
 export async function updateScrapeJobLogSummary(

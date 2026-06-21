@@ -30,8 +30,13 @@ describe("POST /api/scraper/v1/logs", () => {
     process.env.SUPABASE_SECRET_KEY = "test-key";
     jest.clearAllMocks();
 
+    const mockMaybeSingle = jest.fn().mockResolvedValue({ data: { id: "job-123" }, error: null });
+    const mockSelectEq = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockSelectEq });
+
     mockSupabase = {
       from: jest.fn().mockReturnThis(),
+      select: mockSelect,
       upsert: jest.fn(),
       update: jest.fn().mockReturnThis(),
       eq: jest.fn().mockResolvedValue({ error: null }),
