@@ -70,6 +70,8 @@ const EXCLUDED_FROM_LLM = new Set([
 
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller', 'ai_search', 'shop'];
 const TRUSTED_SOURCE_FRAGMENTS = [
+  'vlm_ocr',
+  'vlm-ocr',
   'shopsite_input',
   'bradley',
   'central-pet',

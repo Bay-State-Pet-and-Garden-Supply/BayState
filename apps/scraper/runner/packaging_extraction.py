@@ -86,6 +86,12 @@ Return ONLY a JSON object with this exact structure, no extra text:
   "notes": []
 }
 
+Rules for Extraction:
+1. Weight: Extract ONLY the numerical weight value and its unit (e.g., "7 OZ", "25 lb.", "10 lbs"). Do NOT include prefix labels like "NET WT.", "Net Weight", or "Net Wt." in the weight value.
+2. Packaging Type: Limit to standard structural types: 'bag', 'pouch', 'can', 'box', 'bottle', 'jug', 'tub', 'jar', 'tray', 'wrapper', 'carded', or 'bulk'. Do NOT put marketing claims (e.g. "MADE IN USA") or country of origin here.
+3. Brand Logo/Spelling: Carefully inspect the logo. Correct common character dropouts in stylized fonts (e.g., stylized "WHOLESOMES" might look like "WHOLESMES" at a glance; verify standard English brand names).
+4. Semantic Segments: Do NOT duplicate the brand name in the packaging_title. The packaging_title should be the primary product name (e.g., "CHEWY Mini Sticks"), and flavor details should be placed in 'flavor' or 'variant'.
+
 Set confidence to 0.0 for fields not visible or uncertain.
 Overall_confidence should reflect how readable and interpretable the image is.
 Include any uncertainty or quality issues in notes."""
@@ -142,6 +148,11 @@ STRUCTURE_FROM_OCR_PROMPT_TEMPLATE = (
     '  "overall_confidence": 0.0-1.0,\n'
     '  "notes": []\n'
     '}}\n'
+    'Rules for Structuring:\n'
+    '1. Weight: Extract ONLY the numerical weight value and its unit (e.g., "7 OZ", "25 lb.", "10 lbs"). Do NOT include prefix labels like "NET WT.", "Net Weight", or "Net Wt." in the weight value.\n'
+    '2. Packaging Type: Limit to standard structural types: \'bag\', \'pouch\', \'can\', \'box\', \'bottle\', \'jug\', \'tub\', \'jar\', \'tray\', \'wrapper\', \'carded\', or \'bulk\'. Do NOT use marketing claims or taglines.\n'
+    '3. Brand Logo/Spelling: Verify spelling carefully. Correct obvious OCR dropout errors (e.g., "WHOLESMES" -> "WHOLESOMES").\n'
+    '4. Semantic Segments: Do NOT duplicate the brand name in the packaging_title. Ensure primary product name is in packaging_title and sub-variants/flavors are in variant/flavor.\n\n'
     'Set confidence to 0.0 for fields not visible or uncertain.\n'
     'Overall_confidence should reflect how readable and interpretable the OCR output is.'
 )
