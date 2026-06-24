@@ -373,15 +373,23 @@ export function ImportedResultsView({
                           <span className="truncate max-w-[150px]">{activeGroup.brand.official_domains[0]}</span>
                         </Link>
                       ) : null}
-                      {activeGroup.brand?.id && effectiveReadiness[activeGroup.id] === "not_configured" ? (
+                      {activeGroup.brand?.id && (
                         <button
                           type="button"
                           onClick={() => setIsCascadeDialogOpen(true)}
-                          className="inline-flex items-center gap-1 text-[10px] text-brand-burgundy hover:underline font-bold bg-muted/30 px-2 py-0.5 border border-border cursor-pointer"
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[10px] hover:underline font-bold bg-muted/30 px-2 py-0.5 border border-border cursor-pointer",
+                            effectiveReadiness[activeGroup.id] === "not_configured"
+                              ? "text-brand-burgundy"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
                         >
-                          <Settings2 className="h-3 w-3" /> Configure cascade
+                          <Settings2 className="h-3 w-3" />
+                          {effectiveReadiness[activeGroup.id] === "not_configured"
+                            ? "Configure cascade"
+                            : "Edit cascade"}
                         </button>
-                      ) : null}
+                      )}
                     </div>
                     <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
                       <span>{activeProducts.length} Product{activeProducts.length !== 1 ? "s" : ""}</span>
