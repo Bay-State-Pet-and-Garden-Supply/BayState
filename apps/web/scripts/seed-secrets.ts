@@ -27,18 +27,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
 const ENCRYPTION_KEY = process.env.AI_CREDENTIALS_ENCRYPTION_KEY || '';
 
-// Safety check to ensure we only target a local environment
-const LOCAL_PATTERNS = ['localhost', '127.0.0.1'];
-const isLocalUrl = LOCAL_PATTERNS.some((pattern) => SUPABASE_URL.includes(pattern));
-
 if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
   console.error('❌ Supabase keys (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY) are not set.');
-  process.exit(1);
-}
-
-if (!isLocalUrl) {
-  console.error(`❌ NEXT_PUBLIC_SUPABASE_URL is not pointing to localhost: ${SUPABASE_URL}`);
-  console.error('   Aborting secrets seeding for safety.');
   process.exit(1);
 }
 

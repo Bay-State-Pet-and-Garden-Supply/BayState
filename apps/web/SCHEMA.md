@@ -163,5 +163,5 @@ The 213-item migration chain has been squashed into a single cumulative baseline
 ## Required safety steps before destructive schema work
 1. Take a full `pg_dump` of production.
 2. Back up: `products`, `products_ingestion`, `brands`, `categories`, `product_categories`, `facet_*`, `orders*`, `integration_sync_runs`, `inventory_reconciliation_items`, `scraper_configs`, `scraper_credentials`, `cohort_*`.
-3. Validate `db:reset`, `local:verify`, tests, and typecheck before any destructive migration.
+3. Run `db:push` to a Supabase preview branch, validate tests/typecheck before any destructive migration.
 4. Prefer additive-safe migrations over destructive DDL.

@@ -5,74 +5,47 @@ A high-performance, mobile-first PWA e-commerce platform. Built with Next.js 16 
 ## Requirements
 
 - **Bun 1.3.5** (package manager, enforced by workspace)
-- **Docker Desktop** (for local Supabase)
-- **Supabase CLI** (`brew install supabase/tap/supabase`)
 - **Stripe CLI** (`brew install stripe/stripe-cli/stripe`) — only for card payment testing
 
-## Quick Start (Local Development)
-
-**Prerequisites:**
-- Docker Desktop running (for Supabase local containers)
-- Stripe CLI installed (for payment testing — optional)
+## Quick Start (Development)
 
 ```bash
 # 1. Install dependencies
 bun install
 
-# 2. Start local Supabase (Docker)
-bun run db:start
-
-# 3. Get local Supabase keys
-bun run db:status
-
+# 2. Set up environment
 cp .env.local.example .env.local
-# Fill in values from 'bun run db:status' output and Stripe dashboard (test mode)
+# Fill in your Supabase keys from: https://supabase.com/dashboard/project/fapnuczapctelxxmrail/settings/api
+# You need: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY and SUPABASE_SECRET_KEY
 
-# 4. Run migrations and seed
-bun run db:reset
-
-# 5. Verify seed data
-bun run local:verify
-
-# 6. Start dev server
+# 3. Start dev server
 bun run dev        # http://localhost:3000
 ```
 
-## Local Supabase
+Dev connects directly to the live Supabase project (`fapnuczapctelxxmrail`). There is no local Docker-based Supabase — the same database powers local dev, Vercel preview, and production.
 
-The local Supabase stack runs in Docker containers:
+## Supabase
 
-| Service     | Port  | URL                           |
-|-------------|-------|-------------------------------|
-| API (Kong)  | 54321 | http://127.0.0.1:54321        |
-| DB (Postgres)| 54322| postgresql://postgres:postgres@127.0.0.1:54322/postgres |
-| Studio      | 54323 | http://localhost:54323        |
-| Inbucket    | 54324 | http://localhost:54324        |
+The app connects to the live Supabase project at `https://fapnuczapctelxxmrail.supabase.co`.
+
+### Schema Changes (Migrations)
+
+Migrations live in `supabase/migrations/`. To apply them to the live database:
+
+```bash
+bun run db:push
+```
+
+This runs `supabase db push` against the linked project.
 
 ### Auth Redirect URLs
 
-`supabase/config.toml` is configured for localhost. No additional Supabase dashboard config is needed for local dev. The configured URLs are:
+Configured in the Supabase Dashboard at:
+https://supabase.com/dashboard/project/fapnuczapctelxxmrail/auth/url-configuration
 
-- `http://localhost:3000`
+Redirect URLs should include:
 - `http://localhost:3000/**`
-- `http://127.0.0.1:3000/**`
-
-### Seed Data
-
-After `bun run db:reset`, the database contains:
-
-- **6 brands**: Fromm, Purina Pro Plan, World's Best Cat Litter, Jonathan Green, Kaytee, KONG
-- **8 categories**: Dog Food, Dog Treats & Chews, Dog Toys, Cat Food, Cat Litter, Small Pet Food, Grass Seed, Fertilizer
-- **12 products**: Realistic pet and garden products with prices, slugs, and images
-- **3 pet types**: Dog, Cat, Small Pet
-- **5 facet definitions** with 20 facet values linked to products
-- **4 services**: Propane Refill, Knife Sharpening, Curbside Loading, Local Delivery
-- **5 site settings**: Campaign banner, homepage, navigation, branding, shopsite migration
-- **2 fake orders**: 1 pickup (unpaid), 1 card (paid)
-
-### Important: No Real Credentials
-
-The seed file contains **no real credentials**. Do not add any. If you need a local admin user, create one manually via Supabase Studio (`http://localhost:54323`) or the auth signup flow.
+- `https://bay-state-app.vercel.app/**`
 
 ## Stripe Local Workflow
 
@@ -104,14 +77,6 @@ bun run stripe:listen
 | `4000 0025 0000 3155`    | Requires SCA/auth   |
 
 Use any future expiration date, any CVC, any ZIP.
-
-### Stripe Config
-
-| Env Var                       | Source                                          |
-|-------------------------------|-------------------------------------------------|
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → API Keys (test mode)    |
-| `STRIPE_SECRET_KEY`           | Stripe Dashboard → API Keys (test mode)         |
-| `STRIPE_WEBHOOK_SECRET`       | `stripe listen --forward-to ...` output          |
 
 ### Production Stripe Webhook Endpoint
 
@@ -194,7 +159,6 @@ The DB enum `order_payment_status` defines:
 | Database types  | `lib/supabase/database.types.ts`               |
 | Supabase server | `lib/supabase/server.ts`                       |
 | DB migrations   | `supabase/migrations/`                         |
-| Seed data       | `supabase/seed.sql`                            |
 
 ## Tests
 
@@ -206,18 +170,11 @@ bun run test -- --testPathPatterns="lib/payments"      # Payment lib tests
 
 ## Environment Variables
 
-See `.env.local.example` for all local dev env vars with explanations.
+See `.env.local.example` for all dev env vars with explanations. The critical Supabase vars are:
 
-### Production / Vercel Required Vars
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_SECRET_KEY`
-- `NEXT_PUBLIC_SITE_URL`
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- Scraper/admin/email vars as needed
+- `NEXT_PUBLIC_SUPABASE_URL=https://fapnuczapctelxxmrail.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` (from Supabase Dashboard)
+- `SUPABASE_SECRET_KEY=sb_secret_...` (from Supabase Dashboard — secret key)
 
 ## Vercel Deployment
 
@@ -229,9 +186,9 @@ The root `vercel.json` configures:
 
 ## Troubleshooting
 
-**`supabase start` fails:** Ensure Docker Desktop is running. Check `docker info`.
+**"Supabase configuration missing" error:** Ensure `.env.local` has valid `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the Supabase Dashboard.
 
-**`supabase db reset` complains about missing seed.sql:** The seed file must exist at `supabase/seed.sql`. It's referenced in `config.toml`.
+**Auth redirects not working locally:** Check that `http://localhost:3000/**` is in the Supabase Dashboard redirect URL list.
 
 **Stripe Elements not loading:** Check that `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is set to a valid test key. Card payment is disabled without a valid key.
 

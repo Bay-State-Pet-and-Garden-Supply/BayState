@@ -16,19 +16,11 @@
     "test:api-compat": "bun scripts/test-api-compatibility.ts",
     "test:a11y:e2e": "bunx playwright test --config=playwright.config.ts",
     "test:a11y:unit": "node scripts/run-jest.cjs --config=jest.a11y.config.ts --testPathPattern=a11y",
-    "db:start": "bunx supabase start",
-    "db:stop": "bunx supabase stop",
-    "db:status": "bunx supabase status",
-    "db:reset": "bun run local:bundle-seed && bunx supabase db reset && bun run db:seed-secrets",
-    "db:seed": "bun run local:bundle-seed && bunx supabase db reset && bun run db:seed-secrets",
-    "db:sync-env": "bun scripts/update-local-env.ts",
+    "db:push": "bunx supabase db push",
     "db:seed-secrets": "bun scripts/seed-secrets.ts",
-    "local:bundle-seed": "bun scripts/bundle-seed.ts",
     "stripe:login": "bun scripts/stripe-docker.ts login",
     "stripe:listen": "bun scripts/stripe-docker.ts listen",
-    "local:verify": "bun scripts/verify-local-bootstrap.ts",
-    "dev:local": "bun run db:start && bun run db:sync-env && bun run local:bundle-seed && bun run dev",
-    "bootstrap": "bun install && cp -n .env.local.example .env.local || true && bun run db:sync-env && bun run local:bundle-seed"
+    "bootstrap": "bun install && cp -n .env.local.example .env.local || true"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.34",
