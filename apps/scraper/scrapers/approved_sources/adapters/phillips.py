@@ -179,7 +179,10 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             if not candidate_pdp_url and candidate_item:
                 candidate_pdp_url = f"https://shop.phillipspet.com/ccrz__ProductDetails?sku={candidate_item}"
 
-            if not any([candidate_name, candidate_brand, candidate_upc, candidate_item]):
+            # Ignore Phillips' hidden scanner/template rows. They can contain
+            # placeholder identifiers but no product name/brand, and should not
+            # be allowed to win or synthesize a PDP URL.
+            if not any([candidate_name, candidate_brand]):
                 continue
 
             identifier_match, matched_identifiers = self._match_identifier_candidates(
@@ -405,20 +408,37 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             except Exception as overlay_err:
                 logger.debug("[%s] Error removing overlay elements: %s", self.adapter_slug, overlay_err)
 
-            # Wait for search results container or empty message to appear
-            selectors = [
-                "#plp-desktop-row",
-                ".cc_row_product_info",
-                ".scanner-results-product-container",
-                ".scanner-results-product-container-mobile",
-                ".plp-empty-state-message-container"
-            ]
-            combined_selector = ", ".join(selectors)
+            # Wait for the *rendered* quick-search result, not merely attached
+            # templates. Phillips keeps hidden scanner template rows in the DOM
+            # (e.g. item #100122 / UPC 128937128937) before Backbone finishes
+            # hydrating the real PLP. Parsing immediately causes false no-match
+            # results and navigation to the wrong PDP.
             try:
-                # Use state="attached" to avoid timeouts if elements are present but obscured/hidden by overlays
-                await page.wait_for_selector(combined_selector, state="attached", timeout=15000)
+                await page.wait_for_function(
+                    """(searchedUpc) => {
+                        const bodyText = document.body?.innerText || '';
+                        if (/sorry,? no results were found|no results were found|no products/i.test(bodyText)) {
+                            return true;
+                        }
+
+                        const isVisible = (el) => !!(
+                            el.offsetWidth || el.offsetHeight || el.getClientRects().length
+                        );
+                        const rows = Array.from(document.querySelectorAll(
+                            '#plp-desktop-row, .cc_row_product_info'
+                        ));
+                        return rows.some((row) => isVisible(row) && row.innerText.includes(searchedUpc));
+                    }""",
+                    arg=upc,
+                    timeout=20000,
+                )
             except Exception as e:
-                logger.warning("[%s] Timeout waiting for search results: %s", self.adapter_slug, e)
+                logger.warning("[%s] Timeout waiting for rendered Phillips search results: %s", self.adapter_slug, e)
+
+            try:
+                await page.wait_for_load_state("networkidle", timeout=5000)
+            except Exception:
+                pass
 
             search_html = await page.content()
             det_result = self.extract_from_html(search_html, upc, search_url)
@@ -693,29 +713,54 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             if "category" not in det_result.matched_fields:
                 det_result.matched_fields.append("category")
 
-        # Extract high-res images from details page
+        # Extract high-res images from details page. Phillips' real PDP image is
+        # currently emitted as <img class="mainProdImage prodDetail" src="...cloudfront.../{item}.jpg">.
+        # The page also keeps hidden scanner templates with unrelated placeholder
+        # images, so prefer URLs/classes tied to the matched item/UPC.
         images = []
-        for img in soup.select(".cc_product_detail_image img, img.cc_product_detail_image, .cc_product_image img, .cc_alternate_images img, .cc_alternate_image img"):
-            src = img.get("src") or img.get("data-src") or ""
-            if not src:
-                continue
-            if src.startswith("//"):
-                src = "https:" + src
-            elif src.startswith("/"):
-                src = urljoin(self.base_url, src)
-            if src not in images:
-                images.append(src)
+        product_identifiers = {
+            str(value).strip()
+            for value in (
+                det_result.product.get("item_number"),
+                det_result.product.get("upc"),
+            )
+            if value
+        }
 
-        # Fallback/broad scan for any images matching /products/ or cloudfront/bigcommerce
-        for img in soup.select("img[src*='product'], img[src*='large']"):
-            src = img.get("src") or img.get("data-src") or ""
-            if src:
-                if src.startswith("//"):
-                    src = "https:" + src
-                elif src.startswith("/"):
-                    src = urljoin(self.base_url, src)
-                if src not in images:
-                    images.append(src)
+        def _normalize_src(src: str) -> str:
+            if src.startswith("//"):
+                return "https:" + src
+            if src.startswith("/"):
+                return urljoin(self.base_url, src)
+            return src
+
+        def _is_relevant_image(src: str, class_text: str) -> bool:
+            if not src:
+                return False
+            lowered = src.lower()
+            classes = class_text.lower()
+            if "ccrz__productdetails" in lowered:
+                return False
+            if "category-thumbnail" in classes or "promo-banner" in classes:
+                return False
+            if "mainprodimage" in classes or "proddetail" in classes:
+                return True
+            if product_identifiers and any(identifier in src for identifier in product_identifiers):
+                return True
+            return False
+
+        image_selectors = (
+            ".mainProdImage, img.prodDetail, .prodDetail img, "
+            ".cc_product_detail_image img, img.cc_product_detail_image, "
+            ".cc_product_image img, .cc_alternate_images img, .cc_alternate_image img, "
+            "img[src*='d56ygyjv466yj.cloudfront.net'], img[src*='cloudfront.net'], "
+            "img[src*='/products/'], img[src*='large']"
+        )
+        for img in soup.select(image_selectors):
+            src = _normalize_src(img.get("src") or img.get("data-src") or "")
+            class_text = " ".join(img.get("class") or [])
+            if _is_relevant_image(src, class_text) and src not in images:
+                images.append(src)
 
         if images:
             normalized_images = self.normalize_images(images)
@@ -811,18 +856,27 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
 
     def normalize_images(self, urls: list[str]) -> list[str]:
         """Apply Phillips image quality replacements.
-        From legacy: /thumb/ -> /large/, _thumb -> _large
-        Also maps low-res Cloudfront domain to direct shop.phillipspet.com domain for large images.
+
+        Phillips product images are served from d56ygyjv466yj.cloudfront.net.
+        Do not rewrite that CDN to shop.phillipspet.com/images/products: those
+        URLs return HTML/404 and the downstream capture step drops them. For CDN
+        thumbs, prefer the root ``/{item}.jpg`` asset, which is the actual PDP
+        image; keep the original CDN host so policy/capture can fetch it.
         """
         normalized = []
         for url in urls:
-            # Map Cloudfront CDN domain to direct shop.phillipspet.com domain to avoid 403 Forbidden on large images
+            if not url:
+                continue
+
+            url = url.replace("http://d56ygyjv466yj.cloudfront.net/", "https://d56ygyjv466yj.cloudfront.net/")
             url = re.sub(
-                r"https?://d56ygyjv466yj\.cloudfront\.net/",
-                "https://shop.phillipspet.com/images/products/",
-                url
+                r"https://d56ygyjv466yj\.cloudfront\.net/thumb/([^/_]+)_t\.jpg$",
+                r"https://d56ygyjv466yj.cloudfront.net/\1.jpg",
+                url,
             )
-            url = re.sub(r"/thumb/", "/large/", url)
-            url = re.sub(r"_thumb", "_large", url)
+
+            if "d56ygyjv466yj.cloudfront.net" not in url:
+                url = re.sub(r"/thumb/", "/large/", url)
+                url = re.sub(r"_thumb", "_large", url)
             normalized.append(url)
         return normalized

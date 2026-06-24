@@ -159,6 +159,8 @@ def is_asset_domain_allowed(
         "amazon.com",
         "chewy.com",
         "salsify.com",
+        # Phillips Pet serves product imagery from this fixed CloudFront distribution.
+        "d56ygyjv466yj.cloudfront.net",
     }
     if any(normalized == td or normalized.endswith("." + td) for td in TRUSTED_ASSET_DOMAINS):
         return True

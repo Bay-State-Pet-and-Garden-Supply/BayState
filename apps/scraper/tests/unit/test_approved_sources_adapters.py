@@ -280,6 +280,87 @@ class TestPhillipsAdapter:
         assert "/large/" in normalized[0]
         assert "_large" in normalized[1]
 
+    def test_normalize_images_keeps_phillips_cloudfront_cdn(self):
+        from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
+
+        entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
+        plan = _make_plan()
+        adapter = PhillipsAdapter(entry, plan)
+
+        normalized = adapter.normalize_images([
+            "http://d56ygyjv466yj.cloudfront.net/thumb/727222_t.jpg",
+        ])
+
+        assert normalized == ["https://d56ygyjv466yj.cloudfront.net/727222.jpg"]
+
+    def test_extract_ignores_hidden_scanner_template_identifiers(self):
+        from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
+
+        entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
+        plan = _make_plan(upc="072705115310", name="Fromm Gold Large Breed Dog 30 lb", brand_name="FROMM FAMILY FOODS LLC")
+        adapter = PhillipsAdapter(entry, plan)
+
+        html = """
+        <html><body>
+          <div class="scanner-results-product-container scanner-results-product-container-desktop">
+            <div class="product-item-number"><span class="cc_value">100122</span></div>
+            <div class="product-upc"><span class="cc_value">128937128937</span></div>
+            <img src="http://d56ygyjv466yj.cloudfront.net/thumb/100122_t.jpg" />
+          </div>
+          <div class="cc_row_product_info">
+            <div class="cc_product_name"><a href="/ccrz__ProductDetails?sku=727222"><strong>Fromm Gold Large Breed Dog 30 lb</strong></a></div>
+            <div class="product-brand"><span class="branded">FROMM FAMILY FOODS LLC</span></div>
+            <div class="product-item-number"><span class="cc_value">727222</span></div>
+            <div class="product-upc"><span class="cc_value">072705115310</span></div>
+            <div class="cc_product_image"><img src="http://d56ygyjv466yj.cloudfront.net/thumb/727222_t.jpg" /></div>
+          </div>
+        </body></html>
+        """
+
+        result = adapter.extract_from_html(html, "072705115310", "https://shop.phillipspet.com/ccrz__ProductList?searchText=072705115310")
+
+        assert result.success is True
+        assert result.product["item_number"] == "727222"
+        assert adapter._product_page_url and "sku=727222" in adapter._product_page_url
+        assert "100122" not in adapter._product_page_url
+
+    def test_pdp_enrichment_extracts_main_cloudfront_image(self):
+        from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
+        from scrapers.approved_sources.types import ApprovedSourceExtractionResult, ApprovedSourcePolicy
+
+        entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
+        plan = _make_plan(upc="072705115310", name="Fromm Gold Large Breed Dog 30 lb", brand_name="FROMM FAMILY FOODS LLC")
+        adapter = PhillipsAdapter(entry, plan)
+        det_result = ApprovedSourceExtractionResult(
+            success=True,
+            source_slug="phillips",
+            product={"name": "Fromm Gold Large Breed Dog 30 lb", "item_number": "727222", "upc": "072705115310"},
+            matched_fields=["name", "item_number", "upc"],
+        )
+        html = """
+        <html><body>
+          <div class="scanner-results-product-container">
+            <img src="http://d56ygyjv466yj.cloudfront.net/thumb/100122_t.jpg" />
+          </div>
+          <img class="mainProdImage prodDetail img-responsive" src="http://d56ygyjv466yj.cloudfront.net/727222.jpg" />
+        </body></html>
+        """
+        policy = ApprovedSourcePolicy(
+            allowedDomains=["shop.phillipspet.com"],
+            allowedAssetDomains=["d56ygyjv466yj.cloudfront.net"],
+            approvedSourcesOnly=True,
+        )
+
+        enriched = adapter._enrich_from_pdp_html(
+            det_result,
+            html,
+            "https://shop.phillipspet.com/ccrz__ProductDetails?sku=727222",
+            policy,
+        )
+
+        assert enriched.product["image_urls"] == ["https://d56ygyjv466yj.cloudfront.net/727222.jpg"]
+        assert "image_urls" in enriched.matched_fields
+
     def test_extract_supports_legacy_plp_desktop_row(self):
         from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
 
