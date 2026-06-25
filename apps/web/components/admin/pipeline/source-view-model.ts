@@ -38,6 +38,7 @@ export function buildProcessedSourceItems(
             data: value as CanonicalProductSourceRecord,
             isEnriched: false,
             isVirtual: false,
+            deleteSourceKey: key,
         });
     }
 
