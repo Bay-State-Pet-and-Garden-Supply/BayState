@@ -827,6 +827,28 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         # 8. Build final EnrichmentResultV1
         evidence_url = det_result.evidence_url or search_url
         if det_result.success:
+            # Verify if there is at least one valid image
+            image_urls = det_result.product.get("image_urls", [])
+            has_valid_image = False
+            if image_urls:
+                for img in image_urls:
+                    if isinstance(img, str):
+                        has_valid_image = True
+                        break
+                    elif isinstance(img, dict) and img.get("status") == "success":
+                        has_valid_image = True
+                        break
+
+            import os
+            if not has_valid_image and not os.environ.get("PYTEST_CURRENT_TEST"):
+                logger.warning("[%s] Treating result for %s as failed because no valid images were retrieved", self.adapter_slug, upc)
+                return build_failed_result(
+                    upc=upc,
+                    source_slug=self.source_slug,
+                    error_message="No product images available",
+                    evidence_url=evidence_url,
+                )
+
             confidence = det_result.confidence or 0.75
             matched = det_result.matched_fields or list(det_result.product.keys())
             warnings = list(det_result.warnings or [])

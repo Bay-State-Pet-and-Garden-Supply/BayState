@@ -39,7 +39,34 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
         }
 
     logger.info(f"[Image Capture] Capturing image: {url}")
-    
+
+    # Determine fallback URL if applicable
+    fallback_url = None
+    if "/large/" in url:
+        fallback_url = url.replace("/large/", "/thumb/")
+    elif "_large" in url:
+        fallback_url = url.replace("_large", "_thumb")
+    elif "_lg" in url:
+        fallback_url = url.replace("_lg", "_md")
+    elif "/web/" in url and "orgill.com" in url:
+        fallback_url = url.replace("/web/", "/websmall/")
+    elif "cloudfront.net" in url and not url.endswith("_t.jpg") and "/thumb/" not in url:
+        parts = url.split("/")
+        if len(parts) >= 4:
+            import os
+            filename = parts[-1]
+            base_filename, ext = os.path.splitext(filename)
+            fallback_url = "/".join(parts[:-1]) + f"/thumb/{base_filename}_t{ext}"
+
+    async def try_fallback(error_res: Dict[str, Any]) -> Dict[str, Any]:
+        if fallback_url:
+            logger.info(f"[Image Capture] Primary image failed, trying fallback: {fallback_url}")
+            fb_res = await capture_image_authenticated(page, fallback_url, max_bytes)
+            if fb_res.get("status") == "success":
+                fb_res["original_url"] = url  # maintain original mapping
+                return fb_res
+        return error_res
+
     # Method 1: Evaluate fetch in-page
     try:
         js_code = """
@@ -71,13 +98,14 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
                 estimated_bytes = len(data_url) * 3 / 4
                 if estimated_bytes > max_bytes:
                     logger.warning(f"[Image Capture] Image exceeds max size {max_bytes} bytes: {url}")
-                    return {
+                    err_res = {
                         "status": "error",
                         "error_type": "unknown",
                         "error_message": f"Image size exceeds limit of {max_bytes} bytes",
                         "original_url": url,
                         "status_code": res.get("statusCode"),
                     }
+                    return await try_fallback(err_res)
                 return {
                     "status": "success",
                     "data_url": data_url,
@@ -95,13 +123,15 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
                     error_type = "auth_401"
                 elif status_code == 404:
                     error_type = "not_found_404"
-                return {
+                
+                err_res = {
                     "status": "error",
                     "error_type": error_type,
                     "error_message": res.get("errorMessage"),
                     "original_url": url,
                     "status_code": status_code,
                 }
+                return await try_fallback(err_res)
     except Exception as e:
         logger.debug(f"[Image Capture] Page fetch evaluated error for {url}: {e}")
 
@@ -131,13 +161,14 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
             body = await response.body()
             if len(body) > max_bytes:
                 logger.warning(f"[Image Capture] Image context download exceeds max size {max_bytes} bytes: {url}")
-                return {
+                err_res = {
                     "status": "error",
                     "error_type": "unknown",
                     "error_message": f"Image size exceeds limit of {max_bytes} bytes",
                     "original_url": url,
                     "status_code": status_code,
                 }
+                return await try_fallback(err_res)
             content_type = response.headers.get("content-type", "image/jpeg")
             base64_data = base64.b64encode(body).decode("utf-8")
             data_url = f"data:{content_type};base64,{base64_data}"
@@ -151,59 +182,30 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
             error_msg = f"HTTP {status_code}: {response.status_text}"
             logger.warning(f"[Image Capture] Context request failed for {url}: {error_msg}")
             
-            # Self-healing fallback: if it's a normalized high-res URL that doesn't exist, try the thumbnail/medium fallback
-            fallback_url = None
-            if "/large/" in url:
-                fallback_url = url.replace("/large/", "/thumb/")
-            elif "_large" in url:
-                fallback_url = url.replace("_large", "_thumb")
-            elif "_lg" in url:
-                fallback_url = url.replace("_lg", "_md")  # try medium first
-                
-            if fallback_url:
-                logger.info(f"[Image Capture] Trying fallback URL for failed high-resolution image: {fallback_url}")
-                try:
-                    fb_response = await page.context.request.get(fallback_url, headers=headers)
-                    if fb_response.ok:
-                        fb_body = await fb_response.body()
-                        if len(fb_body) <= max_bytes:
-                            fb_content_type = fb_response.headers.get("content-type", "image/jpeg")
-                            fb_base64_data = base64.b64encode(fb_body).decode("utf-8")
-                            fb_data_url = f"data:{fb_content_type};base64,{fb_base64_data}"
-                            logger.info(f"[Image Capture] Successfully captured fallback image: {fallback_url}")
-                            return {
-                                "status": "success",
-                                "data_url": fb_data_url,
-                                "original_url": url,
-                                "status_code": fb_response.status,
-                            }
-                        else:
-                            logger.warning(f"[Image Capture] Fallback image exceeds max size: {fallback_url}")
-                except Exception as fb_err:
-                    logger.debug(f"[Image Capture] Fallback fetch failed for {fallback_url}: {fb_err}")
-            
             error_type = "unknown"
             if status_code in (401, 403):
                 error_type = "auth_401"
             elif status_code == 404:
                 error_type = "not_found_404"
                 
-            return {
+            err_res = {
                 "status": "error",
                 "error_type": error_type,
                 "error_message": error_msg,
                 "original_url": url,
                 "status_code": status_code,
             }
+            return await try_fallback(err_res)
     except Exception as e:
         logger.error(f"[Image Capture] Image download failed completely for {url}: {e}")
-        return {
+        err_res = {
             "status": "error",
             "error_type": "network_timeout",
             "error_message": str(e),
             "original_url": url,
             "status_code": 0,
         }
+        return await try_fallback(err_res)
 
 async def capture_images_authenticated(
     page: Any,

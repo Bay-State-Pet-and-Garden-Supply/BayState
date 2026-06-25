@@ -242,3 +242,77 @@ async def test_capture_images_bulk():
     assert len(res) == 2
     assert res[0]["original_url"] == "https://example.com/img1.jpg"
     assert res[1]["original_url"] == "https://example.com/img2.jpg"
+
+
+@pytest.mark.asyncio
+async def test_capture_image_orgill_fallback_success():
+    """Verify that if an Orgill /web/ image returns 404, we fall back to the /websmall/ variant successfully."""
+    page = AsyncMock()
+    page.url = "https://www.orgill.com/SearchResultN.aspx?ddlhQ=123"
+    # Method 1 (in-page JS fetch) returns 404
+    page.evaluate.return_value = {
+        "success": False,
+        "isCors": False,
+        "statusCode": 404,
+        "errorMessage": "HTTP 404: Not Found",
+    }
+    
+    # Setup eval side effect so the recursive call succeeds
+    async def side_effect_eval(js, url_arg):
+        if "websmall" in url_arg:
+            return {
+                "success": True,
+                "dataUrl": "data:image/jpeg;base64,orgilldata",
+                "statusCode": 200,
+            }
+        return {
+            "success": False,
+            "isCors": False,
+            "statusCode": 404,
+            "errorMessage": "HTTP 404: Not Found",
+        }
+    page.evaluate.side_effect = side_effect_eval
+
+    url = "https://images1.orgill.com/web/10034/4252318.jpg"
+    res = await capture_image_authenticated(page, url)
+    
+    assert res["status"] == "success"
+    assert res["data_url"] == "data:image/jpeg;base64,orgilldata"
+    assert res["original_url"] == url
+    assert res["status_code"] == 200
+
+
+@pytest.mark.asyncio
+async def test_capture_image_phillips_cdn_fallback_success():
+    """Verify that if a Phillips root CDN image fails, we try the /thumb/*_t.jpg variant."""
+    page = AsyncMock()
+    page.url = "https://shop.phillipspet.com"
+    page.evaluate.return_value = {
+        "success": False,
+        "isCors": False,
+        "statusCode": 403,
+        "errorMessage": "HTTP 403: Forbidden",
+    }
+
+    async def side_effect_eval(js, url_arg):
+        if "/thumb/" in url_arg and url_arg.endswith("_t.jpg"):
+            return {
+                "success": True,
+                "dataUrl": "data:image/jpeg;base64,phillipsdata",
+                "statusCode": 200,
+            }
+        return {
+            "success": False,
+            "isCors": False,
+            "statusCode": 403,
+            "errorMessage": "HTTP 403: Forbidden",
+        }
+    page.evaluate.side_effect = side_effect_eval
+
+    url = "https://d56ygyjv466yj.cloudfront.net/115145.jpg"
+    res = await capture_image_authenticated(page, url)
+    
+    assert res["status"] == "success"
+    assert res["data_url"] == "data:image/jpeg;base64,phillipsdata"
+    assert res["original_url"] == url
+    assert res["status_code"] == 200
