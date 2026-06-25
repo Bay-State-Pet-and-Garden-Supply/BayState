@@ -62,7 +62,7 @@ describe('validateStatusTransition', () => {
             processed: ['processed', 'extracting', 'grouping', 'merging', 'reviewing', 'imported', 'failed'],
             grouping: ['grouping', 'merging', 'processed', 'failed'],
             merging: ['merging', 'reviewing', 'processed', 'failed'],
-            reviewing: ['reviewing', 'publishing', 'processed', 'failed'],
+            reviewing: ['reviewing', 'publishing', 'processed', 'grouping', 'merging', 'failed'],
             publishing: ['publishing', 'reviewing', 'failed'],
             needs_attention: ['needs_attention', 'imported', 'extracting', 'processed', 'failed'],
             failed: ['failed', 'imported', 'extracting'],

@@ -31,7 +31,7 @@ export const STATUS_TRANSITIONS: Record<
   processed: ['extracting', 'grouping', 'merging', 'reviewing', 'imported', 'failed'],
   grouping: ['merging', 'processed', 'failed'],
   merging: ['reviewing', 'processed', 'failed'],
-  reviewing: ['publishing', 'processed', 'failed'],
+  reviewing: ['publishing', 'processed', 'grouping', 'merging', 'failed'],
   publishing: ['reviewing', 'failed'],
   failed: ['imported', 'extracting'],
 } as const;

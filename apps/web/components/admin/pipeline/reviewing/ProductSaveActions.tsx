@@ -1,9 +1,15 @@
 "use client";
 
-import { Package, RotateCcw, Save, CheckCircle } from "lucide-react";
+import { Package, RotateCcw, Save, CheckCircle, ChevronDown } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface ProductSaveActionsProps {
   productName: string;
@@ -17,7 +23,7 @@ interface ProductSaveActionsProps {
   rejecting: boolean;
   onSave: () => void;
   onPublish: () => void;
-  onReject: () => void;
+  onReject: (targetStatus: "processed" | "grouping" | "merging") => void;
   copilotTrigger?: React.ReactNode;
 }
 
@@ -87,24 +93,51 @@ export function ProductSaveActions({
         <div className="flex flex-col items-start gap-2 lg:items-end">
           <div className="flex flex-wrap items-center gap-2">
             {copilotTrigger}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onReject}
-              disabled={
-                saving || publishing || rejecting || hasPendingCopilotReview
-              }
-              className="rounded-sm font-semibold text-muted-foreground hover:text-foreground transition-all"
-            >
-              {rejecting ? (
-                "Returning..."
-              ) : (
-                <>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Return to Processed
-                </>
-              )}
-            </Button>
+            <div className="flex items-center -space-x-px">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReject("processed")}
+                disabled={
+                  saving || publishing || rejecting || hasPendingCopilotReview
+                }
+                className="rounded-r-none border-r-0 font-semibold text-muted-foreground hover:text-foreground transition-all"
+              >
+                {rejecting ? (
+                  "Returning..."
+                ) : (
+                  <>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Return to Processed
+                  </>
+                )}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      saving || publishing || rejecting || hasPendingCopilotReview
+                    }
+                    className="rounded-l-none px-2 text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => onReject("grouping")}>
+                    Return to Grouping
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onReject("merging")}>
+                    Return to Merging
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onReject("processed")}>
+                    Return to Processed
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <Button
               variant="outline"
               size="sm"

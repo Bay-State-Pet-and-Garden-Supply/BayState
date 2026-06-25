@@ -262,6 +262,7 @@ export function ReviewingResultsView({
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  const [rejectTargetStatus, setRejectTargetStatus] = useState<"processed" | "grouping" | "merging">("processed");
   const scrollContainerRef = useRef<VirtualizedPipelineTableHandle>(null);
   const [draftsState, setDraftsState] = useState<Record<string, FinalizationDraft>>(
     {},
@@ -969,17 +970,20 @@ export function ReviewingResultsView({
     persistCurrentDraft,
   ]);
 
-  const handleReject = async () => {
+  const handleReject = (status: "processed" | "grouping" | "merging") => {
     if (!selectedUpc) return;
+    setRejectTargetStatus(status);
     setConfirmRejectOpen(true);
   };
 
   const rejectProducts = useCallback(
     async ({
       upcs,
+      targetStatus = "processed",
       silent = false,
     }: {
       upcs: string[];
+      targetStatus?: "processed" | "grouping" | "merging";
       silent?: boolean;
     }): Promise<ToolSummary> => {
       const targetUpcs = Array.from(
@@ -999,7 +1003,7 @@ export function ReviewingResultsView({
                 {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ pipeline_status: "processed" }),
+                  body: JSON.stringify({ pipeline_status: targetStatus }),
                 },
               )
             : await adminFetch(`/api/admin/pipeline/bulk`, {
@@ -1007,19 +1011,19 @@ export function ReviewingResultsView({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   upcs: targetUpcs,
-                  toStatus: "processed",
+                  toStatus: targetStatus,
                 }),
               });
 
         if (!res.ok) {
           const data = await res.json().catch(() => null);
-          throw new Error(data?.error || "Failed to reject product");
+          throw new Error(data?.error || `Failed to move product to ${targetStatus}`);
         }
 
         const summary =
           targetUpcs.length === 1
-            ? "Moved the product back to the processed stage for additional review."
-            : `Moved ${targetUpcs.length} products back to the processed stage for additional review.`;
+            ? `Moved the product back to the ${targetStatus} stage for additional review.`
+            : `Moved ${targetUpcs.length} products back to the ${targetStatus} stage for additional review.`;
 
         if (!silent) {
           toast.success(summary);
@@ -1044,7 +1048,12 @@ export function ReviewingResultsView({
   );
 
   const rejectCurrentProduct = useCallback(
-    async ({ silent = false }: { silent?: boolean } = {}): Promise<ToolSummary> => {
+    async (
+      options?: {
+        targetStatus?: "processed" | "grouping" | "merging";
+        silent?: boolean;
+      }
+    ): Promise<ToolSummary> => {
       const currentUpc = selectedProductRef.current?.upc;
       if (!currentUpc) {
         throw new Error("Select a product before rejecting it.");
@@ -1052,7 +1061,8 @@ export function ReviewingResultsView({
 
       return rejectProducts({
         upcs: [currentUpc],
-        silent,
+        targetStatus: options?.targetStatus ?? "processed",
+        silent: options?.silent ?? false,
       });
     },
     [rejectProducts],
@@ -1062,7 +1072,7 @@ export function ReviewingResultsView({
     if (!selectedUpc) return;
     setConfirmRejectOpen(false);
     try {
-      await rejectCurrentProduct();
+      await rejectCurrentProduct({ targetStatus: rejectTargetStatus });
     } catch {
       // rejectCurrentProduct already surfaces the error consistently
     }
@@ -1861,9 +1871,27 @@ export function ReviewingResultsView({
           open={confirmRejectOpen}
           onOpenChange={setConfirmRejectOpen}
           onConfirm={handleConfirmReject}
-          title="Reject Product"
-          description="Are you sure you want to reject this product and send it back to the processed stage? This will not clear your edits, but the product will move back to the manual review pipeline."
-          confirmLabel="Reject"
+          title={
+            rejectTargetStatus === "grouping"
+              ? "Return to Grouping"
+              : rejectTargetStatus === "merging"
+              ? "Return to Merging"
+              : "Reject Product"
+          }
+          description={
+            rejectTargetStatus === "grouping"
+              ? "Are you sure you want to return this product and send it back to the grouping stage? This will not clear your edits, but the product will move back to the grouping workspace."
+              : rejectTargetStatus === "merging"
+              ? "Are you sure you want to return this product and send it back to the merging stage? This will not clear your edits, but the product will move back to the product merging workspace."
+              : "Are you sure you want to reject this product and send it back to the processed stage? This will not clear your edits, but the product will move back to the manual review pipeline."
+          }
+          confirmLabel={
+            rejectTargetStatus === "grouping"
+              ? "Return to Grouping"
+              : rejectTargetStatus === "merging"
+              ? "Return to Merging"
+              : "Reject"
+          }
         />
     </>
   );
