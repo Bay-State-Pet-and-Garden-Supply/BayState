@@ -165,7 +165,7 @@ export function BrandPicker({
  <div className="flex items-center border-b-2 border-border px-3 py-2 bg-muted">
  <Search className="mr-2 h-4 w-4 shrink-0 text-foreground" />
  <input
- className="flex h-8 w-full bg-transparent text-xs font-bold uppercase tracking-tight outline-none placeholder:text-zinc-400"
+ className="flex h-8 w-full bg-transparent text-xs font-medium outline-none placeholder:text-zinc-400"
  placeholder="Search brands..."
  value={search}
  onChange={(event) => setSearch(event.target.value)}

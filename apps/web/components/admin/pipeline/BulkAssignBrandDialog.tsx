@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { BrandPicker } from '@/components/admin/brands/BrandPicker';
 import type { Brand } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Tag } from 'lucide-react';
 
 interface BulkAssignBrandDialogProps {
   open: boolean;
@@ -41,17 +41,23 @@ export function BulkAssignBrandDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] rounded-none border-2 border-border shadow-xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold uppercase tracking-tight">Assign Brand</DialogTitle>
-          <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-            Assigning brand to {selectedCount} product{selectedCount !== 1 ? 's' : ''}.
-            Products will appear under the selected brand group.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[425px] border border-border p-0 bg-card rounded-none shadow-xl">
+        <DialogHeader className="p-6 border-b-4 border-border bg-muted">
+          <div className="flex items-center gap-4">
+            <div className="p-2 border-2 border-border bg-card shadow-sm">
+              <Tag className="h-6 w-6 text-foreground" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-2xl font-semibold text-foreground">Assign Brand</DialogTitle>
+              <DialogDescription className="text-xs font-semibold text-muted-foreground mt-1">
+                Assigning brand to {selectedCount} product{selectedCount !== 1 ? 's' : ''}.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
         
-        <div className="py-6">
-          <p className="mb-4 text-xs font-bold uppercase text-foreground">Select target brand:</p>
+        <div className="p-6">
+          <p className="mb-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Select target brand:</p>
           <BrandPicker
             value={null}
             onAssign={handleAssign}
@@ -60,7 +66,7 @@ export function BulkAssignBrandDialog({
           />
         </div>
 
-        <DialogFooter className="bg-muted -mx-6 -mb-6 p-4 border-t border-border mt-2">
+        <DialogFooter className="bg-muted p-4 border-t border-border mt-2">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
