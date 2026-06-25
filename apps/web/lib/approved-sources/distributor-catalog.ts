@@ -202,30 +202,6 @@ export const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
     sourceType: "distributor", // Treated as a distributor in the UI context for selection
     aliases: ["amazon", "amazon_crawl4ai"],
   },
-  {
-    sourceSlug: "chewy",
-    adapterSlug: "chewy",
-    displayName: "Chewy",
-    domains: ["chewy.com"],
-    assetDomains: ["chewy.com", "img.chewy.com"],
-    requiresAuth: false,
-    credentialRef: null,
-    searchMode: "upc_search",
-    allowedFields: [
-      "name",
-      "brand",
-      "upc",
-      "image_urls",
-      "description",
-      "features",
-      "weight",
-      "dimensions",
-      "ingredients",
-    ],
-    priority: 70,
-    sourceType: "distributor",
-    aliases: ["chewy", "chewy_crawl4ai"],
-  },
 ];
 
 /**
