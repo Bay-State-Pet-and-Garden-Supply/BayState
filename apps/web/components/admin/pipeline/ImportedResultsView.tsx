@@ -424,9 +424,13 @@ export function ImportedResultsView({
                       return (
                         <div
                           key={product.upc}
-                          onClick={() => handleSelectProduct(product.upc, !isSelected)}
+                          onClick={() => {
+                            const selection = typeof window !== 'undefined' ? window.getSelection()?.toString() : '';
+                            if (selection) return;
+                            handleSelectProduct(product.upc, !isSelected);
+                          }}
                           className={cn(
-                            "p-3 bg-card border flex flex-col gap-2 transition-all group relative cursor-pointer select-none",
+                            "p-3 bg-card border flex flex-col gap-2 transition-all group relative cursor-pointer",
                             isSelected
                               ? "border-brand-forest-green bg-brand-forest-green/[0.03] shadow-sm"
                               : "border-border hover:border-muted-foreground/30 hover:bg-muted/10",
