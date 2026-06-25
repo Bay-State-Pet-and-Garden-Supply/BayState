@@ -64,7 +64,7 @@ function getDisplayPrice(product: PipelineProduct): string {
 }
 
 function getProductName(product: PipelineProduct): string {
-  return product.input?.name || product.consolidated?.name || "Unnamed product";
+  return product.input?.name || product.consolidated?.core?.name || product.consolidated?.name || "Unnamed product";
 }
 
 function sortByUpc(products: PipelineProduct[]): PipelineProduct[] {

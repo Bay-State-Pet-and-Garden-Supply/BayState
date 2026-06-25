@@ -35,8 +35,15 @@ export function PipelineSidebarProductRow({
   onPreferredUpcChange,
   showCheckboxes = true,
 }: PipelineSidebarProductRowProps) {
-  const name = product.consolidated?.name || product.input?.name || "Unknown";
-  const price = product.consolidated?.price ?? product.input?.price;
+  const name =
+    product.consolidated?.core?.name ||
+    product.consolidated?.name ||
+    product.input?.name ||
+    "Unknown";
+  const price =
+    product.consolidated?.core?.price ??
+    product.consolidated?.price ??
+    product.input?.price;
   const sourceKeys = Object.keys(product.sources || {}).filter(
     (key) => !key.startsWith("_"),
   );

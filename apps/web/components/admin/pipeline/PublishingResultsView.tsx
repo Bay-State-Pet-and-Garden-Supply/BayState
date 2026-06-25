@@ -672,8 +672,8 @@ export function PublishingResultsView({
                 const hasWarning = issues.some(i => i.type === "warning");
                 const isSelected = selectedUpcs.has(p.upc);
 
-                const brandName = mapping?.brand_name || p.consolidated?.brand || p.input?.brand || "Unbranded";
-                const title = mapping?.name || p.consolidated?.name || p.input?.name || p.upc;
+                const brandName = mapping?.brand_name || p.consolidated?.core?.brand_name || p.consolidated?.brand || p.input?.brand || "Unbranded";
+                const title = mapping?.name || p.consolidated?.core?.name || p.consolidated?.name || p.input?.name || p.upc;
                 const images = mapping?.image_sources || p.consolidated?.images || p.selected_images || [];
                 const primaryImage = Array.isArray(images) && images.length > 0 
                   ? (typeof images[0] === 'string' ? images[0] : (images[0] as { url?: string })?.url || '')
@@ -776,10 +776,10 @@ export function PublishingResultsView({
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                      {selectedProductMapping?.brand_name || selectedProduct.consolidated?.brand || selectedProduct.input?.brand || "Unbranded"}
+                      {selectedProductMapping?.brand_name || selectedProduct.consolidated?.core?.brand_name || selectedProduct.consolidated?.brand || selectedProduct.input?.brand || "Unbranded"}
                     </span>
                     <h2 className="text-lg font-bold text-foreground leading-tight">
-                      {selectedProductMapping?.name || selectedProduct.consolidated?.name || selectedProduct.input?.name || "Product Name"}
+                      {selectedProductMapping?.name || selectedProduct.consolidated?.core?.name || selectedProduct.consolidated?.name || selectedProduct.input?.name || "Product Name"}
                     </h2>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
                       <span>UPC: <strong className="font-semibold text-foreground">{selectedProduct.upc}</strong></span>

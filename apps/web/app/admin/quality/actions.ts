@@ -22,7 +22,7 @@ export async function titleCaseProductName(upc: string): Promise<ActionResult> {
     return { success: false, error: 'Product not found' };
   }
   
-  const currentName = product.consolidated?.name || product.input?.name || '';
+  const currentName = product.consolidated?.core?.name || product.consolidated?.name || product.input?.name || '';
   
   if (!currentName) {
     return { success: false, error: 'No name to convert' };
@@ -34,7 +34,16 @@ export async function titleCaseProductName(upc: string): Promise<ActionResult> {
     .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
   
-  const consolidated = { ...product.consolidated, name: titleCased };
+  const consolidated = {
+    ...product.consolidated,
+    name: titleCased,
+    ...(product.consolidated?.core ? {
+      core: {
+        ...product.consolidated.core,
+        name: titleCased
+      }
+    } : {})
+  };
   
   const { error: updateError } = await supabase
     .from('products_ingestion')
@@ -61,7 +70,7 @@ export async function bulkTitleCaseNames(): Promise<ActionResult> {
   }
   
   const productsToFix = (products || []).filter(p => {
-    const name = p.consolidated?.name || p.input?.name;
+    const name = p.consolidated?.core?.name || p.consolidated?.name || p.input?.name;
     return name && name === name.toUpperCase();
   });
   
@@ -72,14 +81,23 @@ export async function bulkTitleCaseNames(): Promise<ActionResult> {
   let fixedCount = 0;
   
   for (const product of productsToFix) {
-    const currentName = product.consolidated?.name || product.input?.name || '';
+    const currentName = product.consolidated?.core?.name || product.consolidated?.name || product.input?.name || '';
     const titleCased = currentName
       .toLowerCase()
       .split(' ')
       .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
     
-    const consolidated = { ...product.consolidated, name: titleCased };
+    const consolidated = {
+      ...product.consolidated,
+      name: titleCased,
+      ...(product.consolidated?.core ? {
+        core: {
+          ...product.consolidated.core,
+          name: titleCased
+        }
+      } : {})
+    };
     
     const { error } = await supabase
       .from('products_ingestion')

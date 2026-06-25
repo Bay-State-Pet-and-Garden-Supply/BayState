@@ -181,7 +181,7 @@ export function ImageSelectionWorkspace({
   }
 
   const imageCandidates = product?.image_candidates || [];
-  const productName = product?.consolidated?.name || product?.input?.name || upc;
+  const productName = product?.consolidated?.core?.name || product?.consolidated?.name || product?.input?.name || upc;
   const hasImages = imageCandidates.length > 0;
 
   return (

@@ -216,13 +216,13 @@ export function ProductTable({
       },
       {
         id: "name",
-        accessorFn: (p) => p.consolidated?.name ?? p.input?.name ?? "",
+        accessorFn: (p) => p.consolidated?.core?.name ?? p.consolidated?.name ?? p.input?.name ?? "",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Name" />
         ),
         cell: ({ row }) => {
           const product = row.original;
-          const name = product.consolidated?.name || product.input?.name || "—";
+          const name = product.consolidated?.core?.name || product.consolidated?.name || product.input?.name || "—";
           return (
             <div className="flex items-center gap-2 max-w-[300px]">
               <span

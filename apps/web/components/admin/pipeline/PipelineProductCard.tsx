@@ -94,8 +94,8 @@ export function PipelineProductCard({
     };
 
     const registerName = product.input?.name || product.upc;
-    const cleanName = product.consolidated?.name;
-    const price = product.consolidated?.price ?? product.input?.price ?? 0;
+    const cleanName = product.consolidated?.core?.name || product.consolidated?.name;
+    const price = product.consolidated?.core?.price ?? product.consolidated?.price ?? product.input?.price ?? 0;
     const hasScrapedData = Object.keys(product.sources || {}).length > 0;
     const confidenceScore = product.confidence_score;
     const stage = currentStage || product.pipeline_status;

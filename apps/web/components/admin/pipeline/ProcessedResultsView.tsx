@@ -658,8 +658,8 @@ export function ProcessedResultsView({
                 <div className="flex items-center gap-2 min-w-0">
                   <Package className="h-5 w-5 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-foreground line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
-                      {selectedProduct.consolidated?.name || selectedProduct.input?.name}
+                    <h2 className="text-base font-semibold text-foreground line-clamp-1" title={selectedProduct.consolidated?.core?.name || selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
+                      {selectedProduct.consolidated?.core?.name || selectedProduct.consolidated?.name || selectedProduct.input?.name}
                     </h2>
                     <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 mt-0.5">
                       <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.upc}</span>
