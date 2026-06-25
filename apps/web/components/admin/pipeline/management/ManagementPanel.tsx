@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, Save, Loader2, CheckCircle2, AlertCircle, Settings2, Search } from 'lucide-react';
+import { Package, Save, Loader2, CheckCircle2, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import Link from 'next/link';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
 
@@ -14,6 +13,7 @@ interface ManagementPanelProps {
   products: PipelineProduct[];
   brand: Brand | null;
   onSuccess: () => void;
+  readinessNonce?: number;
 }
 
 export function ManagementPanel({
@@ -21,22 +21,28 @@ export function ManagementPanel({
   products,
   brand,
   onSuccess,
+  readinessNonce = 0,
 }: ManagementPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [cascadeConfigured, setCascadeConfigured] = useState<boolean | null>(null);
+  const [cascadeConfigured, setCascadeConfigured] = useState<boolean | null>(
+    brand?.id ? null : false
+  );
   const [checkingCascade, setCheckingCascade] = useState(false);
   const [serpDiscoveryEnabled, setSerpDiscoveryEnabled] = useState(true);
 
   useEffect(() => {
     if (!brand?.id) {
-      setCascadeConfigured(false);
       return;
     }
 
     const brandId = brand.id;
     let active = true;
-    setCheckingCascade(true);
+
     async function check() {
+      if (active) {
+        setCascadeConfigured(null);
+        setCheckingCascade(true);
+      }
       try {
         const res = await fetch(`/api/admin/brands/${brandId}/source-cascade`);
         if (!res.ok) throw new Error('Failed to check');
@@ -52,9 +58,16 @@ export function ManagementPanel({
         if (active) setCheckingCascade(false);
       }
     }
-    void check();
-    return () => { active = false; };
-  }, [brand?.id]);
+
+    const timeoutId = setTimeout(() => {
+      void check();
+    }, 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timeoutId);
+    };
+  }, [brand?.id, readinessNonce]);
 
   const handleStartExtraction = async () => {
     const upcs = products.map((product) => product.upc);
@@ -100,9 +113,10 @@ export function ManagementPanel({
             : undefined,
       });
       onSuccess();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error starting extraction:', error);
-      toast.error(error.message || 'Failed to start extraction.');
+      const errMsg = error instanceof Error ? error.message : 'Failed to start extraction.';
+      toast.error(errMsg);
     } finally {
       setIsSaving(false);
     }
@@ -175,26 +189,15 @@ export function ManagementPanel({
               </div>
             </div>
           ) : (
-            <div className="flex flex-col p-3 border border-dashed border-destructive/45 bg-destructive/[0.01]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-foreground">{brandName}</span>
-                    <span className="text-[9px] text-destructive font-semibold mt-0.5">
-                      Source Cascade not configured
-                    </span>
-                  </div>
+            <div className="flex items-center justify-between p-3 border border-dashed border-destructive/45 bg-destructive/[0.01]">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-foreground">{brandName}</span>
+                  <span className="text-[9px] text-destructive font-semibold mt-0.5">
+                    Source Cascade not configured
+                  </span>
                 </div>
-              </div>
-              <div className="mt-2 pt-2 border-t border-border/50 flex justify-end">
-                <Link
-                  href="/admin/brands"
-                  className="text-[9px] font-bold text-brand-burgundy hover:underline flex items-center gap-1 transition-colors"
-                >
-                  <Settings2 className="h-3 w-3" />
-                  Configure in Brand Settings
-                </Link>
               </div>
             </div>
           )}

@@ -490,10 +490,12 @@ export function ImportedResultsView({
             </div>
 
             <ManagementPanel
+              key={activeGroup.id}
               groupName={activeGroup.name}
               products={activeProducts}
               brand={activeGroup.brand}
               onSuccess={() => onRefresh()}
+              readinessNonce={readinessNonce}
             />
           </>
         ) : (
