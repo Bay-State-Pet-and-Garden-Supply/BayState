@@ -450,9 +450,36 @@ function CascadeProductSidebar({
                 </span>
               </div>
 
-              <div className="mt-2 text-[11px] text-muted-foreground">
+               <div className="mt-2 text-[11px] text-muted-foreground">
                 {getSourceProgressLabel(product)}
               </div>
+
+              {product.sourceOutcomes && product.sourceOutcomes.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {product.sourceOutcomes.map((so) => (
+                    <span
+                      key={so.source_slug}
+                      title={`${so.source_slug}: ${so.outcome}${so.error_message ? ` - ${so.error_message}` : ''}`}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.2 text-[8px] font-semibold border uppercase tracking-wider",
+                        so.outcome === "found" && "border-teal-200 bg-teal-50/50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/20 dark:text-teal-300",
+                        so.outcome === "not_stocked" && "border-zinc-200 bg-zinc-50/50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/20 dark:text-zinc-400",
+                        so.outcome === "source_error" && "border-rose-200 bg-rose-50/50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300",
+                        so.outcome === "skipped" && "border-amber-200 bg-amber-50/50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300",
+                      )}
+                    >
+                      <span className={cn(
+                        "h-1 w-1 rounded-full",
+                        so.outcome === "found" && "bg-teal-500",
+                        so.outcome === "not_stocked" && "bg-zinc-400",
+                        so.outcome === "source_error" && "bg-rose-500",
+                        so.outcome === "skipped" && "bg-amber-500",
+                      )} />
+                      {so.source_slug}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
                 {product.sourceCounts.found > 0 && (

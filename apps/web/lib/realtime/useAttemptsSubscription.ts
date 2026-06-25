@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import type { EnrichmentAttempt } from './types';
+import type { EnrichmentAttempt, SourceOutcomeRow } from './types';
 
 interface UseAttemptsSubscriptionOptions {
   /** The enrichment job ID to monitor */
@@ -83,7 +83,8 @@ export function useAttemptsSubscription(
     }
 
     try {
-      const { data, error: dbError } = await supabase
+      // 1. Fetch attempts
+      const { data: attemptsData, error: dbError } = await supabase
         .from('enrichment_attempts')
         .select(`
           *,
@@ -101,7 +102,41 @@ export function useAttemptsSubscription(
 
       if (dbError) throw dbError;
 
-      setAttempts(data as EnrichmentAttempt[] || []);
+      // 2. Fetch source attempts
+      const { data: sourcesData, error: sourcesError } = await supabase
+        .from('enrichment_source_attempts')
+        .select('attempt_id, upc, source_slug, outcome, attempted_at, error_message')
+        .eq('job_id', activeJobId);
+
+      if (sourcesError) {
+        console.error('[useAttemptsSubscription] Failed to fetch source attempts:', sourcesError);
+      }
+
+      // 3. Group source attempts by attempt_id or upc
+      const sourceMap = new Map<string, SourceOutcomeRow[]>();
+      for (const sa of sourcesData ?? []) {
+        const key = sa.attempt_id || sa.upc;
+        if (!sourceMap.has(key)) {
+          sourceMap.set(key, []);
+        }
+        sourceMap.get(key)!.push({
+          source_slug: sa.source_slug,
+          outcome: sa.outcome as any,
+          attempted_at: sa.attempted_at,
+          error_message: sa.error_message,
+        });
+      }
+
+      // 4. Merge source attempts into attempts
+      const merged = (attemptsData as EnrichmentAttempt[] || []).map((attempt) => {
+        const outcomes = sourceMap.get(attempt.id) || sourceMap.get(attempt.upc) || [];
+        return {
+          ...attempt,
+          sourceOutcomes: outcomes,
+        };
+      });
+
+      setAttempts(merged);
       setError(null);
     } catch (err) {
       console.error('[useAttemptsSubscription] Failed to fetch attempts:', err);
@@ -154,7 +189,7 @@ export function useAttemptsSubscription(
               onAttemptCreated?.(newRecord);
               
               // Insert and keep sorted by UPC
-              const next = [...prevAttempts, newRecord];
+              const next = [...prevAttempts, { ...newRecord, sourceOutcomes: [] }];
               return next.sort((a, b) => a.upc.localeCompare(b.upc));
             }
 
@@ -167,6 +202,7 @@ export function useAttemptsSubscription(
                   ? {
                       ...newRecord,
                       products_ingestion: item.products_ingestion || newRecord.products_ingestion,
+                      sourceOutcomes: item.sourceOutcomes || [],
                     }
                   : item
               );
@@ -177,6 +213,69 @@ export function useAttemptsSubscription(
             }
 
             return prevAttempts;
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'enrichment_source_attempts',
+          filter: `job_id=eq.${activeJobId}`,
+        },
+        (payload: any) => {
+          if (!activeRef.current) return;
+
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+
+          setAttempts((prevAttempts) => {
+            return prevAttempts.map((attempt) => {
+              const isMatch =
+                (newRecord && (attempt.id === newRecord.attempt_id || attempt.upc === newRecord.upc)) ||
+                (oldRecord && (attempt.id === oldRecord.attempt_id || attempt.upc === oldRecord.upc));
+
+              if (!isMatch) return attempt;
+
+              const existingOutcomes = attempt.sourceOutcomes || [];
+              let nextOutcomes = [...existingOutcomes];
+
+              if (payload.eventType === 'INSERT' && newRecord) {
+                const index = nextOutcomes.findIndex((o) => o.source_slug === newRecord.source_slug);
+                const newOutcome = {
+                  source_slug: newRecord.source_slug,
+                  outcome: newRecord.outcome,
+                  attempted_at: newRecord.attempted_at,
+                  error_message: newRecord.error_message,
+                };
+                if (index >= 0) {
+                  nextOutcomes[index] = newOutcome;
+                } else {
+                  nextOutcomes.push(newOutcome);
+                }
+              } else if (payload.eventType === 'UPDATE' && newRecord) {
+                const index = nextOutcomes.findIndex((o) => o.source_slug === newRecord.source_slug);
+                const newOutcome = {
+                  source_slug: newRecord.source_slug,
+                  outcome: newRecord.outcome,
+                  attempted_at: newRecord.attempted_at,
+                  error_message: newRecord.error_message,
+                };
+                if (index >= 0) {
+                  nextOutcomes[index] = newOutcome;
+                } else {
+                  nextOutcomes.push(newOutcome);
+                }
+              } else if (payload.eventType === 'DELETE' && oldRecord) {
+                nextOutcomes = nextOutcomes.filter((o) => o.source_slug !== oldRecord.source_slug);
+              }
+
+              return {
+                ...attempt,
+                sourceOutcomes: nextOutcomes,
+              };
+            });
           });
         }
       )

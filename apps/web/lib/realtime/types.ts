@@ -230,6 +230,13 @@ const scrapeJobLogSchema = z.object({
   details: z.record(z.string(), z.unknown()).optional(),
 });
 
+export interface SourceOutcomeRow {
+  source_slug: string;
+  outcome: 'found' | 'not_stocked' | 'source_error' | 'skipped';
+  attempted_at: string | null;
+  error_message: string | null;
+}
+
 /**
  * Enrichment attempt tracking record.
  * Tracks granular UPC-level outcomes within a job.
@@ -248,6 +255,7 @@ export interface EnrichmentAttempt {
   updated_at: string;
   source_url?: string | null;
   mode?: string | null;
+  sourceOutcomes?: SourceOutcomeRow[];
   result?: any;
   normalized_source?: any;
   model?: string | null;

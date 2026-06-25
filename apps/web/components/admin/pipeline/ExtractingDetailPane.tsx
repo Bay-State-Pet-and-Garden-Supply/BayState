@@ -563,23 +563,54 @@ export function ExtractingDetailPane({
               </div>
               <div className="pt-3">
                 {activeAttempt ? (
-                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h4 className="text-base font-bold text-foreground line-clamp-1">
-                        {activeProductName}
-                      </h4>
-                      {(activeBrandName || activeProductLine) && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {[activeBrandName, activeProductLine].filter(Boolean).join(" • ")}
-                        </p>
+                  <>
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h4 className="text-base font-bold text-foreground line-clamp-1">
+                          {activeProductName}
+                        </h4>
+                        {(activeBrandName || activeProductLine) && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {[activeBrandName, activeProductLine].filter(Boolean).join(" • ")}
+                          </p>
+                        )}
+                      </div>
+                      {activeUPC && (
+                        <span className="font-mono text-xs font-semibold bg-muted px-2 py-1 rounded self-start md:self-auto">
+                          UPC: {activeUPC}
+                        </span>
                       )}
                     </div>
-                    {activeUPC && (
-                      <span className="font-mono text-xs font-semibold bg-muted px-2 py-1 rounded self-start md:self-auto">
-                        UPC: {activeUPC}
-                      </span>
+                    {activeAttempt.sourceOutcomes && activeAttempt.sourceOutcomes.length > 0 && (
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/30">
+                        <span className="text-[10px] uppercase font-semibold text-muted-foreground mr-1 self-center">
+                          Sources:
+                        </span>
+                        {activeAttempt.sourceOutcomes.map((so) => (
+                          <span
+                            key={so.source_slug}
+                            title={`${so.source_slug}: ${so.outcome}${so.error_message ? ` - ${so.error_message}` : ''}`}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold border uppercase tracking-wider",
+                              so.outcome === "found" && "border-teal-200 bg-teal-50/50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/20 dark:text-teal-300",
+                              so.outcome === "not_stocked" && "border-zinc-200 bg-zinc-50/50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/20 dark:text-zinc-400",
+                              so.outcome === "source_error" && "border-rose-200 bg-rose-50/50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300",
+                              so.outcome === "skipped" && "border-amber-200 bg-amber-50/50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300",
+                            )}
+                          >
+                            <span className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              so.outcome === "found" && "bg-teal-500",
+                              so.outcome === "not_stocked" && "bg-zinc-400",
+                              so.outcome === "source_error" && "bg-rose-500",
+                              so.outcome === "skipped" && "bg-amber-500",
+                            )} />
+                            {so.source_slug}
+                          </span>
+                        ))}
+                      </div>
                     )}
-                  </div>
+                  </>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
                     Waiting for the runner to claim a product…
@@ -857,8 +888,37 @@ export function ExtractingDetailPane({
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {getDisplaySite(attempt.source_url)}
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-1 max-w-[240px]">
+                              {attempt.sourceOutcomes && attempt.sourceOutcomes.length > 0 ? (
+                                attempt.sourceOutcomes.map((so) => (
+                                  <span
+                                    key={so.source_slug}
+                                    title={`${so.source_slug}: ${so.outcome}${so.error_message ? ` - ${so.error_message}` : ''}`}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold border uppercase tracking-wider",
+                                      so.outcome === "found" && "border-teal-200 bg-teal-50/50 text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/20 dark:text-teal-300",
+                                      so.outcome === "not_stocked" && "border-zinc-200 bg-zinc-50/50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/20 dark:text-zinc-400",
+                                      so.outcome === "source_error" && "border-rose-200 bg-rose-50/50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300",
+                                      so.outcome === "skipped" && "border-amber-200 bg-amber-50/50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300",
+                                    )}
+                                  >
+                                    <span className={cn(
+                                      "h-1.5 w-1.5 rounded-full",
+                                      so.outcome === "found" && "bg-teal-500",
+                                      so.outcome === "not_stocked" && "bg-zinc-400",
+                                      so.outcome === "source_error" && "bg-rose-500",
+                                      so.outcome === "skipped" && "bg-amber-500",
+                                    )} />
+                                    {so.source_slug}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground text-xs font-medium">
+                                  {getDisplaySite(attempt.source_url)}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-foreground">
                             <LiveTimer
