@@ -14,7 +14,7 @@ import type { ConsolidationResult } from './types';
 /** Schema for a single product within the group output. Identical to RawConsolidationSchema. */
 const GroupProductSchema = z.object({
     name: z.string().min(1),
-    brand: z.string().min(1),
+    brand: z.string().optional(),
     weight: z.string().nullable().optional(),
     confidence_score: z.number().min(0).max(1),
     category: z.string().min(1),

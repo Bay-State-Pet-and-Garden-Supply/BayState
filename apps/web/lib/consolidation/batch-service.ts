@@ -176,6 +176,7 @@ function isExcludedKeyName(key: string): boolean {
 }
 
 const EXCLUDED_FROM_LLM = new Set([
+    'brand',
     'ratings',
     'reviews_count',
     'availability',

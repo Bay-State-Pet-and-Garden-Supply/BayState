@@ -63,6 +63,7 @@ interface ProductLinePromptContext {
 
 interface ConsolidationPromptPayload {
     upc: string;
+    brand?: string;
     sources: Array<{
         source: string;
         trust: string;
@@ -176,6 +177,7 @@ export function buildUserPromptPayload(
 
     return {
         upc: product.upc,
+        brand: product.productLineContext?.expectedBrand,
         sources: sourceEvidence,
         ...(productLineContext ? { product_line_context: productLineContext } : {}),
     };
@@ -230,8 +232,8 @@ function buildGroupedCategoryList(categoryNodes: TaxonomyCategoryNode[]): string
         groups.get(groupKey)!.push(node.name);
     }
 
-    // Build compact grouped strings — keep within ~4000 char budget
-    const MAX_CATEGORY_CHARS = 4000;
+    // Build compact grouped strings — keep within ~32000 char budget
+    const MAX_CATEGORY_CHARS = 32000;
     const lines: string[] = [];
     let totalChars = 0;
 
@@ -295,33 +297,33 @@ export function generateSystemPrompt(categories: string[], facetVocabulary?: Map
 
 Use only exact source-supported category values.
 
-Prioritize outputs that are ready for ShopSite export: name, brand, and weight.
+Prioritize outputs that are ready for ShopSite export: name and weight.
 
 Source trust rules:
 - Highest trust: "shopsite_input" for current ShopSite assignments.
 - High trust: manufacturer, distributor, and catalog sources for factual product data.
 - Lower trust: marketplace and retailer listings such as Amazon, Walmart, eBay, and seller-provided labels.
-- When sources conflict on brand or category, prefer the highest-trust source with direct evidence.
+- When sources conflict on category, prefer the highest-trust source with direct evidence.
 - Preserve shopsite_input category unless higher-trust evidence clearly supports a change.
-- Never let marketplace seller labels or "Brand: ..." prefixes override higher-trust brand evidence.
 
 Sibling product context:
 - Use sibling product context only as consistency guidance when it is provided.
-- Keep supported naming and brand patterns aligned across related UPCs without inventing details from siblings.
+- Keep supported naming patterns aligned across related UPCs without inventing details from siblings.
 
 OCR Packaging Evidence and Vision Input:
 - When a source provides image_text (OCR extracted from product packaging photos), or when you are provided with physical product packaging images directly, treat this visual/OCR packaging evidence as the absolute source of truth.
-- Match the packaging name, brand, and size/weight as closely as possible. Strip extraneous text: marketing taglines, legal disclaimers, address blocks, barcode numbers, URLs, social handles, and promotional callouts.
-- If packaging evidence conflicts with marketplace or distributor titles on product name, brand, or other details, prefer the packaging evidence.
+- Match the packaging name and size/weight as closely as possible. Strip extraneous text: marketing taglines, legal disclaimers, address blocks, barcode numbers, URLs, social handles, and promotional callouts.
+- If packaging evidence conflicts with marketplace or distributor titles on product name or other details, prefer the packaging evidence.
 - Inspect the physical product packaging images directly to extract packaging details.
 - If images are expected but missing, blurry, or unreadable/illegible, fall back gracefully to the text sources, but set a lower confidence_score (below 0.80) to flag the product for human review.
 - Never fabricate packaging details not present in the images or image_text.
 
 Product-name rules:
+- The expected brand name is provided as the "brand" property in the user request.
 - Brand MUST be the first token in the product name, separated by a space. Never drop the brand from the name.
 - Example: brand "Blue Buffalo" + name "Dog Food" → "Blue Buffalo Dog Food"
 - If the source name already starts with the brand, keep it; do not duplicate the brand.
-- Use the brand spelling from the highest-trust source. Use case-insensitive brand matching to avoid duplication. No "Brand:" prefix in the name.
+- Use the provided brand spelling exactly. No "Brand:" prefix in the name.
 - For consumable and food products, place the food-type descriptor directly before the size/weight: prefer "Dry Dog Food 30 lb." over "Dog Food 30 lb. Dry" or "Dog Food Dry 30 lb."
 - General pattern: [Brand] [Product-Type Descriptor] [Flavor/Variant if distinct and source-supported] [Size/Weight/Count]
 - Keep names in Title Case with size/weight/count at the end.
@@ -359,7 +361,6 @@ ${profileRulesStr}${vocabRulesStr}
 Output contract — respond with valid JSON matching this structure:
 {
   "name": "string (required) — product name with brand as first token",
-  "brand": "string (required) — brand name exactly as in highest-trust source",
   "weight": "string (required) — numeric shipping weight in decimal pounds, no units (e.g. 1.56 or 0.44). null if no trustworthy weight. Note: This is for shipping only; do NOT copy this value or unit to the product name if the product is advertised in ounces/count.",
   "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready. set below 0.80 if images are missing or unreadable",
   "category": "string (required) — best-fit taxonomy category from allowed list",
@@ -430,7 +431,6 @@ Group consolidation output contract — respond with valid JSON matching this st
   "products": {
     "UPC123": {
       "name": "string (required) — product name with brand as first token",
-      "brand": "string (required) — must be IDENTICAL across all products in this group",
       "weight": "string (required) — numeric shipping weight in decimal pounds, no units (e.g. 1.56 or 0.44). null if no trustworthy weight. Note: This is for shipping only; do NOT copy this value or unit to the product name if the product is advertised in ounces/count.",
       "confidence_score": "number (required) — 0.0 to 1.0",
       "category": "string (required) — must be IDENTICAL across all products in this group",
@@ -444,7 +444,6 @@ Group consolidation output contract — respond with valid JSON matching this st
 
 CRITICAL:
 - You MUST include EVERY UPC listed in the input. Do not skip, omit, or add UPCs.
-- Brand MUST be identical across all products in this group.
 - Category MUST be identical across all products in this group.
 - Names MUST follow a consistent template within the group, with only variant-specific differences (flavor, size, count).
 - Descriptions MUST share a common structure with variant-specific details.
@@ -490,7 +489,7 @@ export function buildGroupUserPromptPayload(
         instructions: [
             'Consolidate all products below into ShopSite export-ready records.',
             'Use only exact source-supported category values.',
-            'Brand and category must be IDENTICAL across all products.',
+            'Category must be IDENTICAL across all products.',
             'Names must follow a consistent template with variant-specific differences.',
             'Include EVERY UPC in your output — do not skip any.',
         ],

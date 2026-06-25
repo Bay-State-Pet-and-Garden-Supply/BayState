@@ -14,7 +14,7 @@ import {
 // Define the Zod schema representing the raw LLM output schema contract
 const RawConsolidationSchema = z.object({
     name: z.string().min(1, 'Name is required'),
-    brand: z.string().min(1, 'Brand is required'),
+    brand: z.string().optional(),
     weight: z.string().nullable().optional(),
     confidence_score: z.number().min(0).max(1, 'Confidence score must be between 0.0 and 1.0'),
     category: z.string().min(1, 'Category is required'),

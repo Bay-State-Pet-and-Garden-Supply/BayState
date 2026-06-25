@@ -44,15 +44,7 @@ describe('brand placement in prompt-builder', () => {
             expect(prompt).toContain('Blue Buffalo Dog Food');
         });
 
-        it('handles case insensitive brand matching: "blue buffalo" matches "Blue Buffalo"', () => {
-            const categories = ['Dog', 'Cat'];
 
-            const prompt = generateSystemPrompt(categories);
-
-            // Should instruct case-insensitive brand matching
-            expect(prompt).toMatch(/case.*insensitive|insensitive|ignore.*case/i);
-            expect(prompt).toMatch(/brand/i);
-        });
 
         it('includes OCR packaging evidence guidance', () => {
             const categories = ['Dog', 'Cat'];

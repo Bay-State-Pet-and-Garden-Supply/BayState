@@ -54,6 +54,7 @@ const MAX_PROMPT_ARRAY_ITEMS = 8;
 const MAX_PROMPT_NESTED_KEYS = 8;
 
 const EXCLUDED_FROM_LLM = new Set([
+  'brand',
   'ratings',
   'reviews_count',
   'availability',

@@ -28,6 +28,7 @@ export interface BrandResolutionResult {
 
 export interface BrandResolver {
     resolveBrand(rawBrandName: string | undefined): Promise<BrandResolutionResult>;
+    getBrandNameById(id: string): string | undefined;
 }
 
 /**
@@ -42,12 +43,14 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
         throw new Error(`Failed to load brands: ${brandsError.message}`);
     }
 
+    const brandNameById = new Map<string, string>();
     const brandIdByName = new Map<string, string>();
     const brandIdBySlug = new Map<string, string>();
     const brandIdByCanonical = new Map<string, string>();
 
     for (const brand of brands || []) {
         if (typeof brand.name === 'string' && typeof brand.id === 'string') {
+            brandNameById.set(brand.id, brand.name);
             brandIdByName.set(normalizeLookupKey(brand.name), brand.id);
             const canonicalKey = canonicalizeBrandName(brand.name);
             if (canonicalKey && !brandIdByCanonical.has(canonicalKey)) {
@@ -63,6 +66,10 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
             }
         }
     }
+
+    const getBrandNameById = (id: string): string | undefined => {
+        return brandNameById.get(id);
+    };
 
     const resolveBrand = async (
         rawBrandName: string | undefined
@@ -81,7 +88,7 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
         if (existingBrandId) {
             return {
                 brandId: existingBrandId,
-                brandName: normalizedBrand,
+                brandName: brandNameById.get(existingBrandId),
             };
         }
 
@@ -95,7 +102,7 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
             brandIdByName.set(lookupKey, existingBrandIdBySlug);
             return {
                 brandId: existingBrandIdBySlug,
-                brandName: normalizedBrand,
+                brandName: brandNameById.get(existingBrandIdBySlug),
             };
         }
 
@@ -112,6 +119,7 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
         if (typeof createdBrandId === 'string' && createdBrandId.length > 0) {
             brandIdByName.set(lookupKey, createdBrandId);
             brandIdBySlug.set(slug, createdBrandId);
+            brandNameById.set(createdBrandId, normalizedBrand);
             return {
                 brandId: createdBrandId,
                 brandName: normalizedBrand,
@@ -120,7 +128,7 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
 
         const { data: existingBrand, error: existingBrandError } = await supabase
             .from('brands')
-            .select('id')
+            .select('id, name')
             .eq('slug', slug)
             .maybeSingle();
 
@@ -128,9 +136,12 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
         if (typeof existingBrandIdAfterInsert === 'string' && existingBrandIdAfterInsert.length > 0) {
             brandIdByName.set(lookupKey, existingBrandIdAfterInsert);
             brandIdBySlug.set(slug, existingBrandIdAfterInsert);
+            if (existingBrand.name) {
+                brandNameById.set(existingBrandIdAfterInsert, existingBrand.name);
+            }
             return {
                 brandId: existingBrandIdAfterInsert,
-                brandName: normalizedBrand,
+                brandName: existingBrand.name || normalizedBrand,
             };
         }
 
@@ -144,5 +155,5 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
         throw new Error(`Failed to resolve brand "${normalizedBrand}"${details ? ` (${details})` : ''}`);
     };
 
-    return { resolveBrand };
+    return { resolveBrand, getBrandNameById };
 }

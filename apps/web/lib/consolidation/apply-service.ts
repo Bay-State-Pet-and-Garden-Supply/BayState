@@ -6,9 +6,9 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getConsolidationConfig } from './openai-client';
 import {
     validateRequiredConsolidationFields,
-    validateConsolidationTaxonomy,
 } from './taxonomy-validator';
 import { parseTaxonomyValues } from '@/lib/taxonomy';
+import { normalizeProductSources } from '@/lib/product-sources';
 import {
     cleanBrandLabel,
     createBrandResolver,
@@ -22,6 +22,7 @@ import {
     toStringUrlArray,
 } from './media-resolver';
 import { tryDisambiguateDuplicateNames } from './duplicate-detector';
+import { validateProductNameQuality } from './name-quality-validator';
 import { retrieveResults, findBatchJobRow, type BatchRowLookup } from './batch-service';
 import type {
     ApplyResultsResponse,
@@ -136,9 +137,7 @@ function collectAnimalSignalsFromValue(
     }
 }
 
-// Inline helper to import and call normalizeProductSources to avoid direct dependency issues
-function getNormalizedSources(sources: Record<string, unknown>): Record<string, any> {
-    const { normalizeProductSources } = require('@/lib/product-sources');
+function getNormalizedSources(sources: Record<string, unknown>): Record<string, unknown> {
     return normalizeProductSources(sources);
 }
 
@@ -445,7 +444,9 @@ export async function applyConsolidationResults(
                 existingRecord.input,
             );
 
-            const normalizedBrand = cleanBrandLabel(result.brand) || cleanBrandLabel(sourceFallbacks.core.brand);
+            const dbBrandId = existingRecord.brand_id || undefined;
+            const dbBrandName = dbBrandId ? brandResolver.getBrandNameById(dbBrandId) : undefined;
+            const normalizedBrand = dbBrandName || cleanBrandLabel(result.brand) || cleanBrandLabel(sourceFallbacks.core.brand);
 
             const nextCategory = parseTaxonomyValues(result.category);
             const parsedPrice =
@@ -480,7 +481,9 @@ export async function applyConsolidationResults(
             if (!result.weight?.trim() && (existingCore.weight_lbs === undefined || existingCore.weight_lbs === null) && sourceFallbacks.core.weight_lbs) {
                 fieldSources.weight_lbs = 'source_fallback:weight_lbs';
             }
-            if (!result.brand?.trim() && !existingCore.brand_name && sourceFallbacks.core.brand) {
+            if (dbBrandName) {
+                fieldSources.brand = 'db_assigned_brand';
+            } else if (!result.brand?.trim() && !existingCore.brand_name && sourceFallbacks.core.brand) {
                 fieldSources.brand = 'source_fallback:brand';
             }
 
@@ -510,6 +513,16 @@ export async function applyConsolidationResults(
                     `confidence_score ${result.confidence_score.toFixed(2)} is below threshold ${confidenceThreshold.toFixed(2)}`
                 );
             }
+
+            const nameQuality = validateProductNameQuality({
+                upc: result.upc,
+                name: draftName,
+                input: existingRecord.input,
+                sources: existingRecord.sources,
+                packagingFacets: result.packaging_facets,
+                shippingWeight: weightValue,
+            });
+            gateErrors.push(...nameQuality.errors);
 
             const outputAnimalSignals = collectOutputAnimalSignals({
                 core: {
@@ -555,12 +568,15 @@ export async function applyConsolidationResults(
                 continue;
             }
 
-            const {
-                brandId: resolvedBrandId,
-                brandName: resolvedBrandName,
-            } = await brandResolver.resolveBrand(normalizedBrand);
+            let resolvedBrandId = dbBrandId;
+            let resolvedBrandName = dbBrandName;
 
-            if (normalizedBrand) {
+            if (resolvedBrandId) {
+                matchedBrandCount += 1;
+            } else if (normalizedBrand) {
+                const resolved = await brandResolver.resolveBrand(normalizedBrand);
+                resolvedBrandId = resolved.brandId;
+                resolvedBrandName = resolved.brandName;
                 if (resolvedBrandId) {
                     matchedBrandCount += 1;
                 } else {
