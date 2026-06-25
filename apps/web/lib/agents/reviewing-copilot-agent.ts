@@ -34,7 +34,7 @@ function buildFinalizationCopilotModel(provider: string, apiKey: string, modelId
     return createOpenAI({
       apiKey,
       baseURL: baseURL || undefined,
-    })(modelId);
+    }).chat(modelId);
   }
   return createDeepSeek({
     apiKey,
