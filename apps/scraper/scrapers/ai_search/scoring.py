@@ -121,7 +121,6 @@ class SearchScorer:
         "amazon.com",
         "walmart.com",
         "target.com",
-        "chewy.com",
         "petco.com",
         "petsmart.com",
         "tractorsupply.com",
@@ -299,7 +298,6 @@ class SearchScorer:
         (
             {"dog", "cat", "pet", "pets", "flea", "tick", "aquarium", "aquariums"},
             {
-                "chewy.com": 6.5,
                 "petco.com": 6.0,
                 "petsmart.com": 5.5,
                 "petfood.express": 5.0,

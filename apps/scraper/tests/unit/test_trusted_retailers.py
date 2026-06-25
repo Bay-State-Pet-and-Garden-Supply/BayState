@@ -20,7 +20,6 @@ def test_existing_trusted_retailers_are_still_recognized() -> None:
     scorer = SearchScorer()
     
     existing_retailers = [
-        "chewy.com",
         "amazon.com",
         "walmart.com",
         "petco.com",

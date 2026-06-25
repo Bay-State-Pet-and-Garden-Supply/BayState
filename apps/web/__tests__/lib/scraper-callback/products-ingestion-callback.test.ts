@@ -46,7 +46,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
       supabase,
       {
         'UPC-1': { amazon: { price: 12 } },
-        'UPC-2': { chewy: { in_stock: true } },
+        'UPC-2': { petco: { in_stock: true } },
       },
       false,
       nowIso
@@ -196,7 +196,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
         supabase,
         {
           'UPC-1': { amazon: { price: 12 } },
-          'UPC-MISSING': { chewy: { in_stock: true } },
+          'UPC-MISSING': { petco: { in_stock: true } },
         },
         false,
         '2026-02-17T00:00:00.000Z'
@@ -227,7 +227,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
       supabase,
       {
         'UPC-1': { amazon: { price: 12 } },
-        'UPC-MISSING': { chewy: { in_stock: true } },
+        'UPC-MISSING': { petco: { in_stock: true } },
       },
       false,
       nowIso
@@ -263,7 +263,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
       supabase,
       {
         'MISSING-1': { amazon: { price: 12 } },
-        'MISSING-2': { chewy: { in_stock: true } },
+        'MISSING-2': { petco: { in_stock: true } },
       },
       false,
       '2026-02-17T00:00:00.000Z'
@@ -291,7 +291,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
       supabase,
       {
         'UPC-1': { amazon: { price: 12 } },
-        'UPC-2': { chewy: { in_stock: true } },
+        'UPC-2': { petco: { in_stock: true } },
       },
       false,
       nowIso
@@ -361,7 +361,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
         supabase,
         {
           'UPC-1': { amazon: { price: 12 } },
-          'UPC-2': { chewy: { in_stock: true } },
+          'UPC-2': { petco: { in_stock: true } },
         },
         false,
         nowIso

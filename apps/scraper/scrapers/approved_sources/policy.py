@@ -157,7 +157,6 @@ def is_asset_domain_allowed(
         "media-amazon.com",
         "images-amazon.com",
         "amazon.com",
-        "chewy.com",
         "salsify.com",
         # Phillips Pet serves product imagery from this fixed CloudFront distribution.
         "d56ygyjv466yj.cloudfront.net",

@@ -251,7 +251,7 @@ describe('callback validation - admin payloads', () => {
         status: 'completed',
         results: {
           upcs_processed: 5,
-          scrapers_run: ['amazon', 'chewy'],
+          scrapers_run: ['amazon', 'petco'],
           data: {
             'upc-1': { amazon: { price: 19.99 } }
           }

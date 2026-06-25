@@ -190,7 +190,7 @@ def test_scoring_prefers_exact_major_retailer_pdp_over_broader_official_generic_
         "Dog Treats | Brand",
     )
     exact_retailer_result = _result(
-        "https://www.chewy.com/brand-chicken-recipe-dog-treats/dp/12345",
+        "https://www.petco.com/brand-chicken-recipe-dog-treats/dp/12345",
         "Brand Chicken Recipe Dog Treats 5 lb",
     )
 
@@ -660,10 +660,10 @@ def test_scoring_prefers_specialty_pet_retailer_over_walmart_for_etta_salmon() -
     assert specialty_score > walmart_score
 
 
-def test_scoring_prefers_chewy_over_small_pet_retailer_for_etta_duck() -> None:
+def test_scoring_prefers_petco_over_small_pet_retailer_for_etta_duck() -> None:
     scorer = SearchScorer()
-    chewy_result = _result(
-        "https://www.chewy.com/etta-says-fusion-gourmet-adult-duck/dp/1263062",
+    petco_result = _result(
+        "https://www.petco.com/shop/en/petcostore/product/etta-says-fusion-gourmet-adult-duck-dp-1263062",
         "ETTA SAYS! Fusion Gourmet Adult Duck & Pumpkin Flavor Natural ...",
     )
     retailer_result = _result(
@@ -671,8 +671,8 @@ def test_scoring_prefers_chewy_over_small_pet_retailer_for_etta_duck() -> None:
         "Etta Says! Flavor Fusion Dog Chew Duck and Pumpkin 1.5 oz",
     )
 
-    chewy_score = scorer.score_search_result(
-        chewy_result,
+    petco_score = scorer.score_search_result(
+        petco_result,
         upc="856595005902",
         brand="Etta Says!",
         product_name="Etta Says! Flavor Fusion Duck & Pumpkin 1.5 oz",
@@ -688,7 +688,7 @@ def test_scoring_prefers_chewy_over_small_pet_retailer_for_etta_duck() -> None:
         prefer_manufacturer=True,
     )
 
-    assert chewy_score > retailer_score
+    assert petco_score > retailer_score
 
 
 # ============================================================================
@@ -1240,8 +1240,8 @@ def test_category_domain_bonus_for_matching_category() -> None:
 
     # Pet product on pet retailer
     pet_result = _result(
-        "https://chewy.com/product/123",
-        "Dog Food - Chewy",
+        "https://petco.com/product/123",
+        "Dog Food - Petco",
     )
 
     # Pet product on non-pet retailer

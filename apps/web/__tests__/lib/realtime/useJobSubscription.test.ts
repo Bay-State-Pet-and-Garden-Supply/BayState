@@ -130,7 +130,7 @@ describe('useJobSubscription', () => {
 
     it('should handle scraperNames filter', () => {
       renderHook(() =>
-        useJobSubscription({ scraperNames: ['petco', 'chewy'], autoConnect: false }),
+        useJobSubscription({ scraperNames: ['petco', 'walmart'], autoConnect: false }),
       );
 
       expect(mockChannelFactory).toHaveBeenCalled();

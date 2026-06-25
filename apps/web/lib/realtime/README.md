@@ -176,7 +176,7 @@ function JobQueue() {
     getJobsForRunner,  // (runnerId: string) => JobAssignment[]
   } = useJobSubscription(
     {
-      scraperNames: ['petco', 'chewy'],  // Filter by scraper
+      scraperNames: ['petco', 'walmart'],  // Filter by scraper
       testModeOnly: false,
       maxJobsPerStatus: 50,
       onJobCreated: (job) => console.log('New job:', job.id),

@@ -38,11 +38,11 @@
       "source_symbol": "SearchScorer.MAJOR_RETAILERS|GENERAL_MASS_RETAILERS|SECONDARY_RETAILERS|MARKETPLACES|TRUSTED_RETAILERS",
       "description": "Retailer source-tier groups used by classification, ranking, and validation.",
       "value": {
-        "major_retailers": ["amazon.com", "walmart.com", "target.com", "chewy.com", "petco.com", "petsmart.com", "tractorsupply.com", "homedepot.com", "lowes.com", "acehardware.com", "costco.com", "summitracing.com"],
+        "major_retailers": ["amazon.com", "walmart.com", "target.com", "petco.com", "petsmart.com", "tractorsupply.com", "homedepot.com", "lowes.com", "acehardware.com", "costco.com", "summitracing.com"],
         "general_mass_retailers": ["amazon.com", "walmart.com", "target.com"],
         "secondary_retailers": ["berings.com", "farmstore.com", "hugglepets.co.uk", "mickeyspetsupplies.com", "rachelspetsupply.com", "animalproductsshop.com", "petedge.com", "animalsupply.com", "phillipspet.com", "frontiercoop.com", "petsuppliesplus.com", "bradleycaldwell.com", "petswarehouse.com"],
         "marketplaces": ["ebay.com"],
-        "trusted_retailers": ["acehardware.com", "amazon.com", "animalproductsshop.com", "animalsupply.com", "berings.com", "bradleycaldwell.com", "chewy.com", "costco.com", "farmstore.com", "frontiercoop.com", "homedepot.com", "hugglepets.co.uk", "lowes.com", "mickeyspetsupplies.com", "petco.com", "petedge.com", "petsmart.com", "petsuppliesplus.com", "petswarehouse.com", "phillipspet.com", "rachelspetsupply.com", "summitracing.com", "target.com", "tractorsupply.com", "walmart.com"]
+        "trusted_retailers": ["acehardware.com", "amazon.com", "animalproductsshop.com", "animalsupply.com", "berings.com", "bradleycaldwell.com", "costco.com", "farmstore.com", "frontiercoop.com", "homedepot.com", "hugglepets.co.uk", "lowes.com", "mickeyspetsupplies.com", "petco.com", "petedge.com", "petsmart.com", "petsuppliesplus.com", "petswarehouse.com", "phillipspet.com", "rachelspetsupply.com", "summitracing.com", "target.com", "tractorsupply.com", "walmart.com"]
       }
     },
     {
@@ -98,7 +98,7 @@
       "source_symbol": "SearchScorer.CATEGORY_DOMAIN_PREFERENCES",
       "description": "Category-triggered preferred-domain bonuses.",
       "value": [
-        {"triggers": ["dog", "cat", "pet", "pets", "flea", "tick", "aquarium", "aquariums"], "domain_weights": {"chewy.com": 6.5, "petco.com": 6.0, "petsmart.com": 5.5, "petfood.express": 5.0, "petsuppliesplus.com": 4.5, "thepetbeastro.com": 5.5, "hollywoodfeed.com": 4.5}},
+        {"triggers": ["dog", "cat", "pet", "pets", "flea", "tick", "aquarium", "aquariums"], "domain_weights": {"petco.com": 6.0, "petsmart.com": 5.5, "petfood.express": 5.0, "petsuppliesplus.com": 4.5, "thepetbeastro.com": 5.5, "hollywoodfeed.com": 4.5}},
         {"triggers": ["garden", "outdoor", "mulch", "fountain", "decor", "hardware", "farm", "pest"], "domain_weights": {"acehardware.com": 6.0, "tractorsupply.com": 5.5, "homedepot.com": 5.0, "lowes.com": 4.5}},
         {"triggers": ["horse", "equine"], "domain_weights": {"bigdweb.com": 6.0, "doversaddlery.com": 5.5, "sstack.com": 5.5, "statelinetack.com": 5.0, "cheshirehorse.com": 5.0}},
         {"triggers": ["fuel", "engine", "motorsport", "utility", "container", "containers", "jug", "jugs"], "domain_weights": {"summitracing.com": 6.5, "jegs.com": 6.0, "plasticproductformers.com": 5.5, "acehardware.com": 4.5}}

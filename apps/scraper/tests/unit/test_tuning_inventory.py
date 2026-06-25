@@ -63,7 +63,7 @@ def test_inventory_covers_required_search_scorer_constants() -> None:
     assert sorted(entries["scoring.noisy_query_params"]["value"]) == sorted(SearchScorer.NOISY_QUERY_PARAMS)
     assert sorted(entries["scoring.blocked_domains"]["value"]) == sorted(SearchScorer.BLOCKED_DOMAINS)
     assert sorted(entries["scoring.retailer_groups"]["value"]["trusted_retailers"]) == sorted(SearchScorer.TRUSTED_RETAILERS)
-    assert entries["scoring.category_domain_preferences"]["value"][0]["domain_weights"]["chewy.com"] == 6.5
+    assert entries["scoring.category_domain_preferences"]["value"][0]["domain_weights"]["petco.com"] == 6.0
 
 
 def test_inventory_includes_required_sku_and_official_exact_weights_as_allowed() -> None:

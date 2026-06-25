@@ -259,7 +259,7 @@ function cleanupSharedJobChannel(baseChannelName: string, entry: SharedJobChanne
  *   connect,
  *   disconnect,
  * } = useJobSubscription({
- *   scraperNames: ['petco', 'chewy'],
+ *   scraperNames: ['petco', 'walmart'],
  *   onJobCreated: (job) => console.log(`New job: ${job.id}`),
  *   onJobUpdated: (job) => console.log(`Job ${job.id} status: ${job.status}`),
  * });
