@@ -178,13 +178,18 @@ export function getJobModeLabel(job: JobAssignment) {
 
 export function getJobProgressCounts(job: JobAssignment) {
   const total = Math.max(0, job.total_count ?? job.items_total ?? job.upcs?.length ?? 0);
-  const failed = Math.max(0, job.failed_count ?? 0);
-  const processedFallback = Math.max(0, job.items_processed ?? 0);
-  const completed = Math.max(
-    0,
-    job.completed_count ?? Math.max(0, processedFallback - failed),
+  const failed = Math.min(total, Math.max(0, job.failed_count ?? 0));
+  const processedFallback = Math.min(total, Math.max(0, job.items_processed ?? 0));
+  const completed = Math.min(
+    total - failed,
+    Math.max(
+      0,
+      typeof job.completed_count === "number"
+        ? job.completed_count - failed
+        : Math.max(0, processedFallback - failed),
+    ),
   );
-  const processed = Math.max(processedFallback, completed + failed);
+  const processed = Math.min(total, Math.max(processedFallback, completed + failed));
   const remaining = total > 0 ? Math.max(0, total - processed) : 0;
 
   return {
@@ -197,6 +202,15 @@ export function getJobProgressCounts(job: JobAssignment) {
 }
 
 export function getJobProgressPercent(job: JobAssignment) {
+  if (["completed", "completed_with_errors", "failed", "cancelled"].includes(job.status)) {
+    return 100;
+  }
+
+  const { total, processed } = getJobProgressCounts(job);
+  if (total > 0) {
+    return clamp(Math.round((processed / total) * 100), 0, 100);
+  }
+
   if (
     typeof job.progress_percent === "number" &&
     Number.isFinite(job.progress_percent)
@@ -204,12 +218,7 @@ export function getJobProgressPercent(job: JobAssignment) {
     return clamp(Math.round(job.progress_percent), 0, 100);
   }
 
-  const { total, processed } = getJobProgressCounts(job);
-  if (!total) {
-    return 0;
-  }
-
-  return clamp(Math.round((processed / total) * 100), 0, 100);
+  return 0;
 }
 
 export function getJobRunnerLabel(job: JobAssignment) {
