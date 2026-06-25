@@ -48,6 +48,8 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
         fallback_url = url.replace("_large", "_thumb")
     elif "_lg" in url:
         fallback_url = url.replace("_lg", "_md")
+    elif "/weblarge/" in url and "orgill.com" in url:
+        fallback_url = url.replace("/weblarge/", "/websmall/")
     elif "/web/" in url and "orgill.com" in url:
         fallback_url = url.replace("/web/", "/websmall/")
     elif "cloudfront.net" in url and not url.endswith("_t.jpg") and "/thumb/" not in url:

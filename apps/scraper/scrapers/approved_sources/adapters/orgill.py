@@ -380,14 +380,14 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
 
     def normalize_images(self, urls: list[str]) -> list[str]:
         """Apply Orgill image quality replacements.
-        From legacy: /websmall/ -> /web/, _thumb. -> .
+        From legacy: /websmall/ -> /weblarge/, _thumb. -> .
         Also normalizes backslash to forward slash (vendor quirk).
         """
         normalized = []
         for url in urls:
             # Clean vendor backslash corruption before quality upgrades
             url = url.replace("\\", "/")
-            url = re.sub(r"/websmall/", "/web/", url)
+            url = re.sub(r"/websmall/", "/weblarge/", url)
             url = re.sub(r"_thumb\.", ".", url)
             normalized.append(url)
         return normalized

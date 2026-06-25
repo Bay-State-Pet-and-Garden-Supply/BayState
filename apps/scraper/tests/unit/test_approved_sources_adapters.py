@@ -210,7 +210,7 @@ class TestOrgillAdapter:
             "https://www.orgill.com/images/product_thumb.jpg",
         ]
         normalized = adapter.normalize_images(urls)
-        assert "/web/" in normalized[0]
+        assert "/weblarge/" in normalized[0]
         assert "thumb" not in normalized[1]
 
     def test_extract_accepts_upc_match_even_when_item_number_differs(self):

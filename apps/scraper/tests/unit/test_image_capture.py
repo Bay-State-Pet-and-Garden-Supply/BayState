@@ -246,7 +246,7 @@ async def test_capture_images_bulk():
 
 @pytest.mark.asyncio
 async def test_capture_image_orgill_fallback_success():
-    """Verify that if an Orgill /web/ image returns 404, we fall back to the /websmall/ variant successfully."""
+    """Verify that if an Orgill /weblarge/ image returns 404, we fall back to the /websmall/ variant successfully."""
     page = AsyncMock()
     page.url = "https://www.orgill.com/SearchResultN.aspx?ddlhQ=123"
     # Method 1 (in-page JS fetch) returns 404
@@ -273,7 +273,7 @@ async def test_capture_image_orgill_fallback_success():
         }
     page.evaluate.side_effect = side_effect_eval
 
-    url = "https://images1.orgill.com/web/10034/4252318.jpg"
+    url = "https://images1.orgill.com/weblarge/10034/4252318.jpg"
     res = await capture_image_authenticated(page, url)
     
     assert res["status"] == "success"
