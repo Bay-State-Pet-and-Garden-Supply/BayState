@@ -132,8 +132,8 @@ export async function createBrandResolver(supabase: SupabaseClient): Promise<Bra
             .eq('slug', slug)
             .maybeSingle();
 
-        const existingBrandIdAfterInsert = existingBrand?.id;
-        if (typeof existingBrandIdAfterInsert === 'string' && existingBrandIdAfterInsert.length > 0) {
+        if (existingBrand && typeof existingBrand.id === 'string' && existingBrand.id.length > 0) {
+            const existingBrandIdAfterInsert = existingBrand.id;
             brandIdByName.set(lookupKey, existingBrandIdAfterInsert);
             brandIdBySlug.set(slug, existingBrandIdAfterInsert);
             if (existingBrand.name) {
