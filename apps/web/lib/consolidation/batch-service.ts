@@ -68,7 +68,7 @@ import {
     buildGeminiBatchStatus,
 } from './gemini-batch-service';
 import { enrichProductDetails } from './detail-enrichment';
-import { classifyProduct, extractClassificationEvidence, isConfidentClassification, buildClassificationSystemPrompt, buildClassificationUserPrompt } from './product-line-classification';
+import { extractClassificationEvidence, buildClassificationSystemPrompt, prepareClassificationBatchItems } from './product-line-classification';
 import { loadKnownProductLines, assignProductToLine } from './product-lines';
 import { deduplicateProductLines } from './product-line-dedup';
 import crypto from 'crypto';
@@ -986,19 +986,14 @@ export async function submitProductLineClassificationBatch(
         const providerBatchId = `classify_${crypto.randomUUID()}`;
         const model = runtime.model;
 
-        // Extract evidence for all products to find brand context and siblings
-        const productEvidences = products.map(p => ({
-            upc: p.upc,
-            evidence: extractClassificationEvidence(p.upc, p.sources, p.input),
-            sources: p.sources,
-            input: p.input,
-        }));
-
-        // Get unique brand names (non-empty)
+        // Extract brand names (non-empty)
         const brandNames = Array.from(
             new Set(
-                productEvidences
-                    .map(pe => pe.evidence.brand?.trim())
+                products
+                    .map(p => {
+                        const evidence = extractClassificationEvidence(p.upc, p.sources, p.input);
+                        return evidence.brand?.trim();
+                    })
                     .filter((b): b is string => !!b)
             )
         );
@@ -1026,15 +1021,6 @@ export async function submitProductLineClassificationBatch(
         const generalSystemPrompt = buildClassificationSystemPrompt(
             knownProductLines.map(pl => ({ id: pl.id, canonical_name: pl.canonical_name }))
         );
-
-        // Group products by brand name for sibling lookup
-        const productsByBrand = new Map<string, Array<{ upc: string; name: string }>>();
-        for (const pe of productEvidences) {
-            const bName = pe.evidence.brand?.trim().toLowerCase() || '__no_brand__';
-            const list = productsByBrand.get(bName) || [];
-            list.push({ upc: pe.upc, name: pe.evidence.name || pe.upc });
-            productsByBrand.set(bName, list);
-        }
 
         // Insert batch_jobs parent row
         const { error: insertError } = await supabase.from('batch_jobs').insert({
@@ -1066,43 +1052,29 @@ export async function submitProductLineClassificationBatch(
             return { success: false, error: insertError.message };
         }
 
-        // Insert one batch_job_items row per product with dynamic system prompts and sibling user prompts
-        const items = productEvidences.map(pe => {
-            const bName = pe.evidence.brand?.trim();
-            const bId = bName ? brandNameToId.get(bName) : undefined;
+        // Prepare prompts using the deep coordinator
+        const preparedItems = prepareClassificationBatchItems(products, knownProductLines, brandNameToId);
 
-            // Filter known product lines to this brand (or null brand)
-            const brandLines = knownProductLines.filter(
-                pl => pl.brand_id === null || (bId && pl.brand_id === bId)
-            );
-
-            const systemPrompt = buildClassificationSystemPrompt(
-                brandLines.map(pl => ({ id: pl.id, canonical_name: pl.canonical_name }))
-            );
-
-            // Find siblings of the same brand in this batch (excluding self)
-            const bKey = pe.evidence.brand?.trim().toLowerCase() || '__no_brand__';
-            const siblings = (productsByBrand.get(bKey) || []).filter(sib => sib.upc !== pe.upc);
-
-            const userPrompt = buildClassificationUserPrompt(pe.evidence, siblings);
-
+        // Insert one batch_job_items row per product
+        const items = preparedItems.map(item => {
+            const p = products.find(prod => prod.upc === item.upc)!;
             return {
                 batch_job_id: batchId,
-                upc: pe.upc,
+                upc: item.upc,
                 status: 'pending' as const,
                 item_kind: 'upc' as const,
-                subject_key: pe.upc,
+                subject_key: item.upc,
                 request_payload: {
                     model,
                     messages: [
-                        { role: 'system' as const, content: systemPrompt },
-                        { role: 'user' as const, content: userPrompt },
+                        { role: 'system' as const, content: item.systemPrompt },
+                        { role: 'user' as const, content: item.userPrompt },
                     ],
                     max_tokens: 512,
                     temperature: 0.1,
                     response_format: { type: 'json_object' as const },
                 },
-                product_source: pe.sources,
+                product_source: p.sources,
             };
         });
 

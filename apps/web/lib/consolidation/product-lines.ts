@@ -1,4 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import {
+    FLAVOR_WORDS,
+    FORMAT_WORDS,
+    FLAVOR_CLASSES,
+    FORMAT_CLASSES,
+    normalizeProductLineKey,
+} from './product-line-matcher';
 
 export interface ProductLineRecord {
     id: string;
@@ -9,67 +16,14 @@ export interface ProductLineRecord {
     updated_at: string;
 }
 
-export const FLAVOR_WORDS = [
-    'beef', 'chicken', 'chkn', 'lamb', 'whitefish', 'fish', 'salmon', 'tuna', 'cod', 'trout',
-    'turkey', 'trky', 'duck', 'venison', 'pork', 'rabbit', 'bison', 'boar',
-    'strawberry', 'strwb', 'blueberry', 'blubry', 'apple', 'banana', 'peanut', 'pumpkin', 'cheese'
-];
+export {
+    FLAVOR_WORDS,
+    FORMAT_WORDS,
+    FLAVOR_CLASSES,
+    FORMAT_CLASSES,
+    normalizeProductLineKey,
+};
 
-export const FORMAT_WORDS = [
-    'sticks', 'stick', 'stix', 'bites', 'bite', 'strips', 'strip', 'rolls', 'roll',
-    'chews', 'chew', 'bones', 'bone', 'braids', 'braid', 'pates', 'pate', 'stews', 'stew',
-    'puffs', 'puff', 'shreds', 'shredded'
-];
-
-export const FLAVOR_CLASSES = [
-    ['beef'],
-    ['chicken', 'chkn'],
-    ['lamb'],
-    ['whitefish', 'fish'],
-    ['salmon'],
-    ['tuna'],
-    ['cod'],
-    ['trout'],
-    ['turkey', 'trky'],
-    ['duck'],
-    ['venison'],
-    ['pork'],
-    ['rabbit'],
-    ['bison'],
-    ['boar'],
-    ['strawberry', 'strwb'],
-    ['blueberry', 'blubry'],
-    ['apple'],
-    ['banana'],
-    ['peanut', 'peanutbutter'],
-    ['pumpkin'],
-    ['cheese']
-];
-
-export const FORMAT_CLASSES = [
-    ['sticks', 'stick', 'stix'],
-    ['bites', 'bite'],
-    ['strips', 'strip'],
-    ['rolls', 'roll'],
-    ['chews', 'chew'],
-    ['bones', 'bone'],
-    ['braids', 'braid'],
-    ['pates', 'pate'],
-    ['stews', 'stew'],
-    ['puffs', 'puff'],
-    ['shreds', 'shredded']
-];
-
-
-/** Normalize a label for dedup matching: lowercase, strip non-alphanumeric, collapse whitespace. */
-export function normalizeProductLineKey(label: string): string {
-    return label
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .replace(/\s+/g, '');
-}
 
 /** Load all known product lines from the database as classification vocabulary. */
 export async function loadKnownProductLines(brandIds?: string[]): Promise<ProductLineRecord[]> {

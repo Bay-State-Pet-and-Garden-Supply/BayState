@@ -14,7 +14,8 @@
  */
 
 import { getConsolidationConfig } from './openai-client';
-import { loadKnownProductLines, FLAVOR_WORDS, FORMAT_WORDS, FLAVOR_CLASSES, FORMAT_CLASSES } from './product-lines';
+import { loadKnownProductLines } from './product-lines';
+import { FLAVOR_WORDS, FORMAT_WORDS, FLAVOR_CLASSES, FORMAT_CLASSES } from './product-line-matcher';
 import { normalizeProductSources } from '@/lib/product-sources';
 import type { ProductLineClassificationInput, ProductLineClassificationResult } from './types';
 
@@ -435,4 +436,66 @@ export async function classifyProduct(
  */
 export function isConfidentClassification(result: ProductLineClassificationResult): boolean {
     return result.confidence >= CLASSIFICATION_THRESHOLD;
+}
+
+export interface ClassificationBatchProduct {
+    upc: string;
+    sources: Record<string, unknown>;
+    input?: Record<string, unknown> | null;
+}
+
+/**
+ * Coordinate prompt generation and brand/sibling checks for a batch of products to classify.
+ */
+export function prepareClassificationBatchItems(
+    products: ClassificationBatchProduct[],
+    knownProductLines: Array<{ id: string; canonical_name: string; brand_id: string | null }>,
+    brandNameToId: Map<string, string>
+): Array<{
+    upc: string;
+    systemPrompt: string;
+    userPrompt: string;
+}> {
+    // Extract evidence for all products to find brand context and siblings
+    const productEvidences = products.map(p => ({
+        upc: p.upc,
+        evidence: extractClassificationEvidence(p.upc, p.sources, p.input),
+        sources: p.sources,
+        input: p.input,
+    }));
+
+    // Group products by brand name for sibling lookup
+    const productsByBrand = new Map<string, Array<{ upc: string; name: string }>>();
+    for (const pe of productEvidences) {
+        const bName = pe.evidence.brand?.trim().toLowerCase() || '__no_brand__';
+        const list = productsByBrand.get(bName) || [];
+        list.push({ upc: pe.upc, name: pe.evidence.name || pe.upc });
+        productsByBrand.set(bName, list);
+    }
+
+    return productEvidences.map(pe => {
+        const bName = pe.evidence.brand?.trim();
+        const bId = bName ? brandNameToId.get(bName) : undefined;
+
+        // Filter known product lines to this brand (or null brand)
+        const brandLines = knownProductLines.filter(
+            pl => pl.brand_id === null || (bId && pl.brand_id === bId)
+        );
+
+        const systemPrompt = buildClassificationSystemPrompt(
+            brandLines.map(pl => ({ id: pl.id, canonical_name: pl.canonical_name }))
+        );
+
+        // Find siblings of the same brand in this batch (excluding self)
+        const bKey = pe.evidence.brand?.trim().toLowerCase() || '__no_brand__';
+        const siblings = (productsByBrand.get(bKey) || []).filter(sib => sib.upc !== pe.upc);
+
+        const userPrompt = buildClassificationUserPrompt(pe.evidence, siblings);
+
+        return {
+            upc: pe.upc,
+            systemPrompt,
+            userPrompt,
+        };
+    });
 }

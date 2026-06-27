@@ -2,7 +2,8 @@ import {
     extractClassificationEvidence,
     buildClassificationSystemPrompt,
     parseClassificationResponse,
-    buildClassificationUserPrompt
+    buildClassificationUserPrompt,
+    prepareClassificationBatchItems
 } from '@/lib/consolidation/product-line-classification';
 
 describe('Product Line Classification', () => {
@@ -118,6 +119,39 @@ describe('Product Line Classification', () => {
             const invalidText = '{"invalid": "format"}';
             const result = parseClassificationResponse('123456789012', invalidText);
             expect(result).toBeNull();
+        });
+    });
+
+    describe('prepareClassificationBatchItems', () => {
+        it('should correctly prepare prompts, grouping brand siblings', () => {
+            const products = [
+                {
+                    upc: 'UPC-A',
+                    sources: { bradley: { name: 'Chewy Sticks Beef', brand: 'Wholesomes' } }
+                },
+                {
+                    upc: 'UPC-B',
+                    sources: { bradley: { name: 'Chewy Sticks Salmon', brand: 'Wholesomes' } }
+                }
+            ];
+
+            const knownProductLines = [
+                { id: 'line-1', canonical_name: 'Chewy Sticks - Beef', brand_id: 'brand-1' }
+            ];
+
+            const brandNameToId = new Map([['Wholesomes', 'brand-1']]);
+
+            const items = prepareClassificationBatchItems(products, knownProductLines, brandNameToId);
+
+            expect(items).toHaveLength(2);
+            expect(items[0].upc).toBe('UPC-A');
+            expect(items[0].systemPrompt).toContain('Chewy Sticks - Beef');
+            expect(items[0].userPrompt).toContain('Other products of the same brand in this batch');
+            expect(items[0].userPrompt).toContain('Chewy Sticks Salmon (UPC: UPC-B)');
+
+            expect(items[1].upc).toBe('UPC-B');
+            expect(items[1].systemPrompt).toContain('Chewy Sticks - Beef');
+            expect(items[1].userPrompt).toContain('Chewy Sticks Beef (UPC: UPC-A)');
         });
     });
 });

@@ -62,6 +62,12 @@
       "sourceType": "github",
       "computedHash": "db994d5097a46cc01de3f84c55bafbb2659762339b82ab0135acff297c55672b"
     },
+    "improve-codebase-architecture": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+      "computedHash": "8bf292143ca93b00276a0de0fc5f84f2381f4690c5b0d32e99fa283a072f392f"
+    },
     "nano-banana-2": {
       "source": "inferen-sh/skills",
       "sourceType": "github",
