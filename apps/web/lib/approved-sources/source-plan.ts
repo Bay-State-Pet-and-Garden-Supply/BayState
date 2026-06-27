@@ -13,6 +13,7 @@ import {
   type ApprovedSourcePolicy,
   type ApprovedSourceType,
   type ApprovedSearchMode,
+  type ProfileSnapshot,
   type SourcePlanFailureCode,
   type SourcePlanResult,
   DISALLOWED_DOMAINS,
@@ -64,8 +65,9 @@ interface BrandSourceRow {
 
 /**
  * Normalize a domain (or URL) to a clean hostname.
+ * Strips scheme, leading "www.", path/query/fragment, and default ports.
  */
-function normalizeDomain(raw: string): string {
+export function normalizeDomain(raw: string): string {
   let d = raw.trim().toLowerCase();
 
   // Strip scheme
@@ -103,7 +105,7 @@ function normalizeDomain(raw: string): string {
  * ".amazon.com". Exact matches also block. Partial matches like
  * "not-amazon.com" are NOT blocked.
  */
-function isDisallowed(domain: string): boolean {
+export function isDisallowed(domain: string): boolean {
   const normalized = normalizeDomain(domain);
   return DISALLOWED_DOMAINS.some(
     (disallowed) =>
@@ -153,6 +155,15 @@ export interface BuildSourcePlanOptions {
    * Default: true (SERP Discovery enabled).
    */
   serpDiscoveryEnabled?: boolean;
+  /**
+   * Enable UPC Resolution V2 staged cascade.
+   * When true, synthesize fallback entries in this order after distributors:
+   *   1. official_brand_crawl (resolutionStage "official_brand")
+   *   2. serp_candidate_discovery (resolutionStage "serp")
+   * Instead of the legacy crawl4ai_direct→serp_discovery single fallback.
+   * Default: false (legacy behavior preserved).
+   */
+  upcResolutionV2Enabled?: boolean;
 }
 
 // =============================================================================
@@ -186,6 +197,7 @@ export async function buildApprovedSourcePlans(
   const results: Record<string, SourcePlanResult> = {};
   const retryMode = options?.retryMode ?? "all";
   const serpDiscoveryEnabled = options?.serpDiscoveryEnabled ?? true;
+  const upcResolutionV2Enabled = options?.upcResolutionV2Enabled ?? false;
 
   if (!upcs.length) {
     return results;
@@ -418,13 +430,18 @@ export async function buildApprovedSourcePlans(
         runFirst: false,
       };
 
-      // Separate official_brand entries for terminal fallback.
-      // Per CONTEXT.md: "Run all, keep all — every enabled source is attempted
-      // regardless of early successes." The official brand SERP always runs as
-      // the terminal source even if distributors found the product.
-      // When serpDiscoveryEnabled is false, official_brand entries are skipped entirely.
+      // In V2 mode, official_brand entries use the strict official_brand_crawl
+      // adapter and get a resolutionStage for executor routing.
+      // In legacy mode, official_brand entries use the serp_discovery adapter
+      // (via crawl4ai_direct alias) and are skipped when serpDiscoveryEnabled is false.
       if (source.source_type === "official_brand") {
-        if (serpDiscoveryEnabled) {
+        if (upcResolutionV2Enabled) {
+          // V2 mode: use strict official_brand_crawl adapter
+          entry.adapterSlug = "official_brand_crawl";
+          entry.resolutionStage = "official_brand";
+          entries.push(entry);
+        } else if (serpDiscoveryEnabled) {
+          // Legacy mode: use SERP discovery fallback
           entries.push(entry);
         }
       } else {
@@ -432,40 +449,97 @@ export async function buildApprovedSourcePlans(
       }
     }
 
-    // ---- Add official brand as terminal SERP fallback ----
-    // If the brand has official domains but no official_brand brand_source entry
-    // appeared from the sources query, synthesize one as terminal fallback.
-    // Skipped when serpDiscoveryEnabled is false.
+    // ---- Add staged V2 fallback or legacy SERP fallback ----
+    // Check if any official_brand entry exists already (either from brand_sources or already synthesized)
     const hasOfficialBrand = entries.some((e) => e.sourceType === "official_brand") ||
       distributorEntries.some((e) => e.sourceType === "official_brand");
 
-    if (
-      serpDiscoveryEnabled &&
-      !hasOfficialBrand &&
-      brand.official_domains &&
-      brand.official_domains.length > 0
-    ) {
-      const { clean: cleanDomains } = filterDomains(brand.official_domains);
-      if (cleanDomains.length > 0) {
-        const fallbackEntry: ApprovedSourcePlanEntry = {
-          sourceType: "official_brand",
-          sourceSlug: brand.slug,
-          displayName: brand.name,
-          domains: cleanDomains,
-          assetDomains: [],
-          adapterSlug: "crawl4ai_direct",
-          requiresAuth: false,
-          credentialRef: null,
-          searchMode: "domain_search",
-          allowedFields: [
-            "title", "description", "images", "ingredients",
-            "guaranteed_analysis", "category",
-          ],
-          priority: 1000, // Last priority — terminal fallback
-          runFirst: false,
-        };
-        distributorEntries.push(fallbackEntry);
-        for (const d of cleanDomains) allDomains.add(d);
+    if (upcResolutionV2Enabled) {
+      // V2 mode: synthesize staged fallback entries
+      // Only synthesize if brand has official domains
+      if (brand.official_domains && brand.official_domains.length > 0) {
+        const { clean: cleanDomains } = filterDomains(brand.official_domains);
+        if (cleanDomains.length > 0) {
+          // Stage 1: Official brand crawl (strict UPC-gated)
+          if (!hasOfficialBrand) {
+            const officialEntry: ApprovedSourcePlanEntry = {
+              sourceType: "official_brand",
+              sourceSlug: brand.slug,
+              displayName: brand.name,
+              domains: cleanDomains,
+              assetDomains: [],
+              adapterSlug: "official_brand_crawl",
+              requiresAuth: false,
+              credentialRef: null,
+              searchMode: "domain_search",
+              allowedFields: [
+                "title", "description", "images", "ingredients",
+                "guaranteed_analysis", "category",
+              ],
+              priority: 100,
+              runFirst: false,
+              resolutionStage: "official_brand",
+            };
+            entries.push(officialEntry);
+          }
+
+          // Stage 2: SERP candidate discovery (strict UPC-gated, last resort)
+          const serpEntry: ApprovedSourcePlanEntry = {
+            sourceType: "official_brand",
+            sourceSlug: "serp_candidate",
+            displayName: `${brand.name} (SERP)`,
+            domains: cleanDomains,
+            assetDomains: [],
+            adapterSlug: "serp_candidate_discovery",
+            requiresAuth: false,
+            credentialRef: null,
+            searchMode: "domain_search",
+            allowedFields: [
+              "title", "description", "images",
+            ],
+            priority: 500,
+            runFirst: false,
+            resolutionStage: "serp",
+          };
+          entries.push(serpEntry);
+
+          // Ensure official brand domains are always in the source policy
+          // (Fix #6: when synthesizing a SERP candidate from official brand
+          // domains, those domains must be included in allowedDomains even
+          // when an explicit official brand source already exists.)
+          for (const d of cleanDomains) allDomains.add(d);
+        }
+      }
+    } else {
+      // Legacy mode: synthesize terminal SERP fallback
+      if (
+        serpDiscoveryEnabled &&
+        !hasOfficialBrand &&
+        brand.official_domains &&
+        brand.official_domains.length > 0
+      ) {
+        const { clean: cleanDomains } = filterDomains(brand.official_domains);
+        if (cleanDomains.length > 0) {
+          const fallbackEntry: ApprovedSourcePlanEntry = {
+            sourceType: "official_brand",
+            sourceSlug: brand.slug,
+            displayName: brand.name,
+            domains: cleanDomains,
+            assetDomains: [],
+            adapterSlug: "crawl4ai_direct",
+            requiresAuth: false,
+            credentialRef: null,
+            searchMode: "domain_search",
+            allowedFields: [
+              "title", "description", "images", "ingredients",
+              "guaranteed_analysis", "category",
+            ],
+            priority: 1000, // Last priority — terminal fallback
+            runFirst: false,
+          };
+          distributorEntries.push(fallbackEntry);
+          for (const d of cleanDomains) allDomains.add(d);
+        }
       }
     }
 
@@ -522,4 +596,173 @@ export async function buildApprovedSourcePlans(
   }
 
   return results;
+}
+
+// =============================================================================
+// Profile snapshot resolution
+// =============================================================================
+
+interface SiteExtractionProfileRow {
+  id: string;
+  brand_id: string;
+  source_slug: string;
+  canonical_domain: string;
+  status: string;
+  active_version_id: string | null;
+}
+
+interface ProfileVersionRow {
+  id: string;
+  profile_id: string;
+  version_number: number;
+  status: string;
+  rules: Record<string, unknown>;
+  compiled_crawl4ai_schema: Record<string, unknown> | null;
+  version_hash: string;
+}
+
+/**
+ * Resolve active Site Extraction Profile snapshots for all sources in the
+ * given source plans, keyed by `${sourceSlug}:${canonicalDomain}`.
+ *
+ * For each source in each plan, looks up an active site_extraction_profiles
+ * row by (brand_id, source_slug, canonical_domain). If one exists and has an
+ * active_version_id, fetches the corresponding profile version snapshot.
+ *
+ * Skips profiles without active versions. Returns an empty map when no
+ * profiles are found.
+ */
+export async function resolveProfileSnapshots(
+  supabase: SupabaseClient,
+  sourcePlansByUpc: Record<string, SourcePlanResult>,
+): Promise<Record<string, ProfileSnapshot>> {
+  const snapshots: Record<string, ProfileSnapshot> = {};
+
+  // ---- 1. Collect unique (brand_id, source_slug, canonical_domain) tuples ----
+  const profileKeys = new Set<string>();
+  const keyToBrandId = new Map<string, string>();
+  const keyToSourceSlug = new Map<string, string>();
+  const keyToDomain = new Map<string, string>();
+
+  for (const result of Object.values(sourcePlansByUpc)) {
+    if (!result.ok || !result.plan) continue;
+    const plan = result.plan;
+    const brandId = plan.brand?.id;
+    if (!brandId) continue;
+
+    for (const entry of plan.priority) {
+      for (const domain of entry.domains) {
+        // Key includes brand_id to prevent cross-brand misrouting
+        const key = `${brandId}:${entry.sourceSlug}:${domain}`;
+        if (!profileKeys.has(key)) {
+          profileKeys.add(key);
+          keyToBrandId.set(key, brandId);
+          keyToSourceSlug.set(key, entry.sourceSlug);
+          keyToDomain.set(key, domain);
+        }
+      }
+    }
+  }
+
+  if (profileKeys.size === 0) {
+    return snapshots;
+  }
+
+  // ---- 2. Batch-fetch site_extraction_profiles for all keys ----
+  // Build array of (brand_id, source_slug) tuples for an OR query
+  const keys = Array.from(profileKeys);
+  const brandIds = [...new Set(keys.map(k => keyToBrandId.get(k)!))];
+  const sourceSlugs = [...new Set(keys.map(k => keyToSourceSlug.get(k)!))];
+
+  const { data: profileRows, error: profileError } = await supabase
+    .from("site_extraction_profiles")
+    .select("id, brand_id, source_slug, canonical_domain, status, active_version_id")
+    .in("brand_id", brandIds)
+    .in("source_slug", sourceSlugs)
+    .eq("status", "active");
+
+  if (profileError) {
+    console.warn("[resolveProfileSnapshots] Error fetching profiles:", profileError.message);
+    return snapshots;
+  }
+
+  if (!profileRows || profileRows.length === 0) {
+    return snapshots;
+  }
+
+  const rows = profileRows as SiteExtractionProfileRow[];
+
+  // ---- 3. Index profiles by brand-scoped key ----
+  const profileByKey = new Map<string, SiteExtractionProfileRow>();
+  for (const row of rows) {
+    // Use brand-scoped key to prevent cross-brand misrouting
+    const key = `${row.brand_id}:${row.source_slug}:${row.canonical_domain}`;
+    if (row.active_version_id) {
+      profileByKey.set(key, row);
+    }
+  }
+
+  if (profileByKey.size === 0) {
+    return snapshots;
+  }
+
+  // ---- 4. Collect active version IDs and fetch versions ----
+  const activeVersionIds = [...new Set(
+    Array.from(profileByKey.values()).map(r => r.active_version_id!).filter(Boolean),
+  )];
+
+  if (activeVersionIds.length === 0) {
+    return snapshots;
+  }
+
+  const { data: versionRows, error: versionError } = await supabase
+    .from("site_extraction_profile_versions")
+    .select("id, profile_id, version_number, status, rules, compiled_crawl4ai_schema, version_hash")
+    .in("id", activeVersionIds)
+    .eq("status", "active");
+
+  if (versionError) {
+    console.warn("[resolveProfileSnapshots] Error fetching versions:", versionError.message);
+    return snapshots;
+  }
+
+  if (!versionRows || versionRows.length === 0) {
+    return snapshots;
+  }
+
+  const versions = versionRows as ProfileVersionRow[];
+
+  // ---- 5. Index versions by profile_id ----
+  const versionByProfileId = new Map<string, ProfileVersionRow>();
+  for (const v of versions) {
+    versionByProfileId.set(v.profile_id, v);
+  }
+
+  // ---- 6. Build snapshot dict using brand-scoped keys ----
+  for (const key of keys) {
+    const profile = profileByKey.get(key);
+    if (!profile) continue;
+
+    const version = versionByProfileId.get(profile.id);
+    if (!version) continue;
+
+    const brandId = keyToBrandId.get(key)!;
+    const sourceSlug = keyToSourceSlug.get(key)!;
+    const domain = keyToDomain.get(key)!;
+
+    snapshots[key] = {
+      profile_id: profile.id,
+      version_id: version.id,
+      version_hash: version.version_hash,
+      rules: version.rules ?? {},
+      compiled_crawl4ai_schema: version.compiled_crawl4ai_schema ?? null,
+      scope: {
+        brand_id: brandId,
+        source_slug: sourceSlug,
+        canonical_domain: domain,
+      },
+    };
+  }
+
+  return snapshots;
 }

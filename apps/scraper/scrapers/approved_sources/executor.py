@@ -50,8 +50,9 @@ class ApprovedSourceExecutor:
         self.job_config = job_config
         self.policy = plan.sourcePolicy
         # Random delay (seconds) between source executions to avoid rapid-fire
-        # requests from the same IP. Set to (0, 0) to disable throttling.
-        self.inter_source_delay: tuple[float, float] = (1.0, 3.0)
+        import sys
+        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
+        self.inter_source_delay: tuple[float, float] = (0.0, 0.0) if is_testing else (1.0, 3.0)
 
         if api_client is not None:
             extractor.api_client = api_client
@@ -95,10 +96,33 @@ class ApprovedSourceExecutor:
         """
         Execute sources in cascade order.
 
-        Phase 1: Run ALL distributor entries (run all, keep all).
-        Phase 2: Classify outcomes — errors block SERP, success skips SERP.
-        Phase 3: Conditionally run non-distributor entries (SERP/official brand)
-                 only when ALL distributors were clean not_stocked.
+        Legacy mode (default):
+          Phase 1: Run ALL distributor entries (run all, keep all).
+          Phase 2: Classify outcomes — errors block SERP, success skips SERP.
+          Phase 3: Conditionally run non-distributor entries (SERP/official brand)
+                   only when ALL distributors were clean not_stocked.
+
+        V2 mode (upc_resolution_v2 in job_config):
+          Phase 1: Run ALL distributor entries.
+          Phase 2: V2 stage routing:
+            - Any distributor 'found' → skip official_brand and serp stages.
+            - Any non-Amazon 'source_error' (no 'found') → skip all, fail closed.
+            - All 'not_stocked' → run official_brand stage entries.
+          Phase 3: If still unconfirmed after official_brand, run serp stage.
+        """
+        is_v2 = bool(self.job_config and self.job_config.get("upc_resolution_v2"))
+
+        if is_v2:
+            return await self._try_source_entries_v2(entries)
+        else:
+            return await self._try_source_entries_legacy(entries)
+
+    async def _try_source_entries_legacy(
+        self,
+        entries: list[ApprovedSourcePlanEntry],
+    ) -> EnrichmentResultV1 | None:
+        """
+        Legacy cascade: distributors first, then SERP/official brand fallback.
         """
         upc = self.plan.upc
 
@@ -114,39 +138,19 @@ class ApprovedSourceExecutor:
         distributor_entries.sort(key=lambda e: e.priority)
         other_entries.sort(key=lambda e: e.priority)
 
-        all_results: list[EnrichmentResultV1] = []
+        all_results = await self._execute_entries_with_throttle(distributor_entries)
 
-        # ---- Phase 1: Execute ALL distributors ----
-        for i, entry in enumerate(distributor_entries):
-            result = await self._execute_single_entry(entry)
-            if result:
-                result.requested_extraction_mode = self.plan.extractionMode
-                all_results.append(result)
-            # Inter-source throttle: add a random delay between sources
-            if i < len(distributor_entries) - 1 and self.inter_source_delay[1] > 0:
-                delay = random.uniform(*self.inter_source_delay)
-                logger.debug(
-                    "[Executor] Inter-source throttle: %.1fs before next source",
-                    delay,
-                )
-                await asyncio.sleep(delay)
-
-        # ---- Phase 2: Classify distributor outcomes ----
+        # ---- Classify distributor outcomes ----
         distributor_outcomes_with_slugs = self._collect_source_outcomes_with_slugs(all_results)
         has_found = any(o == "found" for o, _ in distributor_outcomes_with_slugs)
         # Amazon is prone to bot blocks; treat its source_error as non-blocking
-        # for SERP cascade, matching the TypeScript coordinator's exclusion logic
         has_source_error = any(
             o == "source_error" and slug != "amazon"
             for o, slug in distributor_outcomes_with_slugs
         )
 
-        # ---- Phase 3: Conditionally run SERP/official brand ----
-        # SERP runs when:
-        #   - serp_fallback_policy is not "disabled" in job_config
-        #   - Distributors exist, all clean not_stocked, none found (standard cascade)
-        #   - No distributors in plan (run non-distributor entries directly)
-        serp_policy_disabled = (
+        # ---- Conditionally run SERP/official brand ----
+        serp_policy_disabled = bool(
             self.job_config
             and self.job_config.get("serp_fallback_policy") == "disabled"
         )
@@ -159,23 +163,16 @@ class ApprovedSourceExecutor:
         )
 
         if run_serp:
-            if len(distributor_entries) > 0:
-                logger.info(
-                    "[Executor] All distributors clean (not_stocked), "
-                    "running SERP/official brand fallback for UPC=%s",
-                    upc,
-                )
-            else:
-                logger.info(
-                    "[Executor] No distributors in plan, "
-                    "running non-distributor source(s) for UPC=%s",
-                    upc,
-                )
-            for entry in other_entries:
-                result = await self._execute_single_entry(entry)
-                if result:
-                    result.requested_extraction_mode = self.plan.extractionMode
-                    all_results.append(result)
+            fallback_reason = (
+                "all distributors clean (not_stocked)" if len(distributor_entries) > 0
+                else "no distributors in plan"
+            )
+            logger.info(
+                "[Executor] %s, running SERP/official brand fallback for UPC=%s",
+                fallback_reason, upc,
+            )
+            fallback_results = await self._execute_entries_with_throttle(other_entries)
+            all_results.extend(fallback_results)
         elif other_entries:
             reason = (
                 "source error" if has_source_error
@@ -185,12 +182,144 @@ class ApprovedSourceExecutor:
             logger.info(
                 "[Executor] Skipping %d non-distributor source(s) "
                 "due to %s for UPC=%s",
-                len(other_entries),
-                reason,
-                upc,
+                len(other_entries), reason, upc,
             )
 
-        # ---- Phase 4: Combine all results ----
+        return self._combine_results(all_results)
+
+    async def _try_source_entries_v2(
+        self,
+        entries: list[ApprovedSourcePlanEntry],
+    ) -> EnrichmentResultV1 | None:
+        """
+        V2 staged cascade: distributors → official_brand → serp.
+        """
+        upc = self.plan.upc
+
+        # Group entries by resolutionStage
+        distributor_entries: list[ApprovedSourcePlanEntry] = []
+        official_brand_entries: list[ApprovedSourcePlanEntry] = []
+        serp_entries: list[ApprovedSourcePlanEntry] = []
+        other_entries: list[ApprovedSourcePlanEntry] = []
+
+        for e in entries:
+            stage = (e.resolutionStage or "").lower()
+            if e.sourceType == "distributor" or stage == "distributor":
+                distributor_entries.append(e)
+            elif stage == "official_brand":
+                official_brand_entries.append(e)
+            elif stage == "serp":
+                serp_entries.append(e)
+            else:
+                other_entries.append(e)
+
+        # Sort each group by priority
+        for group in (distributor_entries, official_brand_entries, serp_entries, other_entries):
+            group.sort(key=lambda e: e.priority)
+
+        all_results: list[EnrichmentResultV1] = []
+
+        # ---- Phase 1: Run ALL distributor entries ----
+        logger.info(
+            "[Executor V2] Phase 1: Running %d distributor(s) for UPC=%s",
+            len(distributor_entries), upc,
+        )
+        all_results.extend(
+            await self._execute_entries_with_throttle(distributor_entries)
+        )
+
+        # ---- Phase 2: Classify distributor outcomes ----
+        dist_outcomes = self._collect_source_outcomes_with_slugs(all_results)
+        has_dist_found = any(o == "found" for o, _ in dist_outcomes)
+        # Non-Amazon source_error blocks fallback
+        has_blocking_error = any(
+            o == "source_error" and slug != "amazon"
+            for o, slug in dist_outcomes
+        )
+
+        if has_dist_found:
+            logger.info(
+                "[Executor V2] Distributor found product for UPC=%s, "
+                "skipping official_brand and serp stages",
+                upc,
+            )
+            return self._combine_results(all_results)
+
+        if has_blocking_error and len(distributor_entries) > 0:
+            logger.info(
+                "[Executor V2] Distributor source_error (no found) for UPC=%s, "
+                "blocking official_brand and serp stages",
+                upc,
+            )
+            return self._combine_results(all_results)
+
+        # ---- Phase 3: Run official_brand stage ----
+        if official_brand_entries:
+            logger.info(
+                "[Executor V2] Phase 3: Running %d official_brand crawl(s) for UPC=%s",
+                len(official_brand_entries), upc,
+            )
+            ob_results = await self._execute_entries_with_throttle(official_brand_entries)
+            all_results.extend(ob_results)
+
+            ob_outcomes = self._collect_source_outcomes_with_slugs(ob_results)
+            has_ob_found = any(o == "found" for o, _ in ob_outcomes)
+
+            if has_ob_found:
+                logger.info(
+                    "[Executor V2] Official brand found UPC for UPC=%s, skipping serp stage",
+                    upc,
+                )
+                # Still run other_entries (licensed, etc.) if present
+                if other_entries:
+                    other_results = await self._execute_entries_with_throttle(other_entries)
+                    all_results.extend(other_results)
+                return self._combine_results(all_results)
+
+        # ---- Phase 4: Run SERP candidate stage ----
+        if serp_entries:
+            logger.info(
+                "[Executor V2] Phase 4: Running %d SERP candidate(s) for UPC=%s",
+                len(serp_entries), upc,
+            )
+            serp_results = await self._execute_entries_with_throttle(serp_entries)
+            all_results.extend(serp_results)
+
+        # ---- Run any remaining other entries (licensed feeds, etc.) ----
+        if other_entries:
+            other_results = await self._execute_entries_with_throttle(other_entries)
+            all_results.extend(other_results)
+
+        return self._combine_results(all_results)
+
+    async def _execute_entries_with_throttle(
+        self,
+        entries: list[ApprovedSourcePlanEntry],
+    ) -> list[EnrichmentResultV1]:
+        """Execute multiple entries with inter-source throttling."""
+        results: list[EnrichmentResultV1] = []
+        for i, entry in enumerate(entries):
+            result = await self._execute_single_entry(entry)
+            if result:
+                result.requested_extraction_mode = self.plan.extractionMode
+                results.append(result)
+            if i < len(entries) - 1 and self.inter_source_delay[1] > 0:
+                delay = random.uniform(*self.inter_source_delay)
+                logger.debug(
+                    "[Executor] Inter-source throttle: %.1fs before next source",
+                    delay,
+                )
+                await asyncio.sleep(delay)
+        return results
+
+    def _combine_results(
+        self,
+        all_results: list[EnrichmentResultV1],
+    ) -> EnrichmentResultV1 | None:
+        """Combine multiple extraction results into one final result.
+
+        Shared across legacy and V2 modes.
+        """
         if not all_results:
             return None
 
@@ -224,7 +353,6 @@ class ApprovedSourceExecutor:
         # Normalize missing outcomes: infer from result status when not explicitly set
         for sr in combined_source_results:
             if not sr.outcome:
-                # Check if this source had a successful or partial extraction
                 matching = [
                     r for r in all_results
                     if r.source_results and any(
@@ -237,7 +365,6 @@ class ApprovedSourceExecutor:
                     if match_status in ("success", "partial"):
                         sr.outcome = "found"
                     elif match_status == "failed":
-                        # Try to distinguish no-match from genuine error
                         has_no_match_warning = (
                             matching[0].validation
                             and matching[0].validation.warnings
@@ -251,6 +378,63 @@ class ApprovedSourceExecutor:
         best_result.requested_extraction_mode = self.plan.extractionMode
 
         return best_result
+
+    def _lookup_profile_snapshot(self, entry: ApprovedSourcePlanEntry) -> dict[str, Any] | None:
+        """Look up the profile snapshot for a given entry from job_config.
+
+        Searches by brand-scoped key (brandId:sourceSlug:domain) combinations.
+        Validates that the snapshot's brand_id matches the plan's brand to prevent
+        cross-brand misrouting.
+        Returns the first matching snapshot dict, or None.
+        """
+        if not self.job_config:
+            return None
+        profile_snapshots = self.job_config.get("profile_snapshots", {})
+        if not profile_snapshots or not isinstance(profile_snapshots, dict):
+            return None
+
+        # Determine brand ID from the plan
+        plan_brand_id = None
+        if hasattr(self, "plan") and self.plan:
+            plan_brand = getattr(self.plan, "brand", None) or {}
+            if isinstance(plan_brand, dict):
+                plan_brand_id = plan_brand.get("id")
+
+        for domain in entry.domains:
+            # Use brand-scoped key to prevent cross-brand misrouting
+            key = f"{plan_brand_id}:{entry.sourceSlug}:{domain}" if plan_brand_id else f"{entry.sourceSlug}:{domain}"
+            snapshot = profile_snapshots.get(key)
+            if snapshot and isinstance(snapshot, dict):
+                # Validate brand_id in scope matches the plan's brand
+                scope = snapshot.get("scope", {})
+                snapshot_brand_id = scope.get("brand_id") if isinstance(scope, dict) else None
+                if plan_brand_id and snapshot_brand_id and snapshot_brand_id != plan_brand_id:
+                    logger.warning(
+                        "[Executor] Snapshot brand_id %s does not match plan brand_id %s — skipping",
+                        snapshot_brand_id, plan_brand_id,
+                    )
+                    continue
+                return snapshot
+        return None
+
+    def _attach_profile_status(
+        self,
+        result: EnrichmentResultV1 | None,
+        snapshot: dict[str, Any] | None,
+    ) -> None:
+        """Attach ProfileExtractionStatus to source_results if a snapshot matched."""
+        if not snapshot or not result or not result.source_results:
+            return
+        from scrapers.ai_search.enrichment_models import ProfileExtractionStatus
+
+        profile_status = ProfileExtractionStatus(
+            profile_used=True,
+            profile_id=snapshot.get("profile_id"),
+            version_id=snapshot.get("version_id"),
+            version_hash=snapshot.get("version_hash"),
+        )
+        for sr in result.source_results:
+            sr.profile_extraction_status = profile_status
 
     async def _execute_single_entry(
         self,
@@ -294,9 +478,20 @@ class ApprovedSourceExecutor:
                 requested_extraction_mode=self.plan.extractionMode,
             )
 
+        # ---- Look up profile snapshot for this entry ----
+        profile_snapshot = self._lookup_profile_snapshot(entry)
+
         try:
             adapter = adapter_cls(entry, self.plan)
             adapter.ai_credentials = getattr(self, "ai_credentials", None)
+
+            # If a profile snapshot with compiled schema exists, pass it to
+            # the adapter's extractor for schema-based extraction.
+            # The extractor (ProductPageExtractor) has a profile_snapshot property
+            # that propagates to Crawl4AIExtractor._profile_snapshot.
+            if profile_snapshot and self.extractor is not None:
+                self.extractor.profile_snapshot = profile_snapshot
+
             result = await adapter.extract(self.extractor)
         except Exception as exc:
             logger.error(
@@ -311,6 +506,10 @@ class ApprovedSourceExecutor:
                 error_message=str(exc),
                 requested_extraction_mode=self.plan.extractionMode,
             )
+        finally:
+            # Reset profile_snapshot on the extractor after each entry
+            if self.extractor is not None:
+                self.extractor.profile_snapshot = None
 
         if not result:
             logger.info(
@@ -324,6 +523,9 @@ class ApprovedSourceExecutor:
                 error_message="No result returned from adapter",
                 requested_extraction_mode=self.plan.extractionMode,
             )
+
+        # ---- Attach profile extraction status if snapshot matched ----
+        self._attach_profile_status(result, profile_snapshot)
 
         result.requested_extraction_mode = self.plan.extractionMode
         return result

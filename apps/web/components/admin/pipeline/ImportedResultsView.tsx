@@ -23,14 +23,7 @@ import { PipelineSearchField } from "./PipelineSearchField";
 import { ManagementPanel } from "./management/ManagementPanel";
 import { BulkAssignBrandDialog } from "./BulkAssignBrandDialog";
 import { adminFetch } from "@/lib/admin/api-client";
-import { BrandSourceCascadeEditor } from "@/components/admin/brands/BrandSourceCascadeEditor";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { BrandSourceSetupDrawer } from "@/components/admin/brands/BrandSourceSetupDrawer";
 
 const NO_BRAND_GROUP_ID = "no_brand";
 
@@ -88,7 +81,7 @@ export function ImportedResultsView({
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [selectedProductUpcs, setSelectedProductUpcs] = useState<Set<string>>(new Set());
   const [isAssignBrandOpen, setIsAssignBrandOpen] = useState(false);
-  const [isCascadeDialogOpen, setIsCascadeDialogOpen] = useState(false);
+  const [isSetupDrawerOpen, setIsSetupDrawerOpen] = useState(false);
   const [readinessNonce, setReadinessNonce] = useState(0);
   const [readiness, setReadiness] = useState<Record<string, CascadeReadiness>>({});
 
@@ -376,7 +369,7 @@ export function ImportedResultsView({
                       {activeGroup.brand?.id && (
                         <button
                           type="button"
-                          onClick={() => setIsCascadeDialogOpen(true)}
+                          onClick={() => setIsSetupDrawerOpen(true)}
                           className={cn(
                             "inline-flex items-center gap-1 text-[10px] hover:underline font-bold bg-muted/30 px-2 py-0.5 border border-border cursor-pointer",
                             effectiveReadiness[activeGroup.id] === "not_configured"
@@ -385,9 +378,7 @@ export function ImportedResultsView({
                           )}
                         >
                           <Settings2 className="h-3 w-3" />
-                          {effectiveReadiness[activeGroup.id] === "not_configured"
-                            ? "Configure cascade"
-                            : "Edit cascade"}
+                          Brand Setup
                         </button>
                       )}
                     </div>
@@ -519,25 +510,15 @@ export function ImportedResultsView({
       />
 
       {activeGroup?.brand && (
-        <Dialog open={isCascadeDialogOpen} onOpenChange={setIsCascadeDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border border-border rounded-lg shadow-sm rounded-none p-0 bg-card">
-            <DialogHeader className="p-6 border-b-4 border-border bg-muted">
-              <DialogTitle className="text-xl font-bold uppercase tracking-tight">
-                Configure Source Cascade: {activeGroup.brand.name}
-              </DialogTitle>
-              <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                Configure distributor priorities and enable/disable them for this brand.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="p-6">
-              <BrandSourceCascadeEditor
-                brandId={activeGroup.brand.id}
-                brandSlug={activeGroup.brand.slug}
-                onSave={() => setReadinessNonce((n) => n + 1)}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        <BrandSourceSetupDrawer
+          brand={activeGroup.brand}
+          brandGroupId={activeGroup.id}
+          open={isSetupDrawerOpen}
+          onClose={() => setIsSetupDrawerOpen(false)}
+          onSetupComplete={() => {
+            setReadinessNonce((n) => n + 1);
+          }}
+        />
       )}
     </div>
   );

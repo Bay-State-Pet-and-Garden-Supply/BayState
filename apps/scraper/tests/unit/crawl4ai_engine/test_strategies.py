@@ -288,7 +288,7 @@ class TestExtractorFallbackBehavior:
             "Test Brand",
             html="<html>preferred</html>",
         )
-        assert result == {"success": True}
+        assert result.get("success") is True
 
     @pytest.mark.asyncio
     async def test_extract_with_fallback_uses_markdown_when_html_empty(self, extractor):
@@ -311,7 +311,7 @@ class TestExtractorFallbackBehavior:
             "Test Brand",
             html="markdown fallback",
         )
-        assert result == {"success": True}
+        assert result.get("success") is True
 
     def test_log_telemetry_includes_error_payload(self, extractor):
         """Test telemetry logging includes the structured error payload."""

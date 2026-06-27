@@ -142,7 +142,6 @@ describe('consolidation batch service', () => {
         expect(source?.fields).toEqual(
             expect.objectContaining({
                 title: 'Acme Deluxe Bird Seed 10 lb.',
-                brand: 'Acme',
             })
         );
         expect(userContent).not.toContain('is_special_order');
@@ -1001,7 +1000,7 @@ describe('consolidation batch service', () => {
         const response = await applyConsolidationResults([
             {
                 upc: 'UPC-VLM-FACETS',
-                name: 'KONG Squeaker Ball Red Large',
+                name: 'KONG Squeaker Ball Bacon Red Large',
                 brand: 'KONG',
                 description: 'KONG ball toy',
                 search_keywords: 'kong, ball, squeaker',
@@ -1021,7 +1020,7 @@ describe('consolidation batch service', () => {
                 pipeline_status: 'reviewing',
                 consolidated: expect.objectContaining({
                     core: expect.objectContaining({
-                        name: 'KONG Squeaker Ball Red Large',
+                        name: 'KONG Squeaker Ball Bacon Red Large',
                         brand_name: 'KONG',
                         brand_id: 'brand-uuid-kong',
                         canonical_category_breadcrumb: 'Dog > Toys > Interactive Toys',

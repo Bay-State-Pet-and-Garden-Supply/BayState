@@ -68,6 +68,18 @@ describe('POST /api/admin/enrichment/jobs', () => {
     expect(scrapeProducts).toHaveBeenCalledWith(['072705115310'], expect.objectContaining({ retryMode: 'failed_or_untried', testMode: true }));
   });
 
+  it('passes upcResolutionV2Enabled when explicitly set in request', async () => {
+    scrapeProducts.mockResolvedValue({ success: true, jobIds: ['job-1'] });
+    await POST(new NextRequest('http://localhost/api/admin/enrichment/jobs', { method: 'POST', body: JSON.stringify({ upcs: ['072705115310'], upcResolutionV2Enabled: true }) }));
+    expect(scrapeProducts).toHaveBeenCalledWith(['072705115310'], expect.objectContaining({ upcResolutionV2Enabled: true }));
+  });
+
+  it('defaults upcResolutionV2Enabled to false when not provided', async () => {
+    scrapeProducts.mockResolvedValue({ success: true, jobIds: ['job-1'] });
+    await POST(new NextRequest('http://localhost/api/admin/enrichment/jobs', { method: 'POST', body: JSON.stringify({ upcs: ['072705115310'] }) }));
+    expect(scrapeProducts).toHaveBeenCalledWith(['072705115310'], expect.objectContaining({ upcResolutionV2Enabled: false }));
+  });
+
   it('returns 400 when any selected UPC is missing brand_id', async () => {
     createAdminClient.mockResolvedValue({
       from: jest.fn(() => ({

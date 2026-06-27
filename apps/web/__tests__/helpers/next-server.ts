@@ -21,12 +21,14 @@ type MockNextResponseInit = {
 };
 
 export class NextRequest {
+    url: string;
     nextUrl: URL;
     bodyUsed = false;
     private readonly requestBody: unknown;
     readonly headers: Headers;
 
     constructor(url: string, init?: MockNextRequestInit) {
+        this.url = url;
         this.nextUrl = new URL(url);
         this.requestBody = init?.body;
         this.headers = new Headers(init?.headers ?? {});

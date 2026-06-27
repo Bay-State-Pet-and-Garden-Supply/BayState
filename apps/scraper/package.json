@@ -5,7 +5,6 @@
   "scripts": {
     "dev:host": "uv run --with-requirements requirements.txt python daemon.py --env dev",
     "extract:known-url": "uv run --with-requirements requirements.txt python scripts/known_url_extract.py --stdin",
-    "local:sync-env": "bun scripts/update-env.ts",
-    "db:start": "exit 0"
+    "local:sync-env": "bun scripts/update-env.ts"
   }
 }

@@ -28,7 +28,7 @@ export function ManagementPanel({
     brand?.id ? null : false
   );
   const [checkingCascade, setCheckingCascade] = useState(false);
-  const [serpDiscoveryEnabled, setSerpDiscoveryEnabled] = useState(true);
+  const [serpDiscoveryEnabled, setSerpDiscoveryEnabled] = useState(false);
 
   useEffect(() => {
     if (!brand?.id) {

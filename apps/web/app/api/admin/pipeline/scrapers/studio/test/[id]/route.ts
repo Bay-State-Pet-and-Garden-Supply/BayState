@@ -104,9 +104,11 @@ async function buildResponse(
     completed_at: a.completed_at
   }));
 
+  const failed = (job.failed_count as number) || 0;
+  const completed = (job.completed_count as number) || 0;
   const responseSummary = { 
-    passed: (job.completed_count as number) || 0, 
-    failed: (job.failed_count as number) || 0, 
+    passed: Math.max(0, completed - failed), 
+    failed, 
     total: (job.total_count as number) || 0 
   };
 

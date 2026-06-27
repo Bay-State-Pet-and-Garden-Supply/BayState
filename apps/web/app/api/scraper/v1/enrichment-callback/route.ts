@@ -35,6 +35,10 @@ import {
   type SourceResultInfo,
 } from "@/lib/scraper-callback/enrichment-result";
 import { persistProductsIngestionSourcesPartial } from "@/lib/scraper-callback/products-ingestion";
+import type { PersistedPipelineStatus } from "@/lib/pipeline/types";
+import { isUpcResolutionV2Enabled } from "@/lib/upc-resolution/types";
+import { buildV2ResolutionUpdate } from "@/lib/upc-resolution/source-results";
+import { classifySourceEvidence } from "@/lib/upc-resolution/gates";
 
 async function triggerPostScrapeOcr(supabase: any, upc: string) {
   try {
@@ -221,6 +225,23 @@ export async function POST(request: NextRequest) {
 
     const jobId = String(attempt.job_id);
 
+    // 3.5 Load job config for V2 mode detection
+    let jobConfig: Record<string, unknown> = {};
+    let upcResolutionV2Active = false;
+    try {
+      const { data: job } = await supabase
+        .from("enrichment_jobs")
+        .select("config")
+        .eq("id", jobId)
+        .single();
+      if (job?.config) {
+        jobConfig = job.config as Record<string, unknown>;
+        upcResolutionV2Active = isUpcResolutionV2Enabled(jobConfig);
+      }
+    } catch {
+      // Non-fatal — legacy behavior preserved
+    }
+
     // 4. Build per-sourceSlug payloads from source_results
     const sourceResults = (payload.source_results ?? []) as SourceResultInfo[];
 
@@ -229,12 +250,28 @@ export async function POST(request: NextRequest) {
     const sourcePayloads = buildSourcePayloadsByUpc(sourceResults);
 
     // 5. Determine final product status using ADR 0002 found-wins rules
+    // or V2 proof-required rules.
     const outcomes = sourceResults.map((sr) => normalizeSourceOutcome(sr.outcome));
 
-    // If there are no source_results, use the top-level status/confidence
-    // to determine if anything was found
     let finalStatus: string;
-    if (outcomes.length > 0) {
+    // Separate variable to carry V2 resolution metadata (never attached to a string)
+    let v2ResolutionPayload: Record<string, unknown> | null = null;
+
+    if (upcResolutionV2Active) {
+      // V2 mode: use proof-required rule instead of found-wins.
+      // Always run the V2 reducer even for empty source_results so fail-closed
+      // (no proof) always produces unresolved/needs_attention.
+      const v2Update = buildV2ResolutionUpdate(sourceResults, upc);
+      finalStatus = v2Update.pipeline_status;
+
+      v2ResolutionPayload = {
+        upc_resolution_status: v2Update.upc_resolution_status,
+        upc_resolution_stage: v2Update.upc_resolution_stage,
+        upc_resolution_confidence: v2Update.upc_resolution_confidence,
+        upc_resolution_evidence: v2Update.upc_resolution_evidence,
+        upc_resolution_updated_at: nowIso,
+      };
+    } else if (outcomes.length > 0) {
       finalStatus = determineStatusFromSourceResults(sourceResults);
     } else if (payload.status === "success" || payload.status === "partial") {
       finalStatus = "processed";
@@ -258,7 +295,7 @@ export async function POST(request: NextRequest) {
           false, // isTestJob
           nowIso,
           undefined, // provenance
-          { [upc]: finalStatus as any }, // statusByUpc — explicit cascade status
+          { [upc]: finalStatus as PersistedPipelineStatus }, // statusByUpc — explicit cascade status
         );
       } catch (persistErr) {
         console.error(
@@ -296,7 +333,64 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Write per-source outcomes to enrichment_source_attempts
+    // 7a. In V2 mode, persist upc_resolution_* columns on products_ingestion
+    if (v2ResolutionPayload) {
+      const { error: v2UpdateErr } = await supabase
+        .from("products_ingestion")
+        .update({
+          upc_resolution_status: v2ResolutionPayload.upc_resolution_status,
+          upc_resolution_stage: v2ResolutionPayload.upc_resolution_stage,
+          upc_resolution_confidence: v2ResolutionPayload.upc_resolution_confidence,
+          upc_resolution_evidence: v2ResolutionPayload.upc_resolution_evidence as Record<string, unknown>[],
+          upc_resolution_updated_at: v2ResolutionPayload.upc_resolution_updated_at,
+        })
+        .eq("upc", upc);
+
+      if (v2UpdateErr) {
+        console.error(
+          `[Enrichment Callback] Failed to persist V2 resolution fields for ${upc}:`,
+          v2UpdateErr,
+        );
+        // Non-fatal — source data and attempts already persisted
+      }
+    }
+
+    // 7b. In V2 mode, insert upc_resolution_events rows for each source result
+    // IMPORTANT: classify evidence per source result (not indexed from sorted
+    // evidence array) so source_slug and evidence stay aligned.
+    if (v2ResolutionPayload) {
+      const eventRows = sourceResults.map((sr) => {
+        const outcome = normalizeSourceOutcome(sr.outcome);
+        const evidence = classifySourceEvidence(sr, { expectedUpc: upc });
+        return {
+          upc,
+          stage: evidence.stage,
+          source_slug: sr.sourceSlug,
+          outcome,
+          confidence: sr.confidence ?? null,
+          evidence: [evidence] as unknown as Record<string, unknown>[],
+          source_attempt_id: null, // Populated after source attempts are written
+          packaging_extraction_id: null,
+          created_at: nowIso,
+        };
+      });
+
+      if (eventRows.length > 0) {
+        const { error: eventsError } = await supabase
+          .from("upc_resolution_events")
+          .insert(eventRows);
+
+        if (eventsError) {
+          console.error(
+            `[Enrichment Callback] Failed to insert upc_resolution_events for ${upc}:`,
+            eventsError,
+          );
+          // Non-fatal
+        }
+      }
+    }
+
+    // 8. Write per-source outcomes to enrichment_source_attempts
     // Idempotency: delete existing rows for this attempt_id before inserting
     if (sourceResults.length > 0) {
       // Delete any existing source attempt rows for this attempt (idempotent replay safety)
@@ -337,7 +431,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 8. Update enrichment_attempts status
+    // 9. Update enrichment_attempts status
     const attemptStatus =
       payload.status === "success"
         ? "success"
@@ -364,7 +458,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 9. Update enrichment_jobs counters via the existing RPC
+    // 10. Update enrichment_jobs counters via the existing RPC
     try {
       await supabase.rpc("update_enrichment_job_counters", {
         p_job_id: jobId,
@@ -377,7 +471,7 @@ export async function POST(request: NextRequest) {
       // Non-fatal — the counter will update on the next callback call
     }
 
-    // 10. Update enrichment_jobs current_upc tracking
+    // 11. Update enrichment_jobs current_upc tracking
     await supabase
       .from("enrichment_jobs")
       .update({

@@ -451,7 +451,7 @@ class TestAmazonAdapter:
 
     @pytest.mark.asyncio
     @patch("scrapers.approved_sources.adapters.amazon.get_shared_browser_engine")
-    async def test_amazon_adapter_all_sponsored_returns_none(self, mock_get_engine):
+    async def test_amazon_adapter_all_sponsored_returns_no_match(self, mock_get_engine):
         mock_engine = MagicMock()
         mock_crawler = AsyncMock()
         mock_engine.crawler = mock_crawler
@@ -460,13 +460,13 @@ class TestAmazonAdapter:
         mock_search_html = """
         <html>
             <body>
-                <div class="s-result-item">
+                <div class="s-result-item" data-component-type="s-search-result">
                     <span class="puis-sponsored-label-text">Sponsored</span>
                     <a href="/wrong-product/dp/B001Wrong1/ref=sr_1_1">
                         <h2>Wrong Sponsored Product 1</h2>
                     </a>
                 </div>
-                <div class="s-result-item AdHolder">
+                <div class="s-result-item AdHolder" data-component-type="s-search-result">
                     <a href="/wrong-product/dp/B001Wrong2/ref=sr_1_2">
                         <h2>Wrong Sponsored Product 2</h2>
                     </a>
@@ -488,5 +488,8 @@ class TestAmazonAdapter:
 
         result = await adapter.extract(mock_extractor)
 
-        # All results were sponsored, so it should return None
-        assert result is None
+        # All results were sponsored, so it should return a clean no-match result
+        assert result is not None
+        assert result.status == "failed"
+        assert result.decision == "failed"
+        assert result.source_results[0].outcome == "not_stocked"

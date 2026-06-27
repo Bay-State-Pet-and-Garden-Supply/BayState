@@ -1,98 +1,168 @@
-# Crawl4AI Engine LLM Extraction Investigation
+# Scraper Extraction Context
 
-## Files Retrieved
-1. `apps/scraper/src/crawl4ai_engine/engine.py` (all 558 lines) — Main engine
-2. `apps/scraper/src/crawl4ai_engine/strategies/__init__.py` (50 lines) — Strategy chain builder
-3. `apps/scraper/src/crawl4ai_engine/strategies/css_strategy.py` (implied via __init__)
-4. `apps/scraper/src/crawl4ai_engine/strategies/xpath_strategy.py` (implied via __init__)
-5. `apps/scraper/src/crawl4ai_engine/config.py` (60 lines) — YAML config loader
-6. `apps/scraper/src/crawl4ai_engine/types.py` (100 lines) — Type definitions
-7. `apps/scraper/scrapers/ai_search/crawl4ai_extractor.py` (>1800 lines) — **The actual LLM caller**
+This context describes the language used for BayState product page extraction and scraping strategy discussions.
 
-## Key Code
+## Language
 
-### Engine: `Crawl4AIEngine` (`engine.py`)
-- Imports: `AsyncWebCrawler`, `BrowserConfig`, `CrawlerRunConfig`, `CacheMode`, but **NOT** `LLMExtractionStrategy`
-- Constructor docstring explicitly says: *"AI/Agentic features are deprecated for static scrapers"*
-- `crawl()` method signature: `async def crawl(self, url: str) -> dict[str, Any]` — **only takes a URL**, no extraction_strategy parameter
-- The strategy IS passed through `CrawlerRunConfig.extraction_strategy` (line ~230), and IS forwarded to crawl4ai's `arun()`
-- But **nothing sets it** — the strategy comes from `config.get("crawler", {}).get("extraction_strategy")` which is always `None`
+**Browser Profile**:
+A persistent browser identity for a site, including cookies, local storage, authentication state, and regional/browser preferences.
+_Avoid_: Profile, cache, session
 
-### Strategy module (`strategies/__init__.py`)
-- Exports `CSSExtractionStrategy` and `XPathExtractionStrategy`
-- `build_fallback_chain()` explicitly says: *"AI/LLM strategies are deprecated for static scrapers and removed from the chain"*
-- Returns only CSS + XPath strategies, never LLM
+**Site Extraction Profile**:
+A durable site-specific body of extraction knowledge for a brand, source, and domain.
+_Avoid_: Profile, browser profile, cache
 
-### The actual LLM extraction happens in `Crawl4AIExtractor` (`crawl4ai_extractor.py`)
-This is NOT part of the `Crawl4AIEngine` — it's a higher-level wrapper in `scrapers/ai_search/`:
-- Creates a `Crawl4AIEngine` for the first-pass crawl (HTML + JSON-LD + meta tags)
-- **LLM extraction is a SECOND PASS** after the engine, fallback extractor, and completeness check:
-  1. Crawl with `Crawl4AIEngine` → get HTML + markdown
-  2. Extract JSON-LD from HTML
-  3. Extract meta tags (og:, twitter:, product:) 
-  4. If both fail → `FallbackExtractor` (HTTP GET + regex)
-  5. **If fallback is incomplete** (missing description, size, or generic content) → `LLMExtractionStrategy` second pass
-  6. `LLMExtractionStrategy` is called **asynchronously via `asyncio.to_thread()`**, not through the engine
-  7. It reuses the **first crawl's markdown** (no second browser navigation)
-  8. Extracts against `ProductData` JSON schema
+**Source**:
+A configured product-data origin for a brand, such as an official site, distributor, marketplace, or licensed feed.
+_Avoid_: Provider, scraper
 
-### LLM extraction parameters (line ~1132-1148):
-```python
-LLMExtractionStrategy(
-    llm_config=LLMConfig(
-        provider=self._llm_runtime.crawl4ai_provider,
-        api_token=self._llm_runtime.api_key,
-        base_url=self._llm_runtime.base_url,
-    ),
-    schema=self._product_schema,
-    extraction_type="schema",
-    instruction=instruction,
-    input_format="fit_markdown",
-    chunk_token_threshold=12000,
-    overlap_rate=0.15,
-    extra_args={"max_tokens": 4000, "temperature": 0.01},
-)
-```
+**Page Cache**:
+A stored crawl result reused to avoid fetching the same page again.
+_Avoid_: Profile, browser profile
 
-## Architecture
+**Commerce Platform**:
+The storefront technology family a site runs on, such as Shopify or WooCommerce.
+_Avoid_: Provider, profile
 
-```
-ProductPageExtractor
-  └─ Crawl4AIExtractor.extract(url, upc, product_name, brand)
-       │
-       ├── [1] Crawl4AIEngine.crawl(url)       ← No LLM, markdown + HTML only
-       │       └─ AsyncWebCrawler.arun(url, extraction_strategy=None)
-       │
-       ├── [2] JSON-LD extraction from HTML
-       ├── [3] Meta tag extraction
-       │
-       ├── [4] FallbackExtractor.extract()      ← HTTP GET if engine failed
-       │
-       ├── [5] Completeness check
-       │       if incomplete → LLMExtractionStrategy (asyncio.to_thread)
-       │       reuse 1st crawl markdown
-       │
-       └── [6] Image enrichment → return result
-```
+**Field Evidence Rule**:
+A reusable rule that describes acceptable evidence for extracting one product field on a site.
+_Avoid_: Selector, hint
 
-## Start Here
-Open `apps/scraper/scrapers/ai_search/crawl4ai_extractor.py` — it's the actual LLM extraction pipeline. The `Crawl4AIEngine` in `src/crawl4ai_engine/` is deliberately LLM-free.
+**Field Evidence Provenance**:
+The field-level record of which rule, selector, source URL, and fallback method produced an extracted value.
+_Avoid_: Logs, telemetry
 
-## Key Findings
+**Image Candidate**:
+A normalized possible product image with URL, source, DOM context, scoring, and rejection evidence.
+_Avoid_: Image URL, media dict
 
-1. **Is LLMExtractionStrategy used in our engine?** NO. `Crawl4AIEngine.crawl()` never has an extraction_strategy set. The docstring says "AI/Agentic features are deprecated for static scrapers."
+**Field Quality Gate**:
+A field-level acceptance check that determines whether extracted evidence is usable.
+_Avoid_: Result status, confidence score
 
-2. **What extraction strategies ARE we using?** CSS/XPath strategies exist in `strategies/` module but are **never called** by the engine. The engine is only used for raw HTML/markdown fetching. The actual product extraction is done by `Crawl4AIExtractor` which uses its own pipeline (JSON-LD → meta → fallback HTTP → LLM).
+**Explicit Correction**:
+A deliberate field-level human correction that identifies the right or wrong evidence for an extracted product field.
+_Avoid_: Approval, review, feedback
 
-3. **Is there an LLM fallback path?** YES, but only deep in `Crawl4AIExtractor` as step 5 of 6. It only triggers when:
-   - The product URL was fetched successfully (step 1)
-   - JSON-LD extraction returned no data (step 2)
-   - Meta tag extraction returned no data (step 3)
-   - HTTP fallback extraction ran but returned incomplete results (step 4)
-   - The completeness check found missing description, size metrics, or generic-only content
-   
-4. **Does the engine accept extraction_strategy?** The `CrawlerRunConfig` does, but `crawl()` has signature `async def crawl(self, url: str)` — only URL. The extraction_strategy must be set in the config dict at construction time. No caller uses this.
+**Profile Version**:
+A reviewable revision of a Site Extraction Profile's field evidence rules.
+_Avoid_: Metadata blob, config snapshot
 
-5. **Bottleneck**: The LLM extraction reuses the first crawl's markdown. If the first crawl failed (no markdown), the LLM has nothing to work with. This means LLM extraction quality depends entirely on Crawl4AI's markdown generation, which uses BM25 or Pruning content filters that may filter out the very content we need (specs tables, structured attributes).
+**Search Observation**:
+A normalized record of search-provider evidence gathered while discovering product URLs.
+_Avoid_: Raw Serper payload, profile rule, extraction profile
 
-6. **Opportunity**: The LLM extraction is only triggered by a heuristic completeness check (`_check_extraction_completeness`). If the check passes incorrectly (false positive), the LLM is skipped entirely. And the LLM runs on `fit_markdown` (filtered), not raw HTML — meaning filtered-out spec data is invisible to it.
+**Profile Validation Set**:
+A curated set of product URLs and field assertions used to test a Profile Version.
+_Avoid_: Test cache, sample pages
+
+**AI Schema Draft**:
+An AI-generated starting proposal for Field Evidence Rules for a site.
+_Avoid_: Active profile, final schema
+
+**Product Detail Page**:
+A page for one specific product or product variant on a source domain.
+_Avoid_: PDP, listing page, category page
+
+**Profile Maintenance Workflow**:
+A human-governed review workflow for creating, testing, and approving Profile Versions.
+_Avoid_: Extraction job, automatic scrape
+
+**Brand Source Setup**:
+A guided preparation workflow for making a brand Source ready for reliable extraction.
+_Avoid_: Brand edit, scraper run
+
+**Browser Profile Setup Request**:
+A request for a runner or operator to provision or validate a Browser Profile for a Source.
+_Avoid_: Extraction job, profile data
+
+**Profile Attention Item**:
+A profile health problem that needs review, testing, correction, or approval.
+_Avoid_: Brand task, scraper error
+
+**Profile Extraction Status**:
+The result-level summary of whether a Site Extraction Profile completed, partially filled, failed, or was skipped during extraction.
+_Avoid_: Pipeline status, source outcome
+
+## Relationships
+
+- A **Site Extraction Profile** is owned by a brand, **Source**, and canonical source domain.
+- A **Site Extraction Profile** is the preferred reusable extraction knowledge for its brand and source domain.
+- A **Commerce Platform** supplies default extraction expectations, but a **Site Extraction Profile** owns the reusable site-specific knowledge.
+- A **Site Extraction Profile** contains **Field Evidence Rules** for product fields such as name, description, image, specification evidence, and image role assignment.
+- **Field Evidence Rules** are constrained by the owning **Source**'s allowed fields.
+- **Source** trust determines cross-source authority; a **Site Extraction Profile** describes extraction evidence, not source ranking.
+- Profile extraction emits **Field Evidence Provenance** for each extracted value.
+- Normal source payloads persist compact **Field Evidence Provenance**; profile tests and debug artifacts may keep detailed candidate/snippet diagnostics.
+- Profile extraction may be partial: fields with acceptable evidence can succeed while other fields fall back or remain missing.
+- Profile extraction uses **Field Quality Gates** before accepting extracted values or falling back field-by-field.
+- Repeated **Field Quality Gate** failures may recommend a **Profile Maintenance Workflow**, but they do not mutate active profile knowledge directly.
+- An **Explicit Correction** may refine a **Field Evidence Rule** when it captures reusable field evidence for the same brand and source domain.
+- Image **Explicit Corrections** capture both accepted and rejected evidence so image role assignment can learn what to prefer and avoid.
+- Image **Explicit Corrections** may be captured wherever admins correct product images, then routed into a **Profile Maintenance Workflow** for reusable learning.
+- An admin image edit is only an **Explicit Correction** when the admin deliberately marks it as reusable extractor teaching evidence.
+- **Explicit Corrections** and **Profile Version** approvals record the admin actor and reason.
+- Individual **Explicit Corrections** may use lightweight reason labels; activating a **Profile Version** requires a short human approval note.
+- Image **Explicit Corrections** include lightweight reason labels for accepted and rejected evidence.
+- A **Profile Maintenance Workflow** may show selected and rejected **Image Candidates** so admins can teach both accepted and rejected image evidence.
+- Admin image edits can be marked as not reusable when they are merchandising choices rather than extractor teaching evidence.
+- Image **Explicit Corrections** keep exact evidence; draft **Profile Versions** may generalize that evidence into pattern-based positive and negative **Field Evidence Rules** after AI suggestion, validation, and approval.
+- High-confidence negative image **Field Evidence Rules** may hard-reject candidates before LLM image selection; ambiguous negatives should only be penalized.
+- LLM image selection may arbitrate ambiguous candidates after profile rules and deterministic selection, but it must respect hard negative **Field Evidence Rules** and cannot mutate active profile knowledge.
+- Image **Field Evidence Rules** operate on **Image Candidate** metadata such as URL, canonical URL, source, alt text, dimensions, DOM context, source attribute, and matched rule IDs, not only raw URLs.
+- Product image selection, LLM image arbitration, image corrections, and profile tests use **Image Candidates** as their shared evidence shape.
+- **Image Candidates** are built once per crawled page before profile rules, deterministic selection, and LLM image arbitration run.
+- A **Site Extraction Profile** has one or more **Profile Versions** so profile changes can be reviewed, activated, or rolled back as a first-class maintenance action.
+- An **Explicit Correction** creates a draft **Profile Version** before reusable extraction knowledge is activated.
+- An **AI Schema Draft** may create an initial draft **Profile Version** for a new brand and source domain, but it is never active extraction knowledge until approved.
+- An **AI Schema Draft** uses representative **Product Detail Pages** and must include at least one trusted seed URL; **Search Observations** may suggest additional samples but cannot be the only source.
+- An **AI Schema Draft** belongs in a **Profile Maintenance Workflow**, not the normal product extraction job, and is performed as an async scraper-runner job.
+- Product Detail Page seed verification, AI Schema Drafting, Profile Version validation, and Browser Profile setup/revalidation run through profile-maintenance jobs rather than product enrichment jobs.
+- Profile-maintenance jobs declare required runner capabilities so only runners with suitable Crawl4AI, model, Browser Profile, or interactive-browser support can claim them.
+- Profile-maintenance job artifacts are versioned durable records, not just logs or blob JSON on job rows.
+- Profile-maintenance artifacts use a shared envelope for scope, provenance, status, and schema version, plus typed payloads for each artifact kind.
+- Profile-maintenance artifact evidence is immutable once created; retries, corrections, or regenerated evidence create new artifact versions while review metadata may change.
+- Bulky profile-maintenance evidence such as screenshots, HTML/markdown snapshots, crawl traces, and large Image Candidate dumps lives in object storage with durable references from the artifact record and is retained by default with explicit retention and purge controls.
+- Profile-maintenance artifacts exclude secrets and identity state such as cookies, storage contents, auth headers, Browser Profile files, and raw token-bearing request headers.
+- A normal product extraction job may create a **Profile Attention Item** when extraction quality signals show reusable profile knowledge is missing or weak.
+- A **Profile Maintenance Workflow** is organized around **Profile Attention Items**, with brand, Source, and domain as context.
+- **Brand Source Setup** may establish official domain evidence, trusted Product Detail Page seeds, optional Browser Profile requirements, and initial profile-maintenance inputs.
+- **Brand Source Setup** can save official domain evidence without a Product Detail Page seed, but an **AI Schema Draft** requires at least one verified trusted Product Detail Page seed.
+- Product Detail Page seeds are verified before they can become trusted inputs for profile drafting.
+- Product Detail Page seed verification uses the same **Image Candidate** evidence pipeline as product image extraction and is performed as an async scraper-runner job rather than inside a synchronous web request.
+- Verified Product Detail Page seeds become seed cases in the **Profile Validation Set** with lightweight assertions until stronger field assertions are added.
+- **Profile Attention Items** guide maintenance work and do not block normal extraction unless identity, variant, UPC, or Source policy gates fail.
+- **Browser Profile** problems are access or identity attention, not Site Extraction Profile failures.
+- **Browser Profile** data stays in secure runner/runtime storage; coordinator records only registry metadata.
+- **Browser Profiles** are provisioned through **Browser Profile Setup Requests**, not by normal product extraction jobs.
+- A **Browser Profile Setup Request** is scoped to a brand, Source, and canonical source domain; Product Detail Page seeds are verification targets, not the Browser Profile owner.
+- A **Browser Profile Setup Request** targets a runner or runner pool capable of interactive Browser Profile provisioning.
+- A **Browser Profile** must be validated before extraction jobs can use it and periodically rechecked; validation records the verification target, runner environment, timestamp, and page evidence, while expired, revoked, or failed profiles create access or identity attention.
+- **Brand Source Setup** verifies Product Detail Page seeds without a Browser Profile first, then creates a **Browser Profile Setup Request** only when access or identity blocks verification.
+- **Brand Source Setup** may manually mark a Browser Profile as required; automated access-failure signals can recommend this requirement, but human confirmation is needed before it becomes required.
+- Extraction jobs may reference a required **Browser Profile**, but runners resolve that reference to local secure browser-profile storage.
+- If a required **Browser Profile** is stale, missing, or fails revalidation, extraction fails closed with access or identity attention instead of falling back to no-profile crawling.
+- A profile-enabled extraction result reports a **Profile Extraction Status** separately from source outcome and pipeline status.
+- **Profile Extraction Status** guides maintenance work and does not determine Source Outcome by itself.
+- A draft **Profile Version** must be tested against a **Profile Validation Set** and explicitly approved before becoming active; partial validation failures keep it reviewable rather than discarding it.
+- Only one **Profile Version** is active for a Site Extraction Profile at a time, and activation is atomic at the version level.
+- A **Search Observation** may be product-specific or brand-domain-level discovery evidence, and is time-sensitive unless linked to an accepted correction or profile decision.
+- **Search Observations** may pre-fill **Profile Maintenance Workflow** suggestions, but cannot alone select trusted **Product Detail Pages** for an **AI Schema Draft**.
+- A **Search Observation** may inform a later **Explicit Correction**, but it is not itself a **Field Evidence Rule**.
+- A **Profile Validation Set** includes corrected products, known-good URLs, nearby variants when available, assertions for fields touched by a draft **Profile Version**, and uses both fixture snapshots and live crawls before activation.
+- Profile validation distinguishes rule failures from crawl/access, identity, and source mismatch failures.
+- When field evidence conflicts, human-confirmed rules outrank site profile rules, structured page data, commerce platform defaults, LLM inference, and raw heuristics, in that order.
+- A **Site Extraction Profile** may reference one or more opt-in **Browser Profiles** when a site requires identity or persistent preferences.
+- A **Site Extraction Profile** may use a **Page Cache**, but cached page content is not itself extraction knowledge and must not substitute for executing active profile rules.
+- A **Browser Profile** belongs to site access; a **Site Extraction Profile** belongs to product data extraction.
+
+## Example dialogue
+
+> **Dev:** "Should we cache this brand profile so Crawl4AI stops missing product images?"
+> **Domain expert:** "Cache the page if freshness allows, but the reusable knowledge should go in the **Site Extraction Profile**; only use a **Browser Profile** if the site needs persistent identity or settings."
+
+## Flagged ambiguities
+
+- "profile" was used to mean both Crawl4AI browser identity and reusable extraction strategy — resolved: these are distinct **Browser Profile** and **Site Extraction Profile** concepts.
+- Passive approval was considered as extraction learning input — resolved: only an **Explicit Correction** should refine reusable extraction knowledge.
+- Serper.dev discovery output was considered as extraction profile knowledge — resolved: persist normalized **Search Observations** separately and promote only human-confirmed evidence into profile rules.

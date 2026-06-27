@@ -49,6 +49,11 @@ class ProductPageExtractor:
         self.extraction_strategy = extraction_strategy
         self.prompt_version = prompt_version
 
+        # Optional profile snapshot for site-extraction-profile-driven extraction.
+        # Set externally by ApprovedSourceExecutor via the profile_snapshot
+        # property when a profile snapshot matches the current source entry.
+        self._profile_snapshot: dict[str, Any] | None = None
+
         from scrapers.ai_search.matching import MatchingUtils
         from scrapers.ai_search.scoring import SearchScorer
         from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor
@@ -68,6 +73,24 @@ class ProductPageExtractor:
             llm_base_url=llm_base_url,
             llm_api_key=llm_api_key,
         )
+        # Forward profile snapshot reference to the inner extractor so changes
+        # to this property propagate to Crawl4AIExtractor._profile_snapshot.
+        self._extractor._profile_snapshot = None
+
+    @property
+    def profile_snapshot(self) -> dict[str, Any] | None:
+        """
+        Profile snapshot for site-extraction-profile-driven extraction.
+        Setting this propagates to the inner Crawl4AIExtractor._profile_snapshot.
+        """
+        return self._profile_snapshot
+
+    @profile_snapshot.setter
+    def profile_snapshot(self, value: dict[str, Any] | None) -> None:
+        self._profile_snapshot = value
+        # Propagate to the inner Crawl4AIExtractor
+        if hasattr(self, "_extractor") and self._extractor is not None:
+            self._extractor._profile_snapshot = value
 
     async def extract(
         self,

@@ -1,0 +1,10 @@
+{
+  "url": "https://blocked-site.com/secure-page",
+  "success": false,
+  "error": "Received 403 Forbidden - Access denied",
+  "html": null,
+  "cleaned_html": null,
+  "metadata": {},
+  "media": {"images": []},
+  "links": {"internal": [], "external": []}
+}

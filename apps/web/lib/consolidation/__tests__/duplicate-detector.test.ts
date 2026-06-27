@@ -196,8 +196,8 @@ describe('duplicate-detector', () => {
 
             const result = tryDisambiguateDuplicateNames(group, existingByUpc);
             expect(result).not.toBeNull();
-            expect(result?.get('UPC-A')).toBe('Test Product 6 oz');
-            expect(result?.get('UPC-B')).toBe('Test Product 12 oz');
+            expect(result?.get('UPC-A')).toBe('Test Product 6 oz.');
+            expect(result?.get('UPC-B')).toBe('Test Product 12 oz.');
         });
     });
 
@@ -310,6 +310,55 @@ describe('duplicate-detector', () => {
             // Should use sources value ("Small"/"Large"), not consolidated ("Tiny"/"Huge")
             expect(result?.get('UPC-A')).toBe('Product Small');
             expect(result?.get('UPC-B')).toBe('Product Large');
+        });
+
+        it('uses current output flavor facets before stale size/conversion artifacts', () => {
+            const group = [
+                {
+                    upc: '034846730449',
+                    next_fields: {
+                        core: { name: 'Wholesomes Rewards Chewy Mini Sticks Dog Treat 7 oz.' },
+                        facets: [
+                            { definition_slug: 'flavor', value: 'Beef' },
+                            { definition_slug: 'size', value: '7 oz.' },
+                        ],
+                    },
+                },
+                {
+                    upc: '034846730463',
+                    next_fields: {
+                        core: { name: 'Wholesomes Rewards Chewy Mini Sticks Dog Treat 7 oz.' },
+                        facets: [
+                            { definition_slug: 'flavor', value: 'Lamb' },
+                            { definition_slug: 'size', value: '7 oz.' },
+                        ],
+                    },
+                },
+            ];
+
+            const existingByUpc = new Map<string, DisambiguationRecord>([
+                ['034846730449', {
+                    sources: {},
+                    consolidated: {
+                        facets: [
+                            { definition_slug: 'size', value: '7 OZ. (198 G)' },
+                        ],
+                    },
+                }],
+                ['034846730463', {
+                    sources: {},
+                    consolidated: {
+                        facets: [
+                            { definition_slug: 'size', value: '7 OZ (198 G)' },
+                        ],
+                    },
+                }],
+            ]);
+
+            const result = tryDisambiguateDuplicateNames(group, existingByUpc);
+            expect(result).not.toBeNull();
+            expect(result?.get('034846730449')).toBe('Wholesomes Rewards Chewy Mini Sticks Dog Treat Beef 7 oz.');
+            expect(result?.get('034846730463')).toBe('Wholesomes Rewards Chewy Mini Sticks Dog Treat Lamb 7 oz.');
         });
     });
 });

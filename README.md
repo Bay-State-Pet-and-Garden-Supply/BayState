@@ -18,40 +18,42 @@ BayState/
 
 ### Requirements
 - **Bun 1.3.5** (use `bun --version` to check; install via `curl -fsSL https://bun.sh/install | bash`)
-- **Docker Desktop** (required for Supabase, Stripe, and Scraper containers)
+- **Docker Desktop** (required for Stripe and Scraper containers)
 
 ### The "One-Command" Development Setup
 
-The monorepo uses a containerized orchestration system to ensure a consistent development experience across machines and total isolation from any live runners on the same system.
+The monorepo uses a containerized orchestration system for Stripe and Scraper. The web app connects directly to the live Supabase project.
 
 ```bash
 # 1. Install workspace dependencies
 bun install
 
-# 2. First-time Stripe setup (prevents race condition)
+# 2. Set up Supabase keys
+cp apps/web/.env.local.example apps/web/.env.local
+# Edit apps/web/.env.local and add your SUPABASE_SECRET_KEY
+
+# 3. First-time Stripe setup (prevents race condition)
 bun run stripe:setup
 # Wait until STRIPE_WEBHOOK_SECRET is written to apps/web/.env.local
 # Then you can stop the process (Ctrl+C)
 
-# 3. Start the entire stack
-bun run up
+# 4. Start the entire stack
+bun run dev:up
 ```
 
 > [!IMPORTANT]
-> **First-time Stripe setup is critical.** `bun run up` starts the web app and Stripe listener in parallel. If the webhook secret doesn't exist yet, Next.js may start before the secret is written, causing webhook verification to fail until a restart. Use `bun run stripe:setup` once to avoid this gambling mechanic.
+> **First-time Stripe setup is critical.** `bun run dev:up` starts the web app and Stripe listener in parallel. If the webhook secret doesn't exist yet, Next.js may start before the secret is written, causing webhook verification to fail until a restart. Use `bun run stripe:setup` once to avoid this.
 
-The `up` command automatically:
-1. Starts **Supabase** (Database, Auth, Storage).
-2. Syncs **Environment Variables** (Supabase and Scraper keys).
-3. Starts an isolated **Stripe Webhook Listener** (and auto-syncs the secret to `.env.local`).
-4. Starts the **Scraper Daemon** in an isolated Docker container (`baystate-scraper-dev`).
-5. Starts the **Next.js Web App** on your host machine.
+The `dev:up` command automatically:
+1. Starts an isolated **Stripe Webhook Listener** (and auto-syncs the secret to `.env.local`).
+2. Starts the **Scraper Daemon** in an isolated Docker container (`baystate-scraper-dev`).
+3. Starts the **Next.js Web App** on your host machine.
 
 ### Core Commands
 
 | Command | Action |
 |---------|--------|
-| `bun run up` | Start the full development stack |
+| `bun run dev:up` | Start the full development stack |
 | `bun run down` | Stop and clean up all dev containers |
 | `bun run stripe:login` | Authenticate the Stripe CLI container |
 | `bun run scraper:build` | Rebuild the local scraper image |
@@ -63,9 +65,7 @@ The `up` command automatically:
 bun run web:dev           # Start web dev server
 bun run web:build         # Build web for production
 bun run web:test          # Run web tests
-bun run web:db:start      # Start local Supabase
-bun run web:db:reset      # Reset + seed local DB
-bun run web:db:status     # Supabase status
+bun run web:db:push       # Push migrations to live Supabase
 
 # Scraper commands
 bun run scraper:build     # Build dev scraper image

@@ -391,10 +391,26 @@ class EnrichmentValidation(BaseModel):
     missing_required: list[str] = Field(default_factory=list)
 
 
+class ProfileExtractionStatus(BaseModel):
+    """Compact status indicating whether a Site Extraction Profile was used
+    during extraction, and which version.
+
+    Populated only when the job config includes profile_snapshots and the
+    execution source matches one of the snapshots.
+    """
+    profile_used: bool = False
+    profile_id: Optional[str] = None
+    version_id: Optional[str] = None
+    version_hash: Optional[str] = None
+    field_provenance: dict[str, str] = Field(default_factory=dict)
+    """Per-field provenance: field_name -> rule identifier that produced the value."""
+
+
 class EnrichmentAttemptSummary(BaseModel):
     mode: str
     status: str
     error: Optional[str] = None
+    profile_extraction_status: Optional[ProfileExtractionStatus] = None
 
 
 class SourceResultInfo(BaseModel):
@@ -414,6 +430,11 @@ class SourceResultInfo(BaseModel):
     errorCode: Optional[str] = Field(default=None, alias="error_code")  # Machine-readable error code
     errorMessage: Optional[str] = Field(default=None, alias="error_message")  # Human-readable error detail
     attemptedAt: Optional[str] = Field(default=None, alias="attempted_at")  # ISO timestamp of when this source was attempted
+    # UPC Resolution V2 stage label and evidence payload
+    resolutionStage: Optional[str] = None  # "distributor" | "official_brand" | "serp"
+    resolutionEvidence: Optional[Any] = None  # Evidence/candidates payload for proof gating (dict or list)
+    # Site Extraction Profile snapshot tracking
+    profile_extraction_status: Optional[ProfileExtractionStatus] = None
 
     model_config = {"populate_by_name": True}
 

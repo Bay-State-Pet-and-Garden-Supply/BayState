@@ -39,7 +39,7 @@ describe('BrandResolver', () => {
         });
 
         const resolver = await createBrandResolver(supabaseMock);
-        const result = await resolver.resolveBrand('Blue Buffalo');
+        const result = await resolver.resolveBrand('blue buffalo');
 
         expect(result).toEqual({
             brandId: '1',

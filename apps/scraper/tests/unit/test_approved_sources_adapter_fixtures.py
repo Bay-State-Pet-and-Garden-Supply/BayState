@@ -445,8 +445,8 @@ def test_orgill_normalize_images_cleans_backslashes() -> None:
 
     # 3. Backslash + websmall → both fixed
     assert "\\\\" not in result[2], f"Backslash still present in websmall URL: {result[2]}"
-    assert "/web/10031/7618085.jpg" in result[2], \
-        f"Expected websmall→web + backslash fix, got: {result[2]}"
+    assert "/weblarge/10031/7618085.jpg" in result[2], \
+        f"Expected websmall→weblarge + backslash fix, got: {result[2]}"
 
 
 def test_base_normalize_images_cleans_backslashes() -> None:

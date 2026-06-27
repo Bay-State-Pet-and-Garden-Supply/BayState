@@ -15,7 +15,7 @@ import hmac
 import hashlib
 import base64
 from datetime import datetime, timezone
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -71,6 +71,25 @@ class ClaimedPackagingExtraction:
     lease_token: str | None = None
     lease_expires_at: str | None = None
     max_images: int = 2
+
+
+@dataclass
+class ClaimedProfileMaintenanceJob:
+    """Profile-maintenance job claimed from the coordinator."""
+
+    job_id: str
+    kind: str
+    brand_id: str | None = None
+    source_slug: str | None = None
+    canonical_domain: str | None = None
+    profile_id: str | None = None
+    profile_version_id: str | None = None
+    browser_profile_id: str | None = None
+    payload: dict[str, Any] = field(default_factory=dict)
+    lease_token: str | None = None
+    lease_expires_at: str | None = None
+    attempt_count: int = 0
+    max_attempts: int = 3
 
 
 class AuthenticationError(Exception):
@@ -745,6 +764,281 @@ class ScraperAPIClient:
             return False
         except Exception as e:
             logger.error(f"Heartbeat error: {e}")
+            return False
+
+    def claim_profile_maintenance(
+        self, runner_name: str | None = None,
+    ) -> ClaimedProfileMaintenanceJob | None:
+        """
+        Claim the next pending profile-maintenance job.
+
+        Gated by PROFILE_MAINTENANCE_JOBS_ENABLED env var.
+        Advertises capabilities from PROFILE_MAINTENANCE_CAPABILITIES (JSON array)
+        or defaults to ["profile_maintenance", "profile_maintenance.verify_pdp_seed",
+        "profile_maintenance.crawl4ai"].
+
+        Returns:
+            ClaimedProfileMaintenanceJob if a job was claimed, None otherwise.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return None
+
+        pm_enabled = os.environ.get("PROFILE_MAINTENANCE_JOBS_ENABLED", "").lower() in (
+            "true", "1", "yes"
+        )
+        if not pm_enabled:
+            return None
+
+        # Resolve capabilities from env or use defaults
+        caps_env = os.environ.get("PROFILE_MAINTENANCE_CAPABILITIES")
+        if caps_env:
+            try:
+                advertised_caps = json.loads(caps_env)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(
+                    "Invalid PROFILE_MAINTENANCE_CAPABILITIES JSON, using defaults"
+                )
+                advertised_caps = [
+                    "profile_maintenance",
+                    "profile_maintenance.verify_pdp_seed",
+                    "profile_maintenance.crawl4ai",
+                    "profile_maintenance.model_schema_draft",
+                    "profile_maintenance.draft_site_extraction_profile",
+                    "profile_maintenance.validate_profile_version",
+                ]
+        else:
+            advertised_caps = [
+                "profile_maintenance",
+                "profile_maintenance.verify_pdp_seed",
+                "profile_maintenance.crawl4ai",
+                "profile_maintenance.model_schema_draft",
+                "profile_maintenance.draft_site_extraction_profile",
+                "profile_maintenance.validate_profile_version",
+            ]
+
+        # Convert capability list to the nested object the claim endpoint expects
+        cap_obj: dict[str, bool] = {}
+        for cap in advertised_caps:
+            if cap == "profile_maintenance":
+                continue  # base key, implicit
+            short = cap.replace("profile_maintenance.", "")
+            cap_obj[short.replace(".", "_")] = True
+
+        payload_dict: dict[str, Any] = {
+            "runner_name": runner_name or self.runner_name,
+            "capabilities": {
+                "profile_maintenance": {
+                    "enabled": True,
+                    **cap_obj,
+                }
+            },
+        }
+        payload = json.dumps(payload_dict)
+
+        try:
+            data = self._make_request(
+                "POST", "/api/scraper/v1/profile-maintenance/claim", payload=payload
+            )
+
+            job_data = data.get("job")
+            if not job_data or not isinstance(job_data, dict):
+                logger.info("No pending profile-maintenance jobs available")
+                return None
+
+            job_id = str(job_data.get("job_id", ""))
+            kind = str(job_data.get("kind", ""))
+
+            logger.info(
+                "Claimed profile-maintenance job %s - kind=%s",
+                job_id, kind,
+            )
+            return ClaimedProfileMaintenanceJob(
+                job_id=job_id,
+                kind=kind,
+                brand_id=str(job_data.get("brand_id")) if job_data.get("brand_id") else None,
+                source_slug=str(job_data.get("source_slug")) if job_data.get("source_slug") else None,
+                canonical_domain=str(job_data.get("canonical_domain")) if job_data.get("canonical_domain") else None,
+                profile_id=str(job_data.get("profile_id")) if job_data.get("profile_id") else None,
+                profile_version_id=str(job_data.get("profile_version_id")) if job_data.get("profile_version_id") else None,
+                browser_profile_id=str(job_data.get("browser_profile_id")) if job_data.get("browser_profile_id") else None,
+                payload=job_data.get("payload", {}),
+                lease_token=str(job_data.get("lease_token", "")) or None,
+                lease_expires_at=str(job_data.get("lease_expires_at", "")) or None,
+                attempt_count=int(job_data.get("attempt_count", 0)),
+                max_attempts=int(job_data.get("max_attempts", 3)),
+            )
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return None
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in {404, 204}:
+                logger.debug("No pending profile-maintenance jobs available")
+                return None
+            logger.error(
+                "Failed to claim profile-maintenance job: %s - %s",
+                e.response.status_code, _format_error_response(e.response),
+            )
+            return None
+        except Exception as e:
+            logger.error(f"Error claiming profile-maintenance job: {e}")
+            return None
+
+    def submit_profile_maintenance_progress(
+        self,
+        job_id: str,
+        lease_token: str,
+        status: str,
+        progress: float | None = None,
+        phase: str | None = None,
+        message: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> bool:
+        """Submit a progress update for a claimed profile-maintenance job.
+
+        Args:
+            job_id: The job ID from claim_profile_maintenance.
+            lease_token: Lease token from claim_profile_maintenance.
+            status: 'running' or 'failed'.
+            progress: Progress percentage (0-100).
+            phase: Current processing phase name.
+            message: Human-readable progress message.
+            details: Arbitrary progress detail object.
+
+        Returns:
+            True if accepted, False otherwise.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return False
+
+        payload_dict: dict[str, Any] = {
+            "lease_token": lease_token,
+            "status": status,
+        }
+        if progress is not None:
+            payload_dict["progress"] = progress
+        if phase:
+            payload_dict["phase"] = phase
+        if message:
+            payload_dict["message"] = message
+        if details:
+            payload_dict["details"] = details
+
+        payload = json.dumps(payload_dict)
+
+        try:
+            self._make_request(
+                "POST",
+                f"/api/scraper/v1/profile-maintenance/{job_id}/progress",
+                payload=payload,
+            )
+            logger.info(
+                "Submitted progress for profile-maintenance job %s: status=%s",
+                job_id, status,
+            )
+            return True
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return False
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "Failed to submit profile-maintenance progress: %s - %s",
+                e.response.status_code, _format_error_response(e.response),
+            )
+            return False
+        except Exception as e:
+            logger.error(f"Error submitting profile-maintenance progress: {e}")
+            return False
+
+    def submit_profile_maintenance_result(
+        self,
+        job_id: str,
+        status: str,
+        *,
+        result_json: str | None = None,
+        error_message: str | None = None,
+        error_code: str | None = None,
+        lease_token: str | None = None,
+        artifact: dict[str, Any] | None = None,
+    ) -> bool:
+        """Submit the result of a profile-maintenance job.
+
+        Args:
+            job_id: The job ID from claim_profile_maintenance.
+            status: 'succeeded', 'failed', or 'timed_out'.
+            result_json: JSON string of the result payload (for succeeded).
+            error_message: Error message (for failed/timed_out).
+            error_code: Machine-readable error code.
+            lease_token: Lease token from claim_profile_maintenance.
+            artifact: Optional artifact dict to create an artifact row.
+
+        Returns:
+            True if accepted, False otherwise.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return False
+
+        # Build payload with result nested under "result" key for the web endpoint
+        if result_json:
+            result_dict = json.loads(result_json)
+            payload_dict = {
+                "status": status,
+                "lease_token": lease_token,
+                "result": result_dict,
+            }
+            if error_message:
+                payload_dict["error_message"] = error_message
+            if error_code:
+                payload_dict["error_code"] = error_code
+            if artifact:
+                payload_dict["artifact"] = artifact
+            payload = json.dumps(payload_dict)
+        else:
+            payload_dict: dict[str, Any] = {
+                "status": status,
+                "lease_token": lease_token,
+            }
+            if error_message:
+                payload_dict["error_message"] = error_message
+            if error_code:
+                payload_dict["error_code"] = error_code
+            if artifact:
+                payload_dict["artifact"] = artifact
+            payload = json.dumps(payload_dict)
+
+        try:
+            self._make_request(
+                "POST",
+                f"/api/scraper/v1/profile-maintenance/{job_id}/result",
+                payload=payload,
+            )
+            logger.info(
+                "Submitted result for profile-maintenance job %s: status=%s",
+                job_id, status,
+            )
+            return True
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return False
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "Failed to submit profile-maintenance result: %s - %s",
+                e.response.status_code, _format_error_response(e.response),
+            )
+            return False
+        except Exception as e:
+            logger.error(f"Error submitting profile-maintenance result: {e}")
             return False
 
     def post_logs(self, job_id: str, logs: list[dict[str, Any]]) -> bool:

@@ -198,8 +198,8 @@ export async function GET(request: NextRequest) {
   const enrichmentRuns: PipelineRunSummary[] = (enrichmentJobs || []).map(
     (job) => {
       const total = job.total_count || 0;
-      const completed = job.completed_count || 0;
       const failed = job.failed_count || 0;
+      const completed = Math.max(0, (job.completed_count || 0) - failed);
       const normalizedStatus = mapEnrichmentJobStatusToRunStatus(job.status);
       const kind: PipelineRunKind = "enrichment";
 

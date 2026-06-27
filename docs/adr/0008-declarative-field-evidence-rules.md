@@ -1,0 +1,5 @@
+# Field Evidence Rules are declarative JSON, not executable code
+
+Site Extraction Profiles store Field Evidence Rules as a reviewable declarative JSON ruleset rather than arbitrary Python or JavaScript. Crawl4AI already provides the execution substrate we should lean on — especially schema-based `JsonCssExtractionStrategy`, generated/validated schemas, managed Browser Profiles, waits, scrolling, and hooks/interactions — but it does not provide BayState's governed brand+domain profile lifecycle. Our profile format is a BayState wrapper around field-scoped, allowlisted Crawl4AI schemas/config primitives, not a separate extraction language; runtime may compile those field rules into a Crawl4AI schema/config for execution while preserving field-level diffs, validation, precedence, and correction provenance. AI-generated Crawl4AI schemas are treated as draft suggestions only: they may bootstrap a Profile Version, but activation still requires validation and explicit approval.
+
+**Status**: accepted

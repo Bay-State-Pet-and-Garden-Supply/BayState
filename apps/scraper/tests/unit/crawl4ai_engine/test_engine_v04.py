@@ -169,7 +169,8 @@ class TestCrawl4AIEngineV04:
             
             assert mock_run_config.call_count == 1
             last_call = mock_run_config.call_args
-            assert last_call.kwargs.get("session_id") == "session_test_com"
+            session_id = last_call.kwargs.get("session_id") or ""
+            assert session_id.startswith("session_test_com_")
 
     @pytest.mark.asyncio
     async def test_crawl_many_uses_domain_session_ids(self):
@@ -198,8 +199,8 @@ class TestCrawl4AIEngineV04:
                 call.kwargs.get("session_id") 
                 for call in mock_run_config.call_args_list
             ]
-            assert "session_a_com" in constructor_session_ids
-            assert "session_b_com" in constructor_session_ids
+            assert any(s and s.startswith("session_a_com_") for s in constructor_session_ids)
+            assert any(s and s.startswith("session_b_com_") for s in constructor_session_ids)
 
             call_kwargs = mock_crawler.arun_many.call_args.kwargs
             assert "config" in call_kwargs

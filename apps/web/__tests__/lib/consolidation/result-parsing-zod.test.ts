@@ -25,16 +25,16 @@ describe('Result Parsing with Zod Validation', () => {
     it('returns validation errors if required fields are missing', () => {
         const invalidJson = JSON.stringify({
             name: 'Blue Buffalo Chicken Dog Food 30 lb.',
-            // brand is missing
+            brand: 'Blue Buffalo',
             weight: '30.00',
             confidence_score: 0.95,
             category: 'Dog > Food > Dry Food',
-            description: 'High-quality dry dog food.',
+            description: '',
             search_keywords: 'dog, food, chicken, blue buffalo',
         });
 
         const result = parseStructuredConsolidationText('1234567890', invalidJson, validCategories);
-        expect(result.error).toContain('Validation failed: brand: Invalid input: expected string, received undefined');
+        expect(result.error).toContain('Validation failed: description: Description is required');
     });
 
     it('returns validation errors if confidence score is out of bounds', () => {

@@ -25,12 +25,14 @@ const { POST } = require('@/app/api/scraper/v1/enrichment-callback/route');
 
 function makeMockSupabase(options: {
   attemptResult?: any;
+  jobConfigResult?: any;
   productResult?: any;
   expectSourceDeletes?: boolean;
   expectSourceInserts?: boolean;
 }) {
   const {
     attemptResult = null,
+    jobConfigResult = null,
     productResult = null,
     expectSourceDeletes = false,
     expectSourceInserts = false,
@@ -38,9 +40,21 @@ function makeMockSupabase(options: {
 
   const updateFn = jest.fn().mockReturnThis();
   const eqFn = jest.fn().mockReturnThis();
-  const singleFn = jest.fn().mockResolvedValue(
-    attemptResult ?? { data: null, error: { message: 'not found' } },
-  );
+  const singleFn = jest.fn();
+
+  // Set up singleFn responses in the order the route calls .single():
+  // 1. enrichment_attempts lookup (always)
+  // 2. enrichment_jobs config lookup (always)
+  // 3. products_ingestion brand_id lookup (always if source_results present)
+  // When jobConfigResult is provided, the 2nd call returns it instead of attemptResult
+  if (jobConfigResult) {
+    singleFn
+      .mockResolvedValueOnce(attemptResult ?? { data: null, error: { message: 'not found' } })
+      .mockResolvedValueOnce(jobConfigResult)
+      .mockResolvedValue(productResult ?? { data: null, error: null });
+  } else {
+    singleFn.mockResolvedValue(attemptResult ?? { data: null, error: { message: 'not found' } });
+  }
   const inFn = jest.fn().mockReturnThis();
   const isFn = jest.fn().mockReturnThis();
   const deleteFn = jest.fn().mockReturnThis();
@@ -289,6 +303,118 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.pipeline_status).toBe('needs_attention');
+  });
+
+  describe('V2 mode (proof_required)', () => {
+    const attemptId = '550e8400-e29b-41d4-a716-446655440000';
+    const jobId = '660e8400-e29b-41d4-a716-446655440001';
+    const upc = '042100005264'; // Valid GTIN-12
+
+    function makeV2Supabase(extraSourceResults: boolean) {
+      const { mockClient, singleFn, updateFn } = makeMockSupabase({
+        attemptResult: {
+          data: { id: attemptId, status: 'running', lease_token: 'correct-lease', job_id: jobId, upc },
+          error: null,
+        },
+        jobConfigResult: {
+          data: { config: { upc_resolution_policy: 'proof_required' } },
+          error: null,
+        },
+        productResult: extraSourceResults
+          ? { data: { brand_id: 'brand-1' }, error: null }
+          : { data: null, error: null },
+      });
+      return { mockClient, singleFn, updateFn };
+    }
+
+    it('processes V2 callback with exact UPC proof and returns processed', async () => {
+      const { mockClient, updateFn } = makeV2Supabase(true);
+      (createAdminClient as jest.Mock).mockResolvedValue(mockClient);
+
+      const payload = {
+        _attempt_id: attemptId,
+        _lease_token: 'correct-lease',
+        upc,
+        source: { url: 'https://phillips.com/product' },
+        status: 'success',
+        extracted_at: '2026-06-24T12:00:00Z',
+        product: { name: 'Test Product' },
+        confidence: { overall: 0.96, fields: {} },
+        source_results: [
+          {
+            sourceSlug: 'phillips',
+            sourceType: 'distributor',
+            confidence: 0.96,
+            outcome: 'found',
+            product: { upc },
+            matchedFields: ['name'],
+          },
+        ],
+      };
+
+      const response = await POST(
+        new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+          method: 'POST',
+          headers: { 'X-API-Key': 'bsr_test' },
+          body: JSON.stringify(payload),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.success).toBe(true);
+      expect(body.pipeline_status).toBe('processed');
+
+      // Verify V2 resolution fields were persisted
+      const v2UpdateCalls = updateFn.mock.calls.filter(
+        (call: any[]) => call[0]?.upc_resolution_status,
+      );
+      expect(v2UpdateCalls.length).toBe(1);
+      expect(v2UpdateCalls[0][0]).toMatchObject({
+        upc_resolution_status: 'confirmed',
+        upc_resolution_stage: 'distributor',
+      });
+    });
+
+    it('returns needs_attention for V2 with empty source_results (fail-closed)', async () => {
+      const { mockClient, updateFn } = makeV2Supabase(false);
+      (createAdminClient as jest.Mock).mockResolvedValue(mockClient);
+
+      const payload = {
+        _attempt_id: attemptId,
+        _lease_token: 'correct-lease',
+        upc,
+        source: { url: 'https://phillips.com/product' },
+        status: 'success',
+        extracted_at: '2026-06-24T12:00:00Z',
+        product: {},
+        confidence: { overall: 0.0, fields: {} },
+        source_results: [],
+      };
+
+      const response = await POST(
+        new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+          method: 'POST',
+          headers: { 'X-API-Key': 'bsr_test' },
+          body: JSON.stringify(payload),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.pipeline_status).toBe('needs_attention');
+
+      // V2 fields should still be written with unresolved status
+      const v2UpdateCalls = updateFn.mock.calls.filter(
+        (call: any[]) => call[0]?.upc_resolution_status,
+      );
+      expect(v2UpdateCalls.length).toBe(1);
+      expect(v2UpdateCalls[0][0]).toMatchObject({
+        upc_resolution_status: 'unresolved',
+        upc_resolution_stage: 'none',
+        upc_resolution_confidence: 0,
+      });
+    });
   });
 
   it('skips already-completed attempts', async () => {

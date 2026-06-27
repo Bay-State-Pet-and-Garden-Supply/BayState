@@ -76,11 +76,17 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
+  const { searchParams } = new URL(request.url);
+  const includeInactive = searchParams.get('include_inactive') === 'true';
+
   const supabase = await createAdminClient();
 
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
+  let query = supabase.from('categories').select('*');
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
+
+  const { data, error } = await query
     .order('display_order')
     .order('name');
 

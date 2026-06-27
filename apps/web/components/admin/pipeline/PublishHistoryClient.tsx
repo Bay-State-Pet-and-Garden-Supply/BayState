@@ -5,14 +5,17 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { 
   Calendar, 
-  Download, 
   ExternalLink, 
   History, 
   Package, 
   Search, 
   Tag, 
-  TrendingUp 
+  TrendingUp,
+  Mail,
+  Copy,
+  Check
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +50,48 @@ interface PublishHistoryClientProps {
   initialStartDate: string;
   initialEndDate: string;
 }
+
+// Helper functions for week calculations
+const getTodayETStr = () => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(new Date()); // YYYY-MM-DD
+};
+
+const getYYYYMMDD = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseLocalDateStr = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const getSaturdayOfWeek = (dateStr: string) => {
+  const date = parseLocalDateStr(dateStr);
+  const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const offset = day === 6 ? 0 : -(day + 1);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + offset);
+};
+
+const getWeekDays = (sat: Date) => {
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sat.getFullYear(), sat.getMonth(), sat.getDate() + i);
+    const dateStr = getYYYYMMDD(d);
+    const label = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+    days.push({ dateStr, label, dayName });
+  }
+  return days;
+};
 
 const getLocalDateETStr = (isoString: string) => {
   const date = new Date(isoString);
@@ -103,6 +148,42 @@ export function PublishHistoryClient({
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
   const [brandFilter, setBrandFilter] = useState(searchParams.get('brand') || 'all');
+
+  const [copied, setCopied] = useState(false);
+
+  // Generate email report text based on the selected startDate
+  const emailReportText = useMemo(() => {
+    const satDate = getSaturdayOfWeek(startDate);
+    const weekDays = getWeekDays(satDate);
+    const lines: string[] = [];
+
+    weekDays.forEach((day) => {
+      const productsOnDay = initialProducts.filter(
+        (p) => getLocalDateETStr(p.published_at) === day.dateStr
+      );
+
+      if (productsOnDay.length > 0) {
+        const uniqueBrands = Array.from(
+          new Set(productsOnDay.map((p) => p.brandName || 'No Brand'))
+        ).sort();
+        lines.push(`- ${day.dayName}, ${day.label}: 12-6 (Brands: ${uniqueBrands.join(', ')})`);
+      }
+    });
+
+    const linesText = lines.length > 0 ? lines.join('\n') : '- No publications recorded';
+    return `Hello Tom,\n\nThis week I worked:\n${linesText}`;
+  }, [initialProducts, startDate]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(emailReportText);
+      setCopied(true);
+      toast.success('Report text copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy');
+    }
+  };
 
   const updateParams = useCallback(
     (newParams: Record<string, string | null>) => {
@@ -196,32 +277,7 @@ export function PublishHistoryClient({
     };
   }, [initialProducts, startDate, endDate]);
 
-  // CSV Export
-  const downloadCSV = () => {
-    const headers = ['Date Published', 'Time Published (ET)', 'Brand', 'Product Name', 'UPC / SKU', 'Product ID'];
-    const rows = initialProducts.map((p) => {
-      const localDate = getLocalDateETStr(p.published_at);
-      const localTime = formatTime(p.published_at);
-      return [
-        localDate,
-        localTime,
-        `"${p.brandName.replace(/"/g, '""')}"`,
-        `"${p.name.replace(/"/g, '""')}"`,
-        `"${p.upc}"`,
-        p.id,
-      ];
-    });
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `publish_report_${startDate}_to_${endDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // Email Weekly Report Draft generated from filters
 
   return (
     <div className="space-y-6">
@@ -342,18 +398,40 @@ export function PublishHistoryClient({
             <Button variant="outline" onClick={clearFilters} className="w-full sm:w-auto">
               Reset Filters
             </Button>
-            <Button 
-              variant="default" 
-              onClick={downloadCSV} 
-              disabled={initialProducts.length === 0}
-              className="w-full sm:w-auto gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            {/* No Export CSV Button */}
           </div>
         </div>
       </AdminControlBar>
+
+      {/* Weekly Report Copy Section */}
+      <div className="admin-panel border-[var(--surface-admin-border)] bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Mail className="h-4 w-4 text-primary" />
+            Weekly Report to Tom (Sat - Fri)
+          </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopy}
+            className="h-8 gap-1.5 text-xs font-bold uppercase border-border hover:bg-muted"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-green-600" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+            {copied ? 'Copied' : 'Copy Text'}
+          </Button>
+        </div>
+        <textarea
+          readOnly
+          value={emailReportText}
+          rows={4}
+          onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+          className="w-full bg-black/20 border border-white/5 p-3 font-mono text-xs text-foreground/90 rounded-none resize-none focus:outline-none focus:ring-1 focus:ring-primary/20"
+        />
+      </div>
 
       {/* Main List Section */}
       <div className="space-y-6">

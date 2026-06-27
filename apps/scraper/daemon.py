@@ -103,6 +103,17 @@ try:
 
         def stop_metrics_server(httpd: object | None = None) -> None:
             return None
+
+    try:
+        from runner.workshop_server import start_workshop_server, stop_workshop_server
+    except Exception:
+        # Keep a typed no-op fallback so the daemon can still start if the
+        # workshop server is not available (e.g., during testing).
+        async def start_workshop_server(port: int | None = None):
+            return None
+
+        async def stop_workshop_server(server: object | None = None) -> None:
+            return None
 except Exception:
     # Support importing daemon.py as a top-level module (for quick import checks
     # used in CI/verification) where relative imports fail with "no known parent
@@ -147,6 +158,18 @@ except Exception:
             return (None, None)
 
         def stop_metrics_server(httpd: object | None = None) -> None:
+            return None
+
+    # Try to import the workshop server if available; provide typed async fallbacks.
+    try:
+        workshop_mod = importlib.import_module("apps.scraper.runner.workshop_server")
+        start_workshop_server = getattr(workshop_mod, "start_workshop_server")
+        stop_workshop_server = getattr(workshop_mod, "stop_workshop_server")
+    except Exception:
+        async def start_workshop_server(port: int | None = None):
+            return None
+
+        async def stop_workshop_server(server: object | None = None) -> None:
             return None
 
 
@@ -495,6 +518,133 @@ async def _process_enrichment(attempt, client, rm):
 
 
 
+async def _process_profile_maintenance_job(job, client, rm):
+    """Process a claimed profile-maintenance job (Phase 1: verify_pdp_seed skeleton)."""
+    import json
+    from runner.profile_maintenance import run_profile_maintenance_job
+    from utils.logging_handlers import JobLoggingSession
+
+    job_id = job.job_id
+    kind = job.kind
+
+    try:
+        await asyncio.to_thread(
+            client.heartbeat,
+            current_job_id=job_id,
+            lease_token=job.lease_token,
+            status="busy",
+        )
+
+        with JobLoggingSession(
+            job_id=job_id,
+            runner_name=client.runner_name,
+            lease_token=job.lease_token,
+            api_client=client,
+            realtime_manager=rm,
+        ) as job_logging:
+            try:
+                logger.info(
+                    "Processing profile-maintenance job %s - kind=%s",
+                    job_id, kind,
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "claimed",
+                        "details": {
+                            "job_id": job_id,
+                            "kind": kind,
+                        },
+                        "flush_immediately": True,
+                    },
+                )
+
+                # Use dedicated PM progress endpoint, not generic enrichment progress
+                await asyncio.to_thread(
+                    client.submit_profile_maintenance_progress,
+                    job_id=job_id,
+                    lease_token=job.lease_token,
+                    status="running",
+                    progress=0,
+                    phase="claimed",
+                    message=f"Profile-maintenance job {kind} started",
+                    details={"job_id": job_id, "kind": kind},
+                )
+
+                start_time = time.time()
+                results = await run_profile_maintenance_job(
+                    job,
+                    runner_name=client.runner_name,
+                    api_client=client,
+                    job_logging=job_logging,
+                )
+                elapsed = time.time() - start_time
+
+                # Submit result back to coordinator
+                result_status = results.get("status", "failed")
+                result_payload = results.get("result", {})
+                artifact_payload = results.get("artifact")
+                error_message = results.get("error_message")
+
+                await asyncio.to_thread(
+                    client.submit_profile_maintenance_result,
+                    job_id=job_id,
+                    status=result_status,
+                    result_json=json.dumps(result_payload) if result_payload else None,
+                    error_message=error_message,
+                    lease_token=job.lease_token,
+                    artifact=artifact_payload,
+                )
+
+                logger.info(
+                    "Profile-maintenance job %s completed in %.1fs with status=%s",
+                    job_id, elapsed, result_status,
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "completed",
+                        "details": {
+                            "job_id": job_id,
+                            "kind": kind,
+                            "elapsed_seconds": round(elapsed, 2),
+                            "status": result_status,
+                        },
+                        "flush_immediately": True,
+                    },
+                )
+            except Exception as e:
+                logger.exception(
+                    "Profile-maintenance job %s failed",
+                    job_id,
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "failed",
+                        "flush_immediately": True,
+                    },
+                )
+                try:
+                    await asyncio.to_thread(
+                        client.submit_profile_maintenance_result,
+                        job_id=job_id,
+                        status="failed",
+                        error_message=str(e),
+                        lease_token=job.lease_token,
+                    )
+                except Exception:
+                    logger.exception("Failed to submit profile-maintenance failure result")
+
+    except Exception as e:
+        logger.exception(
+            "Profile-maintenance job prep/heartbeat failed for %s",
+            job_id,
+            extra={
+                "job_id": job_id,
+                "runner_name": client.runner_name,
+                "phase": "failed",
+            },
+        )
+
+
 async def main_async():
     """Main async daemon loop."""
     global _shutdown_requested
@@ -512,6 +662,13 @@ async def main_async():
         metrics_httpd, _metrics_thread = start_metrics_server()
     except Exception as e:
         logger.warning(f"Failed to start metrics server: {e}")
+
+    # Start workshop extraction server in background (non-blocking)
+    workshop_server_instance = None
+    try:
+        workshop_server_instance = await start_workshop_server()
+    except Exception as e:
+        logger.warning(f"Failed to start workshop server: {e}")
 
     runner_build_id = get_runner_build_id()
     runner_build_sha = get_runner_build_sha()
@@ -578,6 +735,14 @@ async def main_async():
     PACKAGING_VISION_ENABLED = os.environ.get("PACKAGING_VISION_ENABLED", "").lower() in ("true", "1", "yes")
     packaging_max_concurrency = int(os.environ.get("PACKAGING_VISION_MAX_CONCURRENCY", "1"))
     packaging_running_count = 0
+
+    # Profile-maintenance job tracking
+    PROFILE_MAINTENANCE_JOBS_ENABLED = os.environ.get(
+        "PROFILE_MAINTENANCE_JOBS_ENABLED", ""
+    ).lower() in ("true", "1", "yes")
+    profile_maintenance_max_concurrency = int(
+        os.environ.get("PROFILE_MAINTENANCE_MAX_CONCURRENCY", "2")
+    )
 
     if PACKAGING_VISION_ENABLED:
         vision_model = os.environ.get("PACKAGING_VISION_MODEL", "qwen2.5vl")
@@ -694,6 +859,33 @@ async def main_async():
                         running_tasks.add(task)
 
             # -------------------------------------------------------------------
+            # Try to claim profile-maintenance work (if enabled and within concurrency limit)
+            # -------------------------------------------------------------------
+            if PROFILE_MAINTENANCE_JOBS_ENABLED:
+                pm_running_count = sum(
+                    1 for t in running_tasks
+                    if t.get_name and "profile_maintenance" in t.get_name()
+                )
+                if pm_running_count < profile_maintenance_max_concurrency:
+                    pm_attempt = await asyncio.to_thread(
+                        client.claim_profile_maintenance,
+                        runner_name=client.runner_name,
+                    )
+
+                    if pm_attempt:
+                        consecutive_idle_polls = 0
+                        claimed_any = True
+                        logger.info(
+                            f"[ProfileMaintenance {pm_attempt.job_id}] Claimed - "
+                            f"kind={pm_attempt.kind}"
+                        )
+                        task = asyncio.create_task(
+                            _process_profile_maintenance_job(pm_attempt, client, rm)
+                        )
+                        task.set_name(f"profile_maintenance_{pm_attempt.job_id}")
+                        running_tasks.add(task)
+
+            # -------------------------------------------------------------------
             # Yield control briefly so tasks can start executing
             # -------------------------------------------------------------------
             if claimed_any:
@@ -748,6 +940,13 @@ async def main_async():
     if running_tasks:
         logger.info(f"Shutdown requested. Waiting for {len(running_tasks)} active tasks to complete gracefully...")
         await asyncio.gather(*running_tasks, return_exceptions=True)
+
+    # Shutdown workshop server if running
+    try:
+        if workshop_server_instance:
+            await stop_workshop_server(workshop_server_instance)
+    except Exception:
+        logger.exception("Error while stopping workshop server")
 
     # Shutdown metrics server if running
     try:

@@ -1,0 +1,55 @@
+{
+  "url": "https://openfarmpet.com/products/chicken-and-turkey-dry-dog-food",
+  "success": true,
+  "error": null,
+  "html": null,
+  "cleaned_html": null,
+  "metadata": {
+    "title": "Grain-Free Chicken & Turkey Dry Dog Food - Open Farm",
+    "description": "Open Farm's chicken and turkey dog food offers high-quality, grain-free nutrition. Ideal for all dogs seeking a balanced and healthy diet. Shop now!"
+  },
+  "media": {
+    "images": [
+      {
+        "src": "https://openfarmpet.com/cdn/shop/products/PDPImages-DryDog-Main-2022-TURKEYC-FOP.png?v=1667854154",
+        "alt": "Grain-Free Chicken & Turkey Dry Dog Food",
+        "desc": "product main image",
+        "score": 9,
+        "width": 548,
+        "height": 768,
+        "type": "image",
+        "group_id": 0,
+        "format": "png"
+      },
+      {
+        "src": "https://openfarmpet.com/cdn/shop/products/PDPImages-DryDog-INGREDIENTS-TURKEYC-FOP.png?v=1667854154",
+        "alt": "Grain-Free Chicken & Turkey Dry Dog Food ingredients",
+        "desc": "product ingredients image",
+        "score": 8,
+        "width": 548,
+        "height": 768,
+        "type": "image",
+        "group_id": 0,
+        "format": "png"
+      },
+      {
+        "src": "https://openfarmpet.com/cdn/shop/products/PDPImages-DryDog-LIFESTYLE-TURKEYC-FOP.png?v=1667854154",
+        "alt": "Grain-Free Chicken & Turkey Dry Dog Food lifestyle",
+        "desc": "product lifestyle image",
+        "score": 7,
+        "width": 548,
+        "height": 768,
+        "type": "image",
+        "group_id": 0,
+        "format": "png"
+      }
+    ]
+  },
+  "links": {
+    "internal": [
+      {"href": "https://openfarmpet.com/collections/dog-food", "text": "Dog Food"},
+      {"href": "https://openfarmpet.com/collections/all", "text": "All Products"}
+    ],
+    "external": []
+  }
+}

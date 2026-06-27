@@ -603,9 +603,16 @@ class AmazonAdapter(ApprovedSourceAdapter):
             no_results_patterns = ["no results for", "try checking your spelling", "did not match any products"]
             found_no_results = any(p in body_text for p in no_results_patterns)
 
-            if found_no_results:
+            # If search result elements were parsed (meaning the page loaded successfully and isn't bot-blocked)
+            # but none of them were organic (all sponsored/skipped), this is a clean "not stocked" result.
+            has_search_result_elements = bool(
+                soup.select('div[data-component-type="s-search-result"]')
+                or [el for el in soup.select('div[data-asin]') if el.get("data-asin")]
+            )
+
+            if found_no_results or has_search_result_elements:
                 logger.info(
-                    "[AmazonAdapter] Search for UPC %s failed: Genuinely NO RESULTS found on Amazon (product is not listed).",
+                    "[AmazonAdapter] Search for UPC %s: Genuinely NO RESULTS found on Amazon (product is not listed).",
                     upc,
                 )
                 from scrapers.approved_sources.result_builder import build_no_match_result

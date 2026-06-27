@@ -44,6 +44,34 @@ _Avoid_: source evidence, verified source
 A removed legacy UPC-prefix grouping concept that should not be used for new pipeline behavior.
 _Avoid_: using cohort to mean Brand Group or Product Line
 
+**Site Extraction Profile**:
+A governed extraction-knowledge base for one **Brand** + source + domain. Stores **Field Evidence Rules** that tell the scraper how to extract product data from that brand's official website. Belongs to exactly one **Brand**.
+_Avoid_: scraper config, extraction template
+
+**Field Evidence Rule**:
+A single declarative extraction rule that maps a product field (title, price, image, SKU) to a CSS selector or XPath on the source website. Stored as JSON inside a **Profile Version**. Compiled into a Crawl4AI schema at execution time. See ADR 0008.
+_Avoid_: scraper rule, extraction config
+
+**Profile Version**:
+An immutable, reviewable revision of a **Site Extraction Profile**. Contains the full set of **Field Evidence Rules**, a compiled Crawl4AI schema, and a deterministic version hash. Only one version may be active per profile at a time. Created via AI schema draft, **Selector Workshop** save, **Explicit Correction** promotion, or manual creation.
+_Avoid_: profile snapshot, extraction version
+
+**Selector Workshop**:
+The admin interface for interactively editing, live-testing, and saving **Field Evidence Rules** with visual feedback against real product pages. Uses a dedicated synchronous extraction endpoint on the scraper runner (not the async job queue). Produces **Profile Versions** with `created_from: 'manual'`.
+_Avoid_: profile editor, config builder
+
+**PDP Seed**:
+A known Product Detail Page URL for a **Brand** + source + domain. Used to bootstrap extraction knowledge and validate **Site Extraction Profiles**. Verified via automated crawl + page classification. Promoted to **Validation Cases** after verification.
+_Avoid_: known URL, target page
+
+**Validation Case**:
+A curated test case within a **Profile** validation set. Each case targets one URL with expected assertions (page type, extracted values). Used by the async `validate_profile_version` job to gate profile activation.
+_Avoid_: test case, expected output
+
+**Explicit Correction**:
+A deliberate, reusable field-level correction (accepted or rejected) linked to a **Brand** + source + domain. Survives **Profile Version** regenerations. Promoted corrections create new **Profile Versions** with `created_from: 'explicit_correction'`.
+_Avoid_: manual fix, override
+
 ## Relationships
 
 - A **Brand Group** contains Imported products that share one **Brand**.
@@ -53,6 +81,12 @@ _Avoid_: using cohort to mean Brand Group or Product Line
 - **ShopSite Input** can hint at the expected **Product Variant**.
 - **External Source Evidence** verifies facts about a **Product Variant**.
 - A **Family Page** must be resolved to a specific **Product Variant** before it can provide variant-specific evidence.
+- A **Site Extraction Profile** belongs to one **Brand** (scoped by brand_id + source_slug + canonical_domain).
+- A **Profile Version** belongs to exactly one **Site Extraction Profile**. Only one version may be active at a time.
+- Each **Profile Version** contains one or more **Field Evidence Rules**.
+- A **PDP Seed** anchors extraction knowledge for a **Brand** + source + domain. Verified seeds become **Validation Cases**.
+- An **Explicit Correction** may be promoted into a new **Profile Version** with `created_from: 'explicit_correction'`.
+- The **Selector Workshop** produces **Profile Versions** directly (`created_from: 'manual'`) and uses a synchronous runner endpoint distinct from the async job queue.
 
 ## Example dialogue
 

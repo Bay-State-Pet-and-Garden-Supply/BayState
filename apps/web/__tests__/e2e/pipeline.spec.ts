@@ -46,18 +46,19 @@ test.describe('Pipeline E2E Tests', () => {
         await expect(page).toHaveURL(/.*search=test.*/);
     });
 
-    test('should export CSV', async ({ page }) => {
-        // Click export button
-        const exportButton = page.getByRole('button', { name: /Export CSV/i });
+    test('should open email boss dialog on history page', async ({ page }) => {
+        // Navigate to history page
+        await page.goto('/admin/pipeline/history');
         
-        // Export button should be visible
-        await expect(exportButton).toBeVisible();
+        // Find email button
+        const emailButton = page.getByRole('button', { name: /Email Boss/i });
+        await expect(emailButton).toBeVisible();
         
-        // Click export (this will trigger download)
-        await exportButton.click();
+        // Click to open dialog
+        await emailButton.click();
         
-        // Wait for download to start
-        await page.waitForTimeout(1000);
+        // Dialog should be open
+        await expect(page.getByText('Email Weekly Report to Tom')).toBeVisible();
     });
 
     test('should select products and show bulk actions', async ({ page }) => {

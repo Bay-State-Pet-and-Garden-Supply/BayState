@@ -5,7 +5,10 @@ and that the executor never returns None.
 """
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 from scrapers.approved_sources.executor import ApprovedSourceExecutor
@@ -1308,3 +1311,293 @@ class TestExecutor:
             f"Expected outcome to be inferred as 'found', got {sr.outcome!r}"
         )
         assert sr.sourceSlug == "bradley"
+
+
+
+class TestApprovedSourceExecutorProfileSnapshots:
+    """Tests for profile snapshot consumption in the executor."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        self.mock_extractor = MagicMock()
+        self.mock_extractor.api_client = None
+        self.mock_extractor.profile_snapshot = None
+
+    def _make_plan_with_official(self) -> ApprovedSourcePlan:
+        """Create a plan with an official_brand entry that could match a profile."""
+        return ApprovedSourcePlan(
+            upc="UPC-PROFILE",
+            input={"name": "Profiled Product", "price": None},
+            brand=ApprovedSourceBrand(id="brand-p1", name="ProfileBrand", slug="profilebrand"),
+            extractionMode="mixed",
+            selectedDistributorSlug=None,
+            priority=[
+                ApprovedSourcePlanEntry(
+                    sourceType="distributor",
+                    sourceSlug="phillips",
+                    displayName="Phillips",
+                    domains=["phillips.com"],
+                    assetDomains=[],
+                    adapterSlug="phillips_crawl4ai",
+                    requiresAuth=False,
+                    searchMode="upc_search",
+                    allowedFields=["name", "description", "images"],
+                    priority=10,
+                    runFirst=False,
+                ),
+                ApprovedSourcePlanEntry(
+                    sourceType="official_brand",
+                    sourceSlug="profilebrand",
+                    displayName="ProfileBrand Official",
+                    domains=["profilebrand.com"],
+                    assetDomains=[],
+                    adapterSlug="serp_discovery",
+                    requiresAuth=False,
+                    searchMode="domain_search",
+                    allowedFields=["name", "description", "images"],
+                    priority=100,
+                    runFirst=False,
+                ),
+            ],
+            sourcePolicy=ApprovedSourcePolicy(
+                allowedDomains=["phillips.com", "profilebrand.com"],
+                allowedAssetDomains=[],
+                disallowedDomains=[],
+                approvedSourcesOnly=True,
+            ),
+        )
+
+    def test_lookup_profile_snapshot_no_snapshots(self):
+        """When job_config has no profile_snapshots, _lookup_profile_snapshot returns None."""
+        plan = self._make_plan_with_official()
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=MagicMock(),
+            job_config={},  # no profile_snapshots
+        )
+        entry = plan.priority[0]
+        snapshot = executor._lookup_profile_snapshot(entry)
+        assert snapshot is None
+
+    def test_lookup_profile_snapshot_matches(self):
+        """When profile_snapshots in job_config match an entry, returns the snapshot."""
+        plan = self._make_plan_with_official()
+        profile_snapshot = {
+            "profile_id": "pf-1",
+            "version_id": "pv-1",
+            "version_hash": "abc123",
+            "compiled_crawl4ai_schema": {"name": "test", "fields": []},
+            "rules": {},
+            "scope": {
+                "brand_id": "brand-p1",
+                "source_slug": "profilebrand",
+                "canonical_domain": "profilebrand.com",
+            },
+        }
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=MagicMock(),
+            job_config={
+                "profile_snapshots": {
+                    "profilebrand:profilebrand.com": profile_snapshot,
+                },
+            },
+        )
+        # Match on official_brand entry with matching slug+domain
+        entry = plan.priority[1]  # official_brand entry
+        snapshot = executor._lookup_profile_snapshot(entry)
+        assert snapshot is not None
+        assert snapshot["profile_id"] == "pf-1"
+        assert snapshot["version_hash"] == "abc123"
+
+    def test_lookup_profile_snapshot_no_match(self):
+        """Entry with no matching snapshot key returns None."""
+        plan = self._make_plan_with_official()
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=MagicMock(),
+            job_config={
+                "profile_snapshots": {
+                    "otherbrand:other.com": {"profile_id": "other"},
+                },
+            },
+        )
+        entry = plan.priority[0]  # phillips - no match
+        snapshot = executor._lookup_profile_snapshot(entry)
+        assert snapshot is None
+
+    def test_attach_profile_status_sets_on_source_results(self):
+        """_attach_profile_status adds ProfileExtractionStatus to source_results."""
+        from scrapers.approved_sources.result_builder import build_success_result
+
+        plan = self._make_plan_with_official()
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=MagicMock(),
+            job_config={},
+        )
+        result = build_success_result(
+            upc="UPC-PROFILE",
+            source_slug="profilebrand",
+            source_type="official_brand",
+            evidence_url="https://profilebrand.com/product",
+            product_fields={"name": "Profiled Product", "brand": "ProfileBrand"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.85,
+        )
+        snapshot = {
+            "profile_id": "pf-1",
+            "version_id": "pv-1",
+            "version_hash": "abc123",
+        }
+        executor._attach_profile_status(result, snapshot)
+        assert result.source_results is not None
+        assert len(result.source_results) > 0
+        for sr in result.source_results:
+            ps = sr.profile_extraction_status
+            assert ps is not None
+            assert ps.profile_used is True
+            assert ps.profile_id == "pf-1"
+            assert ps.version_id == "pv-1"
+            assert ps.version_hash == "abc123"
+
+    def test_attach_profile_status_no_snapshot(self):
+        """When snapshot is None, profile_extraction_status is not set."""
+        from scrapers.approved_sources.result_builder import build_success_result
+
+        plan = self._make_plan_with_official()
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=MagicMock(),
+            job_config={},
+        )
+        result = build_success_result(
+            upc="UPC-PROFILE",
+            source_slug="phillips",
+            source_type="distributor",
+            evidence_url="https://phillips.com/product",
+            product_fields={"name": "Product"},
+            matched_fields=["name"],
+            overall_confidence=1.0,
+        )
+        executor._attach_profile_status(result, None)
+        if result.source_results:
+            for sr in result.source_results:
+                assert sr.profile_extraction_status is None
+
+    def test_profile_snapshot_persists_on_extractor(self):
+        """The extractor's profile_snapshot property is set when a snapshot is found."""
+        plan = self._make_plan_with_official()
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=self.mock_extractor,
+            job_config={
+                "profile_snapshots": {
+                    "profilebrand:profilebrand.com": {
+                        "profile_id": "pf-1",
+                        "version_id": "pv-1",
+                        "version_hash": "abc123",
+                        "rules": {},
+                        "compiled_crawl4ai_schema": {"name": "test", "fields": []},
+                    },
+                },
+            },
+        )
+        entry = plan.priority[1]  # official_brand
+        snapshot = executor._lookup_profile_snapshot(entry)
+        assert snapshot is not None
+
+        # Simulate what _execute_single_entry does
+        executor.extractor.profile_snapshot = snapshot
+        assert executor.extractor.profile_snapshot is not None
+        assert executor.extractor.profile_snapshot["profile_id"] == "pf-1"
+
+        # Reset after entry
+        executor.extractor.profile_snapshot = None
+        assert executor.extractor.profile_snapshot is None
+
+    def test_profile_snapshot_used_during_extraction(self):
+        """Integration: When profile snapshot is present, executor sets it on extractor."""
+        from scrapers.approved_sources.result_builder import build_no_match_result
+
+        plan = self._make_plan_with_official()
+
+        profile_snapshot = {
+            "profile_id": "pf-1",
+            "version_id": "pv-1",
+            "version_hash": "abc123",
+            "compiled_crawl4ai_schema": {
+                "name": "profilebrand",
+                "baseSelector": ".product",
+                "fields": [
+                    {"name": "product_name", "selector": ".title", "type": "text"},
+                ],
+            },
+            "rules": {},
+            "scope": {
+                "brand_id": "brand-p1",
+                "source_slug": "profilebrand",
+                "canonical_domain": "profilebrand.com",
+            },
+        }
+
+        extractor_mock = MagicMock()
+        extractor_mock.api_client = None
+        extractor_mock.profile_snapshot = None
+
+        verified_snapshots: list[Any] = []
+
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=extractor_mock,
+            job_config={
+                "profile_snapshots": {
+                    "profilebrand:profilebrand.com": profile_snapshot,
+                },
+            },
+        )
+
+        with patch(
+            "scrapers.approved_sources.adapters.phillips.PhillipsAdapter.extract",
+            new_callable=AsyncMock,
+        ) as mock_phillips, patch(
+            "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
+            new_callable=AsyncMock,
+        ) as mock_serp:
+            mock_phillips.return_value = build_no_match_result(
+                upc="UPC-PROFILE",
+                source_slug="phillips",
+            )
+
+            async def _side_effect(extractor):
+                verified_snapshots.append(getattr(extractor, "profile_snapshot", None))
+                return build_success_result(
+                    upc="UPC-PROFILE",
+                    source_slug="profilebrand",
+                    source_type="official_brand",
+                    evidence_url="https://profilebrand.com/product",
+                    product_fields={"name": "Profiled", "brand": "ProfileBrand"},
+                    matched_fields=["name", "brand"],
+                    overall_confidence=0.9,
+                )
+
+            mock_serp.side_effect = _side_effect
+
+            import asyncio
+            result = asyncio.run(executor.execute())
+
+        # The executor should have set profile_snapshot on the extractor
+        assert len(verified_snapshots) == 1
+        snapshot_on_extractor = verified_snapshots[0]
+        assert snapshot_on_extractor is not None
+        assert snapshot_on_extractor["profile_id"] == "pf-1"
+        assert snapshot_on_extractor["version_hash"] == "abc123"
+
+        # The result should have profile_extraction_status on source_results
+        assert result.source_results is not None
+        has_profile_status = False
+        for sr in result.source_results:
+            if sr.profile_extraction_status and sr.profile_extraction_status.profile_used:
+                has_profile_status = True
+                break
+        assert has_profile_status, "Expected at least one source_result with profile_extraction_status.profile_used=True"

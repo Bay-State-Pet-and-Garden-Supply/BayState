@@ -11,7 +11,7 @@ import {
     type BrandRegistryRow,
 } from '@/lib/brand-registry';
 
-import { buildApprovedSourcePlans } from '@/lib/approved-sources/source-plan';
+import { buildApprovedSourcePlans, resolveProfileSnapshots } from '@/lib/approved-sources/source-plan';
 import type {
     ScrapeOptions,
     ScrapeResult
@@ -535,17 +535,22 @@ export async function scrapeProducts(
     const testMode = options?.testMode ?? false;
     const retryMode = options?.retryMode ?? 'all';
     const serpDiscoveryEnabled = options?.serpDiscoveryEnabled ?? true;
+    const upcResolutionV2Enabled = options?.upcResolutionV2Enabled ?? false;
 
     const supabase = await createClient();
 
     // Build Approved Source Plans using the automated cascade
     const sourcePlansByUpc: Record<string, any> = {};
+    let sourcePlansByUpcRaw: Record<string, any> = {};  // Keep SourcePlanResult wrappers for resolveProfileSnapshots
     const skippedDetails: Array<{ upc: string; reason: string }> = [];
     try {
         const plans = await buildApprovedSourcePlans(supabase, upcs, {
             retryMode,
             serpDiscoveryEnabled,
+            upcResolutionV2Enabled,
         });
+
+        sourcePlansByUpcRaw = plans;
 
         for (const [upc, result] of Object.entries(plans)) {
             if (result.ok) {
@@ -579,20 +584,43 @@ export async function scrapeProducts(
     const jobMode = 'mixed';
     const jobModel = null;
     const retryModeLabel = retryMode === 'failed_or_untried' ? ' (incremental retry)' : '';
-    const jobConfig = {
+    const cascadeVersion = upcResolutionV2Enabled ? 'v2' : 'v1';
+    const jobConfig: Record<string, unknown> = {
         upc_context: standardUpcContext,
         test_mode: testMode,
         source: 'pipeline',
         pipeline_version: 'cascade_v1',
         source_type: 'approved_source_extraction',
         source_plans_by_upc: sourcePlansByUpc,
-        cascade_version: 'v1',
+        cascade_version: cascadeVersion,
         retry_mode: retryMode,
         job_label: `Source Cascade${retryModeLabel}`,
         serp_fallback_policy: serpDiscoveryEnabled
           ? 'run_when_all_distributors_clean_not_stocked'
           : 'disabled',
     };
+
+    // ---- Site Extraction Profile snapshots (behind feature flag) ----
+    const siteExtractionProfilesEnabled = process.env.SITE_EXTRACTION_PROFILES_IN_ENRICHMENT_ENABLED === "true";
+    if (siteExtractionProfilesEnabled) {
+      const profileSnapshots = await resolveProfileSnapshots(supabase, sourcePlansByUpcRaw);
+      if (Object.keys(profileSnapshots).length > 0) {
+        jobConfig.profile_snapshots = profileSnapshots;
+        console.log(
+          `[Pipeline Scraping] Embedded ${Object.keys(profileSnapshots).length} profile snapshot(s) in job config`,
+        );
+      }
+    }
+
+    // When V2 is enabled, add UPC resolution policy flags to job config
+    if (upcResolutionV2Enabled) {
+        jobConfig.upc_resolution_policy = 'proof_required';
+        jobConfig.upc_resolution_v2 = true;
+        // In V2 mode, serp_fallback_policy is replaced by staged cascade.
+        // The executor reads upc_resolution_v2 and applies stage routing.
+        // Keep serp_fallback_policy for backward compat but mark as migrated.
+        jobConfig.serp_fallback_policy = 'migrated_to_staged_cascade';
+    }
 
     const { data: job, error: insertError } = await supabase
         .from('enrichment_jobs')

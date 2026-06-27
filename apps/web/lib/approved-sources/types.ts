@@ -57,6 +57,12 @@ export interface ApprovedSourcePlanEntry {
   priority: number;
   /** If true, the runner should try this source first */
   runFirst: boolean;
+  /**
+   * UPC Resolution V2 stage label.
+   * Set by the coordinator when V2 cascade is enabled.
+   * Values: "distributor", "official_brand", "licensed", "serp"
+   */
+  resolutionStage?: string;
 }
 
 // =============================================================================
@@ -115,6 +121,37 @@ export interface ApprovedSourcePlan {
   /** Source crawl/asset policy */
   sourcePolicy: ApprovedSourcePolicy;
 }
+
+// =============================================================================
+// Profile Snapshot types
+// =============================================================================
+
+/**
+ * Immutable snapshot of a Site Extraction Profile version embedded in job config.
+ * Resolved by the coordinator at job-creation time, never queried at runtime.
+ */
+export interface ProfileSnapshot {
+  /** The site_extraction_profiles row id */
+  profile_id: string;
+  /** The active site_extraction_profile_versions row id */
+  version_id: string;
+  /** Deterministic hash of rules + compiled schema */
+  version_hash: string;
+  /** BayState Field Evidence Rules (declarative JSON) */
+  rules: Record<string, unknown>;
+  /** Compiled Crawl4AI JsonCssExtractionStrategy schema */
+  compiled_crawl4ai_schema: Record<string, unknown> | null;
+  /** Owner scope that uniquely identifies the profile */
+  scope: {
+    brand_id: string;
+    source_slug: string;
+    canonical_domain: string;
+  };
+}
+
+// =============================================================================
+// Failure codes
+// =============================================================================
 
 export type SourcePlanFailureCode =
   | "product_not_found"

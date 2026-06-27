@@ -531,4 +531,317 @@ describe('buildApprovedSourcePlans — automated cascade', () => {
     if (result.ok) throw new Error('Expected not ok');
     expect(result.code).toBe('missing_brand');
   });
+
+  // ===========================================================================
+  // UPC Resolution V2 source plan synthesis
+  // ===========================================================================
+
+  describe('UPC Resolution V2 source plan', () => {
+    it('synthesizes official_brand_crawl and serp_candidate entries when V2 enabled', async () => {
+      const responses = [
+        {
+          data: [
+            {
+              upc: 'UPC-1',
+              brand_id: 'brand-1',
+              input: { name: 'Test Product', price: 10 },
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'brand-1',
+              name: 'TestBrand',
+              slug: 'testbrand',
+              official_domains: ['testbrand.com'],
+              preferred_domains: [],
+              source_cascade_configured_at: '2026-06-11T00:00:00Z',
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'bs-1',
+              brand_id: 'brand-1',
+              source_type: 'distributor',
+              source_slug: 'phillips',
+              display_name: 'Phillips',
+              domains: ['phillips.com'],
+              asset_domains: [],
+              crawl4ai_adapter_slug: 'phillips_adapter',
+              requires_auth: false,
+              credential_ref: null,
+              search_mode: 'upc_search',
+              allowed_fields: ['name', 'description', 'images'],
+              priority: 10,
+              enabled: true,
+            },
+          ],
+          error: null,
+        },
+      ];
+
+      const mockDb = createMockDbForSourcePlan(responses);
+      const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
+        upcResolutionV2Enabled: true,
+      });
+
+      const result = results['UPC-1'];
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('Expected ok');
+
+      // Should have: phillips (distributor) + official_brand_crawl + serp_candidate
+      expect(result.plan.priority.length).toBe(3);
+
+      // First entry: distributor (phillips)
+      expect(result.plan.priority[0].sourceType).toBe('distributor');
+      expect(result.plan.priority[0].sourceSlug).toBe('phillips');
+
+      // Second entry: official_brand_crawl with resolutionStage 'official_brand'
+      const obEntry = result.plan.priority[1];
+      expect(obEntry.sourceType).toBe('official_brand');
+      expect(obEntry.adapterSlug).toBe('official_brand_crawl');
+      expect(obEntry.resolutionStage).toBe('official_brand');
+      expect(obEntry.domains).toContain('testbrand.com');
+      expect(obEntry.priority).toBe(100);
+
+      // Third entry: serp_candidate_discovery with resolutionStage 'serp'
+      const serpEntry = result.plan.priority[2];
+      expect(serpEntry.sourceType).toBe('official_brand');
+      expect(serpEntry.adapterSlug).toBe('serp_candidate_discovery');
+      expect(serpEntry.resolutionStage).toBe('serp');
+      expect(serpEntry.domains).toContain('testbrand.com');
+      expect(serpEntry.priority).toBe(500);
+
+      // Fix 6: sourcePolicy.allowedDomains must include official brand domains
+      expect(result.plan.sourcePolicy.allowedDomains).toContain('testbrand.com');
+      expect(result.plan.sourcePolicy.allowedDomains).toContain('phillips.com');
+    });
+
+    it('overrides existing official_brand sources to official_brand_crawl in V2 mode', async () => {
+      const responses = [
+        {
+          data: [
+            {
+              upc: 'UPC-1',
+              brand_id: 'brand-1',
+              input: { name: 'Test Product', price: 10 },
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'brand-1',
+              name: 'TestBrand',
+              slug: 'testbrand',
+              official_domains: ['testbrand.com'],
+              preferred_domains: [],
+              source_cascade_configured_at: '2026-06-11T00:00:00Z',
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'bs-1',
+              brand_id: 'brand-1',
+              source_type: 'distributor',
+              source_slug: 'phillips',
+              display_name: 'Phillips',
+              domains: ['phillips.com'],
+              asset_domains: [],
+              crawl4ai_adapter_slug: 'phillips_adapter',
+              requires_auth: false,
+              credential_ref: null,
+              search_mode: 'upc_search',
+              allowed_fields: ['name', 'description', 'images'],
+              priority: 10,
+              enabled: true,
+            },
+            {
+              id: 'bs-2',
+              brand_id: 'brand-1',
+              source_type: 'official_brand',
+              source_slug: 'existing-official',
+              display_name: 'Existing Official',
+              domains: ['existing-brand.com'],
+              asset_domains: [],
+              crawl4ai_adapter_slug: 'crawl4ai_direct',
+              requires_auth: false,
+              credential_ref: null,
+              search_mode: 'domain_search',
+              allowed_fields: ['title', 'description', 'images'],
+              priority: 50,
+              enabled: true,
+            },
+          ],
+          error: null,
+        },
+      ];
+
+      const mockDb = createMockDbForSourcePlan(responses);
+      const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
+        upcResolutionV2Enabled: true,
+      });
+
+      const result = results['UPC-1'];
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('Expected ok');
+
+      // Find the official_brand entry that was overridden
+      const obEntry = result.plan.priority.find(
+        (e: { sourceType: string; sourceSlug: string }) => e.sourceType === 'official_brand' && e.sourceSlug === 'existing-official'
+      );
+      expect(obEntry).toBeDefined();
+      expect(obEntry!.adapterSlug).toBe('official_brand_crawl');
+      expect(obEntry!.resolutionStage).toBe('official_brand');
+
+      // Should also have serp_candidate_discovery entry
+      const serpEntry = result.plan.priority.find(
+        (e: { adapterSlug: string }) => e.adapterSlug === 'serp_candidate_discovery'
+      );
+      expect(serpEntry).toBeDefined();
+      expect(serpEntry!.adapterSlug).toBe('serp_candidate_discovery');
+
+      // Fix 6: SERP candidate domains must be in sourcePolicy.allowedDomains
+      // even when an existing official brand source already exists.
+      expect(result.plan.sourcePolicy.allowedDomains).toContain('testbrand.com');
+      expect(result.plan.sourcePolicy.allowedDomains).toContain('existing-brand.com');
+      expect(result.plan.sourcePolicy.allowedDomains).toContain('phillips.com');
+    });
+
+    it('preserves legacy behavior when upcResolutionV2Enabled is not set', async () => {
+      // Same setup as 'synthesizes official_brand entry from brand official_domains' legacy test
+      const responses = [
+        {
+          data: [
+            {
+              upc: 'UPC-1',
+              brand_id: 'brand-1',
+              input: { name: 'Test Product', price: 10 },
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'brand-1',
+              name: 'TestBrand',
+              slug: 'testbrand',
+              official_domains: ['testbrand.com'],
+              preferred_domains: [],
+              source_cascade_configured_at: '2026-06-11T00:00:00Z',
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'bs-1',
+              brand_id: 'brand-1',
+              source_type: 'distributor',
+              source_slug: 'phillips',
+              display_name: 'Phillips',
+              domains: ['phillips.com'],
+              asset_domains: [],
+              crawl4ai_adapter_slug: 'phillips_adapter',
+              requires_auth: false,
+              credential_ref: null,
+              search_mode: 'upc_search',
+              allowed_fields: ['name', 'description', 'images'],
+              priority: 10,
+              enabled: true,
+            },
+          ],
+          error: null,
+        },
+      ];
+
+      const mockDb = createMockDbForSourcePlan(responses);
+      // No upcResolutionV2Enabled — should use legacy synthesis
+      const results = await buildApprovedSourcePlans(mockDb, ['UPC-1']);
+
+      const result = results['UPC-1'];
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('Expected ok');
+
+      // Legacy: 2 entries (distributor + synthesized crawl4ai_direct fallback)
+      expect(result.plan.priority.length).toBe(2);
+      const lastEntry = result.plan.priority[result.plan.priority.length - 1];
+      expect(lastEntry.sourceType).toBe('official_brand');
+      expect(lastEntry.adapterSlug).toBe('crawl4ai_direct'); // legacy SERP fallback
+      expect(lastEntry.resolutionStage).toBeUndefined(); // no V2 stage
+    });
+
+    it('does not add serp_candidate when brand has no official_domains in V2 mode', async () => {
+      const responses = [
+        {
+          data: [
+            {
+              upc: 'UPC-1',
+              brand_id: 'brand-1',
+              input: { name: 'Test Product', price: 10 },
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'brand-1',
+              name: 'TestBrand',
+              slug: 'testbrand',
+              official_domains: [],
+              preferred_domains: [],
+              source_cascade_configured_at: '2026-06-11T00:00:00Z',
+            },
+          ],
+          error: null,
+        },
+        {
+          data: [
+            {
+              id: 'bs-1',
+              brand_id: 'brand-1',
+              source_type: 'distributor',
+              source_slug: 'phillips',
+              display_name: 'Phillips',
+              domains: ['phillips.com'],
+              asset_domains: [],
+              crawl4ai_adapter_slug: 'phillips_adapter',
+              requires_auth: false,
+              credential_ref: null,
+              search_mode: 'upc_search',
+              allowed_fields: ['name', 'description', 'images'],
+              priority: 10,
+              enabled: true,
+            },
+          ],
+          error: null,
+        },
+      ];
+
+      const mockDb = createMockDbForSourcePlan(responses);
+      const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
+        upcResolutionV2Enabled: true,
+      });
+
+      const result = results['UPC-1'];
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('Expected ok');
+
+      // Only the distributor — no V2 stages since no official domains
+      expect(result.plan.priority.length).toBe(1);
+      expect(result.plan.priority[0].sourceSlug).toBe('phillips');
+    });
+  });
 });

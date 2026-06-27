@@ -1,0 +1,56 @@
+{
+  "url": "https://openfarmpet.com/collections/dog-food",
+  "success": true,
+  "error": null,
+  "html": null,
+  "cleaned_html": null,
+  "metadata": {
+    "title": "Dog Food - Open Farm",
+    "description": "Shop Open Farm's premium dog food collection. Grain-free, gently cooked, and raw options for your pup."
+  },
+  "media": {
+    "images": [
+      {
+        "src": "https://openfarmpet.com/cdn/shop/collections/dog-food-collection.jpg?v=123456",
+        "alt": "Dog Food Collection",
+        "desc": "collection hero image",
+        "score": 5,
+        "width": 1200,
+        "height": 600,
+        "type": "image",
+        "group_id": 0,
+        "format": "jpg"
+      },
+      {
+        "src": "https://openfarmpet.com/cdn/shop/products/product1-thumb.jpg?v=123456",
+        "alt": "Product 1",
+        "desc": "product thumbnail",
+        "score": 4,
+        "width": 200,
+        "height": 200,
+        "type": "image",
+        "group_id": 1,
+        "format": "jpg"
+      },
+      {
+        "src": "https://openfarmpet.com/cdn/shop/products/product2-thumb.jpg?v=123456",
+        "alt": "Product 2",
+        "desc": "product thumbnail",
+        "score": 4,
+        "width": 200,
+        "height": 200,
+        "type": "image",
+        "group_id": 1,
+        "format": "jpg"
+      }
+    ]
+  },
+  "links": {
+    "internal": [
+      {"href": "https://openfarmpet.com/products/chicken-and-turkey-dry-dog-food", "text": "Chicken & Turkey Dry Dog Food"},
+      {"href": "https://openfarmpet.com/products/beef-and-lamb-dry-dog-food", "text": "Beef & Lamb Dry Dog Food"},
+      {"href": "https://openfarmpet.com/products/salmon-dry-dog-food", "text": "Salmon Dry Dog Food"}
+    ],
+    "external": []
+  }
+}

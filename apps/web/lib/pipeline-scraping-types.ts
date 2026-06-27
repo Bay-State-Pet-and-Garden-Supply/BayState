@@ -29,6 +29,14 @@ export interface ScrapeOptions {
      * SERP fallback. Default: true (SERP Discovery enabled).
      */
     serpDiscoveryEnabled?: boolean;
+    /**
+     * Enable UPC Resolution V2 staged cascade.
+     * When true, source plans use staged fallback:
+     *   distributors → official_brand_crawl → serp_candidate
+     * and the job config includes upc_resolution_policy: 'proof_required'.
+     * Default: false (legacy behavior preserved).
+     */
+    upcResolutionV2Enabled?: boolean;
 }
 
 export interface ScrapeResult {

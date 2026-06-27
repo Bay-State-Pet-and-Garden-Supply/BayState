@@ -23,6 +23,20 @@ import { extractSizeFromProductTitle } from "@/lib/product-variant-parsing";
 import { z } from "zod";
 
 /**
+ * Schema for ProfileExtractionStatus.
+ * Matches apps/scraper/scrapers/ai_search/enrichment_models.py ProfileExtractionStatus.
+ */
+export const ProfileExtractionStatusSchema = z.object({
+  profile_used: z.boolean().default(false),
+  profile_id: z.string().nullable().optional(),
+  version_id: z.string().nullable().optional(),
+  version_hash: z.string().nullable().optional(),
+  field_provenance: z.record(z.string(), z.string()).default({}),
+});
+
+export type ProfileExtractionStatus = z.infer<typeof ProfileExtractionStatusSchema>;
+
+/**
  * Per-source extraction result metadata sent by the runner.
  * Matches apps/scraper/scrapers/ai_search/enrichment_models.py SourceResultInfo.
  */
@@ -32,12 +46,21 @@ export const SourceResultInfoSchema = z.preprocess(
   // attemptedAt) because Pydantic uses Python attribute names by default, while
   // the Field aliases (error_code, error_message, attempted_at) are only used
   // when by_alias=True is passed to model_dump_json().
+  //
+  // Also normalizes resolutionEvidence: accepts both a single object and an
+  // array of objects, wrapping single objects into an array for consistent
+  // downstream handling.
   (data: unknown) => {
     if (data && typeof data === "object" && !Array.isArray(data)) {
       const obj = data as Record<string, unknown>;
       if (obj.errorCode !== undefined) obj.error_code = obj.errorCode;
       if (obj.errorMessage !== undefined) obj.error_message = obj.errorMessage;
       if (obj.attemptedAt !== undefined) obj.attempted_at = obj.attemptedAt;
+
+      // Normalize resolutionEvidence: if it's a single object, wrap in array
+      if (obj.resolutionEvidence !== undefined && obj.resolutionEvidence !== null && !Array.isArray(obj.resolutionEvidence)) {
+        obj.resolutionEvidence = [obj.resolutionEvidence];
+      }
     }
     return data;
   },
@@ -56,6 +79,17 @@ export const SourceResultInfoSchema = z.preprocess(
     error_code: z.string().nullable().optional(),
     error_message: z.string().nullable().optional(),
     attempted_at: z.string().nullable().optional(),
+
+    // UPC Resolution V2 evidence fields (optional — tolerated when absent)
+    // The scraper runner may include these when V2 source plans are active.
+    resolutionStage: z.string().nullable().optional(),
+    resolutionEvidence: z
+      .array(z.record(z.string(), z.unknown()))
+      .nullable()
+      .optional(),
+
+    // Site Extraction Profile tracking (optional — only set when profile snapshots are active)
+    profile_extraction_status: ProfileExtractionStatusSchema.nullable().optional(),
   }),
 );
 
@@ -285,6 +319,26 @@ export function buildCanonicalSourcePayload(
 // =============================================================================
 
 /**
+ * Build the raw_result payload including profile_extraction_status metadata.
+ */
+function _buildRawResultWithProfileStatus(
+  sr: SourceResultInfo,
+): Record<string, unknown> | null {
+  const product = sr.product ? (sr.product as Record<string, unknown>) : null;
+  const profileStatus = sr.profile_extraction_status;
+
+  if (!product && !profileStatus) return null;
+
+  if (product && !profileStatus) return product;
+
+  // Include profile_extraction_status alongside product data
+  return {
+    ...(product || {}),
+    _profile_extraction_status: profileStatus,
+  };
+}
+
+/**
  * Build enrichment_source_attempts insert rows from source_results[].
  *
  * Each source result becomes one row in the enrichment_source_attempts table.
@@ -335,7 +389,7 @@ export function buildSourceAttemptRows(
       evidence_url: sr.evidenceUrl ?? null,
       error_code: sr.error_code ?? null,
       error_message: sr.error_message ?? null,
-      raw_result: sr.product ? (sr.product as Record<string, unknown>) : null,
+      raw_result: _buildRawResultWithProfileStatus(sr),
       attempted_at: sr.attempted_at ?? new Date().toISOString(),
     };
   });
@@ -414,4 +468,76 @@ export function determineStatusFromSourceResults(
 ): PersistedPipelineStatus {
   const outcomes = sourceResults.map((sr) => normalizeSourceOutcome(sr.outcome));
   return determineFinalStatus(outcomes);
+}
+
+// =============================================================================
+// V2 Status Decision (Proof-Required Rule)
+// =============================================================================
+
+/**
+ * Determine the final product pipeline_status when UPC Resolution V2 is active.
+ *
+ * In V2 mode, the found-wins rule is replaced by the proof-required rule.
+ * This is a lightweight inline check that does not require the full source-results
+ * reducer (which would create a circular dependency since source-results imports
+ * from this module).
+ *
+ * For complete proof classification including evidence recording, the callback
+ * route should import buildV2ResolutionUpdate from @/lib/upc-resolution/source-results
+ * directly.
+ *
+ * V2 status rules:
+ *   - outcomes with "found" AND strong evidence → evidence may be accepted proof
+ *   - Without accepted proof → upgrade to needs_attention
+ *   - Conflict → needs_attention
+ *
+ * @returns "processed" if V2 mode should allow advance, "needs_attention" otherwise
+ */
+export function determineV2Status(
+  sourceResults: SourceResultInfo[],
+  _expectedUpc: string,
+): PersistedPipelineStatus {
+  if (sourceResults.length === 0) {
+    return "needs_attention";
+  }
+
+  const outcomes = sourceResults.map((sr) => normalizeSourceOutcome(sr.outcome));
+  const hasFound = outcomes.some((o) => o === "found");
+
+  if (!hasFound) {
+    // No source found anything — no possible proof
+    return "needs_attention";
+  }
+
+  // A source found something — check if any source has high enough confidence
+  // to be considered accepted proof. The callback route does the full evidence
+  // classification using the source-results reducer.
+  // This inline helper provides a conservative default: if V2 mode is active,
+  // only sources with confidence >= 0.9 and exact UPC can advance.
+  const hasStrongFound = sourceResults.some((sr) => {
+    if (normalizeSourceOutcome(sr.outcome) !== "found") return false;
+    if ((sr.confidence ?? 0) < 0.9) return false;
+
+    // Check if the source result product data includes an exact UPC match
+    const productUpc =
+      (sr.product?.upc as string) ?? (sr.product?.gtin as string) ?? "";
+    if (!productUpc) return false;
+
+    // Normalize and compare — exact UPC echo is the strongest signal
+    const normalizedProductUpc = productUpc.replace(/\D/g, "");
+    const normalizedExpected = _expectedUpc.replace(/\D/g, "");
+
+    // Zero-pad both to 14 digits for comparison
+    return (
+      normalizedProductUpc.padStart(14, "0") ===
+      normalizedExpected.padStart(14, "0")
+    );
+  });
+
+  if (hasStrongFound) {
+    return "processed";
+  }
+
+  // Source found something but no strong evidence → needs attention
+  return "needs_attention";
 }

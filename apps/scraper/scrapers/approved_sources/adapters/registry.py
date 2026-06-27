@@ -46,10 +46,14 @@ ADAPTER_ALIASES: dict[str, str] = {
     "pet_food_experts": "pet_food_experts_crawl4ai",
     "pet-food-experts": "pet_food_experts_crawl4ai",
     "pet_food_experts_crawl4ai": "pet_food_experts_crawl4ai",
-    # Generic / official brand
+    # Generic / official brand (legacy — maps to serp_discovery for backward compat)
     "crawl4ai_direct": "serp_discovery",
     "official_brand": "serp_discovery",
     "serp_discovery": "serp_discovery",
+    # UPC Resolution V2 stages
+    "official_brand_crawl": "official_brand_crawl",
+    "serp_candidate_discovery": "serp_candidate_discovery",
+    "serp_candidate": "serp_candidate_discovery",
 }
 
 
@@ -147,5 +151,18 @@ def _ensure_loaded() -> None:
         _ADAPTER_CLASS_MAP["serp_discovery"] = SerpDiscoveryAdapter
     except ImportError as e:
         logger.debug("[Registry] SerpDiscoveryAdapter not available: %s", e)
+
+    # UPC Resolution V2 adapters
+    try:
+        from scrapers.approved_sources.adapters.official_brand_crawl import OfficialBrandCrawlAdapter
+        _ADAPTER_CLASS_MAP["official_brand_crawl"] = OfficialBrandCrawlAdapter
+    except ImportError as e:
+        logger.debug("[Registry] OfficialBrandCrawlAdapter not available: %s", e)
+
+    try:
+        from scrapers.approved_sources.adapters.serp_candidate_discovery import SerpCandidateDiscoveryAdapter
+        _ADAPTER_CLASS_MAP["serp_candidate_discovery"] = SerpCandidateDiscoveryAdapter
+    except ImportError as e:
+        logger.debug("[Registry] SerpCandidateDiscoveryAdapter not available: %s", e)
 
     _loaded = True

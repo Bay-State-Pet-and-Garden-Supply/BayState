@@ -58,6 +58,7 @@ ALLOWED_CDN_DOMAINS_BY_SITE: dict[str, set[str]] = {
     "scotts.com": {"scotts.com", "smg.widen.net"},
     "scottsmiraclegro.com": {"scottsmiraclegro.com", "smg.widen.net"},
     "miraclegro.com": {"miraclegro.com", "smg.widen.net"},
+    "drmartypets.com": {"drmartypets.com", "cdn.builder.io"},
 }
 
 # Path/alt hints that indicate non-product assets

@@ -27,6 +27,8 @@ class ApprovedSourcePlanEntry:
     allowedFields: list[str] = field(default_factory=list)
     priority: int = 100
     runFirst: bool = False
+    # UPC Resolution V2 stage label (set by coordinator when V2 cascade is enabled)
+    resolutionStage: str | None = None
 
 
 @dataclass
@@ -165,6 +167,7 @@ def parse_source_plan_entry(raw: dict[str, Any]) -> ApprovedSourcePlanEntry:
         allowedFields=list(raw.get("allowedFields", [])),
         priority=int(raw.get("priority", 100)),
         runFirst=bool(raw.get("runFirst", False)),
+        resolutionStage=raw.get("resolutionStage"),
     )
 
 

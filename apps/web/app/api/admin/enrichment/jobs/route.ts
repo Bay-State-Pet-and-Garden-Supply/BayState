@@ -21,11 +21,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { upcs, retryMode, testMode, serpDiscoveryEnabled } = body as {
+    const { upcs, retryMode, testMode, serpDiscoveryEnabled, upcResolutionV2Enabled } = body as {
       upcs?: string[];
       retryMode?: "all" | "failed_or_untried";
       testMode?: boolean;
       serpDiscoveryEnabled?: boolean;
+      upcResolutionV2Enabled?: boolean;
     };
 
     if (!Array.isArray(upcs) || upcs.length === 0) {
@@ -68,10 +69,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Enable V2 UPC resolution via explicit request flag or server env variable
+    const resolutionV2Enabled = upcResolutionV2Enabled ??
+      process.env.UPC_RESOLUTION_V2_ENABLED === "true";
+
     const options: ScrapeOptions = {
       retryMode: retryMode ?? "all",
       testMode: testMode ?? false,
       serpDiscoveryEnabled: serpDiscoveryEnabled ?? true,
+      upcResolutionV2Enabled: resolutionV2Enabled,
     };
 
     const result = await scrapeProducts(upcs, options);

@@ -166,6 +166,11 @@ class Crawl4AIExtractor:
         # LLM markdown state (set per-crawl, consumed by LLM call sites)
         self._llm_markdown: str = ""
         self._llm_input_source: str = "fit_markdown"
+        # Optional profile snapshot for site-extraction-profile-driven extraction.
+        # Set externally by ApprovedSourceExecutor via ProductPageExtractor chain.
+        # When present and has compiled_crawl4ai_schema, the extraction uses
+        # that schema instead of the default LLM/platform schema.
+        self._profile_snapshot: dict[str, Any] | None = None
 
     async def _extract_with_fallback(
         self,
@@ -996,6 +1001,203 @@ class Crawl4AIExtractor:
 
         return None
 
+    async def _try_profile_schema_extraction(
+        self,
+        url: str,
+        html: str,
+        markdown: str,
+        result: dict[str, Any],
+        fetch_time_ms: int,
+        upc: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+    ) -> Optional[dict[str, Any]]:
+        """Attempt extraction using a profile snapshot's compiled Crawl4AI schema.
+
+        When a Site Extraction Profile snapshot with a compiled_crawl4ai_schema
+        is available (set via self._profile_snapshot by the executor), this
+        method uses that schema with JsonCssExtractionStrategy for deterministic
+        extraction. Falls back to None if the snapshot is missing, has no
+        compiled schema, or the extraction fails.
+
+        Returns enriched data if complete, or None to continue to other methods.
+        """
+        if not self._profile_snapshot:
+            return None
+
+        compiled_schema = self._profile_snapshot.get("compiled_crawl4ai_schema")
+        if not compiled_schema or not isinstance(compiled_schema, dict):
+            logger.info(
+                "[AI Search] Profile snapshot present but no compiled_crawl4ai_schema for %s",
+                url,
+            )
+            return None
+
+        logger.info(
+            "[AI Search] Profile schema available (profile=%s, version=%s) — "
+            "trying profile-schema extraction for %s",
+            self._profile_snapshot.get("profile_id", "?"),
+            self._profile_snapshot.get("version_id", "?"),
+            url,
+        )
+
+        from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+        from src.crawl4ai_engine.engine import Crawl4AIEngine
+
+        safe_html = html if isinstance(html, str) else ""
+        safe_markdown = markdown if isinstance(markdown, str) else ""
+
+        try:
+            import time as _time
+            import json as _json
+
+            profile_start = _time.perf_counter()
+            
+            # Check if the schema uses XPath selectors
+            def should_use_xpath(schema: dict[str, Any]) -> bool:
+                def is_xpath(selector: str) -> bool:
+                    if not selector: return False
+                    s = selector.strip()
+                    return s.startswith("/") or s.startswith("./") or s.startswith("(") or s.startswith("xpath:")
+                
+                if is_xpath(schema.get("baseSelector", "")):
+                    return True
+                for field in schema.get("fields", []):
+                    if is_xpath(field.get("selector", "")) or is_xpath(field.get("xpath", "")):
+                        return True
+                    # Check nested fields
+                    for nested in field.get("fields", []):
+                        if is_xpath(nested.get("selector", "")) or is_xpath(nested.get("xpath", "")):
+                            return True
+                return False
+
+            if should_use_xpath(compiled_schema):
+                from crawl4ai.extraction_strategy import JsonXPathExtractionStrategy
+                logger.info("[AI Search] Using JsonXPathExtractionStrategy for profile extraction")
+                strategy = JsonXPathExtractionStrategy(schema=compiled_schema)
+            else:
+                from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+                logger.info("[AI Search] Using JsonCssExtractionStrategy for profile extraction")
+                strategy = JsonCssExtractionStrategy(schema=compiled_schema)
+
+            async with Crawl4AIEngine({
+                "browser": {"headless": self.headless},
+                "crawler": {"extraction_strategy": strategy, "timeout": 30000},
+            }) as engine:
+                profile_result = await engine.crawl(url)
+            profile_time_ms = int((_time.perf_counter() - profile_start) * 1000)
+
+            if profile_result.get("success"):
+                extracted = profile_result.get("extracted_content")
+                if extracted:
+                    if isinstance(extracted, str):
+                        payload = _json.loads(extracted)
+                    elif isinstance(extracted, list):
+                        payload = extracted
+                    elif isinstance(extracted, dict):
+                        payload = [extracted]
+                    else:
+                        payload = None
+
+                    if payload and isinstance(payload, list) and payload:
+                        raw_item = payload[0] if isinstance(payload[0], dict) else {}
+
+                        # Build product data from profile extraction
+                        product_data: dict[str, Any] = {
+                            "product_name": raw_item.get("product_name") or raw_item.get("name") or raw_item.get("title"),
+                            "brand": raw_item.get("brand") or brand,
+                            "description": raw_item.get("description") or raw_item.get("desc"),
+                            "images": self._extraction.coerce_string_list(
+                                raw_item.get("images") or raw_item.get("image_urls") or []
+                            ),
+                            "categories": self._extraction.coerce_string_list(
+                                raw_item.get("categories") or raw_item.get("category") or []
+                            ),
+                            "size_metrics": raw_item.get("size_metrics") or raw_item.get("size") or raw_item.get("weight", ""),
+                            "sku": raw_item.get("sku") or raw_item.get("upc", ""),
+                            "upc": upc,
+                            "url": url,
+                            "method": "profile-schema",
+                            "profile_used": True,
+                        }
+
+                        # Copy additional known fields from the raw extraction
+                        for field in (
+                            "features", "ingredients", "pet_type", "life_stage",
+                            "food_form", "flavor", "animal_type", "breed_size",
+                            "primary_protein", "diet_type", "guaranteed_analysis",
+                            "npk_ratio", "package_count", "package_weight",
+                            "dimensions", "color", "material", "packaging_type",
+                            "unit_value", "unit_type", "special_diet", "health_feature",
+                        ):
+                            if raw_item.get(field):
+                                product_data[field] = raw_item[field]
+
+                        # Check completeness
+                        check_result = self._check_extraction_completeness(
+                            product_data, brand, url=url, expected_name=product_name
+                        )
+
+                        if check_result["is_complete"]:
+                            enriched, image_diag = await self._enrich_images(
+                                product_data,
+                                url=url,
+                                html=safe_html,
+                                markdown=safe_markdown,
+                                crawl_media=result.get("media", {}) if isinstance(result, dict) else {},
+                                expected_name=product_name,
+                                expected_brand=brand,
+                            )
+                            enriched["method"] = "profile-schema"
+                            enriched["llm_used"] = False
+                            enriched["profile_used"] = True
+                            enriched["confidence"] = max(
+                                float(enriched.get("confidence", 0.0)), 0.85
+                            )
+
+                            self._log_telemetry(
+                                url, upc, "profile-schema", True,
+                                fetch_time_ms, profile_time_ms, 0, None,
+                                enriched["confidence"],
+                                image_diagnostics=image_diag,
+                            )
+                            logger.info(
+                                "[AI Search] Profile schema extraction succeeded: %s (method=%s)",
+                                url, enriched["method"],
+                            )
+                            enriched = self._apply_context_derivation(
+                                enriched,
+                                product_name=product_name,
+                                url=url,
+                                brand=brand,
+                            )
+                            return enriched
+
+                        logger.info(
+                            "[AI Search] Profile schema extraction incomplete for %s "
+                            "(desc=%s, checks=%s), falling through",
+                            url,
+                            "present" if check_result.get("description") else "missing",
+                            check_result.get("check_notes", []),
+                        )
+                    else:
+                        logger.info(
+                            "[AI Search] Profile schema empty for %s (no data), falling through",
+                            url,
+                        )
+            else:
+                logger.info(
+                    "[AI Search] Profile schema crawl failed for %s: %s, falling through",
+                    url, profile_result.get("error", "unknown"),
+                )
+        except Exception as pe:
+            logger.warning(
+                "[AI Search] Profile schema extraction failed for %s: %s, falling through",
+                url, self._summarize_error(pe),
+            )
+
+        return None
+
     def _normalize_llm_product_data(
         self,
         product_data: dict[str, Any],
@@ -1780,6 +1982,22 @@ class Crawl4AIExtractor:
                         fetch_time_ms=fetch_time_ms,
                     )
 
+                # PROFILE SCHEMA PASS: If a profile snapshot with a compiled
+                # Crawl4AI schema is available, use it before generic platform
+                # detection. This gives governed extraction profiles priority.
+                profile_schema_result = await self._try_profile_schema_extraction(
+                    url=url,
+                    html=html,
+                    markdown=markdown,
+                    result=result,
+                    fetch_time_ms=fetch_time_ms,
+                    upc=upc,
+                    product_name=product_name,
+                    brand=brand,
+                )
+                if profile_schema_result is not None:
+                    return profile_schema_result
+
                 # PLATFORM PASS: Try deterministic platform-schema extraction
                 # before falling back to LLM for unknown sites.
                 platform_result = await self._try_platform_schema_extraction(
@@ -1930,7 +2148,7 @@ class Crawl4AIExtractor:
                             if not isinstance(data[0], dict):
                                 raise TypeError(f"Unsupported extracted_content item type: {type(data[0]).__name__}")
 
-                            logger.info("[DEBUG LLM] Raw LLM data: %s", data[0])
+                            logger.info(f"[DEBUG LLM] Raw LLM data: {data[0]}")
                             product_data = self._normalize_llm_product_data(
                                 data[0],
                                 url=url,
